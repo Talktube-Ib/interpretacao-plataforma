@@ -49,7 +49,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         updateMetadata
     } = useWebRTC(roomId, userId, currentRole)
 
-    const { messages, sendMessage, unreadCount, markAsRead, setIsActive: setIsChatActive } = useChat(channel, userId, currentRole)
+    const { messages, sendMessage, unreadCount, markAsRead, setIsActive: setIsChatActive } = useChat(roomId, userId, currentRole)
 
     // Update Chat Active State when sidebar changes
     useEffect(() => {

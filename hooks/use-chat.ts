@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface Message {
@@ -9,10 +10,6 @@ export interface Message {
     role: string
 }
 
-const NOTIFICATION_SOUND = "data:audio/wav;base64,UklGRl9vT1BXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..." // Placeholder - using a real one below
-
-// Simple "Pop" sound (Shortened for brevity, real base64 needed or use Audio Context oscillator)
-// Using an oscillator is safer/cleaner than a massive base64 string here.
 function playNotificationSound() {
     try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -39,11 +36,13 @@ function playNotificationSound() {
     }
 }
 
-export function useChat(channel: RealtimeChannel | null, userId: string, userRole: string) {
+export function useChat(roomId: string, userId: string, userRole: string) {
     const [messages, setMessages] = useState<Message[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
     const [isActive, setIsActive] = useState(false)
     const isActiveRef = useRef(false)
+    const supabase = createClient()
+    const channelRef = useRef<RealtimeChannel | null>(null)
 
     // Keep ref in sync
     useEffect(() => {
@@ -51,35 +50,54 @@ export function useChat(channel: RealtimeChannel | null, userId: string, userRol
     }, [isActive])
 
     useEffect(() => {
-        if (!channel) return
+        // Create DEDICATED chat channel to avoid WebRTC conflicts
+        const chatChannel = supabase.channel(`chat:${roomId}`, {
+            config: {
+                broadcast: { self: true } // We want to receive our own messages to confirm delivery (optional, but good for sync)
+            }
+        })
+
+        channelRef.current = chatChannel
 
         const handleMsg = (event: { payload: { sender: string, text: string, role: string, id?: string, timestamp?: number } }) => {
             const { payload } = event
-            if (payload.sender === userId) return;
+            if (payload.sender === userId) return; // Ignore own echo if we handle it optimistically
 
-            setMessages(prev => [...prev, {
-                id: payload.id || Math.random().toString(),
-                sender: payload.sender,
-                text: payload.text,
-                timestamp: payload.timestamp || Date.now(),
-                role: payload.role
-            }])
+            console.log("Chat message received:", payload)
+
+            setMessages(prev => {
+                // Avoid duplicates (if any)
+                if (prev.some(m => m.id === payload.id)) return prev
+                return [...prev, {
+                    id: payload.id || Math.random().toString(),
+                    sender: payload.sender,
+                    text: payload.text,
+                    timestamp: payload.timestamp || Date.now(),
+                    role: payload.role
+                }]
+            })
 
             if (!isActiveRef.current) {
+                console.log("Chat inactive, playing sound")
                 setUnreadCount(prev => prev + 1)
                 playNotificationSound()
             }
         }
 
-        channel.on('broadcast', { event: 'chat-message' }, handleMsg)
+        chatChannel
+            .on('broadcast', { event: 'chat-message' }, handleMsg)
+            .subscribe((status) => {
+                console.log(`Chat Channel Status (${roomId}):`, status)
+            })
 
         return () => {
-            channel.off('broadcast', { event: 'chat-message' })
+            console.log("Cleaning up chat channel")
+            chatChannel.unsubscribe()
         }
-    }, [channel, userId]) // Removed isActive from deps
+    }, [roomId, userId]) // Removed isActive from deps to keep channel stable
 
-    const sendMessage = (text: string) => {
-        if (!channel || !text.trim()) return
+    const sendMessage = async (text: string) => {
+        if (!channelRef.current || !text.trim()) return
 
         const msg: Message = {
             id: Math.random().toString(),
@@ -89,12 +107,13 @@ export function useChat(channel: RealtimeChannel | null, userId: string, userRol
             role: userRole
         }
 
-        channel.send({
+        await channelRef.current.send({
             type: 'broadcast',
             event: 'chat-message',
             payload: msg
         })
 
+        // Optimistic update
         setMessages(prev => [...prev, msg])
     }
 
@@ -107,6 +126,6 @@ export function useChat(channel: RealtimeChannel | null, userId: string, userRol
         sendMessage,
         unreadCount,
         markAsRead,
-        setIsActive // Parent sets this when sidebar opens/closes
+        setIsActive
     }
 }
