@@ -122,14 +122,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             className="aspect-video"
                         >
                             <LocalVideo stream={localStream} role={currentRole} name="Você" />
-                            <InterpreterControls
-                                role={currentRole}
-                                currentLanguage={myBroadcastLang}
-                                onLanguageChange={(lang) => {
-                                    setMyBroadcastLang(lang)
-                                    updateMetadata({ language: lang })
-                                }}
-                            />
                         </motion.div>
 
                         {/* Remote Peers */}
@@ -248,6 +240,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     ⚠️ ERRO DE CÂMERA: {mediaError}
                 </div>
             )}
+
+            {/* Interpreter Floating Controls (Moved to Root) */}
+            <InterpreterControls
+                role={currentRole}
+                currentLanguage={myBroadcastLang}
+                onLanguageChange={(lang) => {
+                    setMyBroadcastLang(lang)
+                    updateMetadata({ language: lang })
+                }}
+            />
 
             {/* Bottom Control Bar */}
             <div className="h-24 md:h-28 bg-card/60 backdrop-blur-3xl border-t border-border flex items-center justify-start md:justify-center gap-4 md:gap-6 relative z-[50] px-4 md:px-10 overflow-x-auto no-scrollbar pb-safe">
