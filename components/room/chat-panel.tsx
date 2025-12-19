@@ -1,55 +1,26 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send, MessageSquare, X } from 'lucide-react'
-import { RealtimeChannel } from '@supabase/supabase-js'
+import { Message } from '@/hooks/use-chat'
 
-interface Message {
-    id: string
-    sender: string
-    text: string
-    timestamp: number
-    role: string
+interface ChatPanelProps {
+    userId: string
+    messages: Message[]
+    onSendMessage: (text: string) => void
+    onClose?: () => void
 }
 
 export function ChatPanel({
     userId,
-    userRole,
-    channel,
+    messages,
+    onSendMessage,
     onClose
-}: {
-    userId: string,
-    userRole: string,
-    channel: RealtimeChannel | null,
-    onClose?: () => void
-}) {
-    const [messages, setMessages] = useState<Message[]>([])
+}: ChatPanelProps) {
     const [inputValue, setInputValue] = useState('')
     const scrollRef = useRef<HTMLDivElement>(null)
-
-    useEffect(() => {
-        if (!channel) return
-
-        const handleMsg = (event: { payload: { sender: string, text: string, role: string } }) => {
-            const { payload } = event
-            setMessages(prev => [...prev, {
-                id: Math.random().toString(),
-                sender: payload.sender,
-                text: payload.text,
-                timestamp: Date.now(),
-                role: payload.role
-            }])
-        }
-
-        channel.on('broadcast', { event: 'chat-message' }, handleMsg)
-
-        return () => {
-            // Channel cleanup handled by parent hook, but listeners stay? 
-            // Better to handle in the hook if possible, but this works for now.
-        }
-    }, [channel])
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -57,24 +28,9 @@ export function ChatPanel({
         }
     }, [messages])
 
-    const sendMessage = () => {
-        if (!inputValue.trim() || !channel) return
-
-        const msg = {
-            id: Math.random().toString(),
-            sender: userId,
-            text: inputValue,
-            timestamp: Date.now(),
-            role: userRole
-        }
-
-        channel.send({
-            type: 'broadcast',
-            event: 'chat-message',
-            payload: msg
-        })
-
-        setMessages(prev => [...prev, msg])
+    const handleSubmit = () => {
+        if (!inputValue.trim()) return
+        onSendMessage(inputValue)
         setInputValue('')
     }
 
@@ -121,7 +77,7 @@ export function ChatPanel({
 
             <div className="p-4 border-t border-border bg-accent/20">
                 <form
-                    onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
+                    onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}
                     className="flex gap-2"
                 >
                     <Input

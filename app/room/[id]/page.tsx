@@ -11,6 +11,7 @@ import Link from 'next/link'
 
 // Imports updated
 import { useWebRTC } from '@/hooks/use-webrtc'
+import { useChat } from '@/hooks/use-chat'
 import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { ChatPanel } from '@/components/room/chat-panel'
 import { ParticipantList } from '@/components/room/participant-list'
@@ -47,6 +48,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         channel,
         updateMetadata
     } = useWebRTC(roomId, userId, currentRole)
+
+    const { messages, sendMessage, unreadCount, markAsRead, setIsActive: setIsChatActive } = useChat(channel, userId, currentRole)
+
+    // Update Chat Active State when sidebar changes
+    if (activeSidebar === 'chat') {
+        setIsChatActive(true)
+        if (unreadCount > 0) markAsRead()
+    } else {
+        setIsChatActive(false)
+    }
 
     const handleToggleMic = () => {
         const newState = !micOn
@@ -205,9 +216,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         >
                             <div className="h-full w-full md:w-80">
                                 <ChatPanel
+                                    messages={messages}
                                     userId={userId}
-                                    userRole={currentRole}
-                                    channel={channel}
+                                    onSendMessage={sendMessage}
                                     onClose={() => setActiveSidebar(null)} // Add close prop
                                 />
                             </div>
@@ -415,12 +426,27 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         variant="ghost"
                         size="icon"
                         className={cn(
-                            "h-11 w-11 rounded-xl transition-all",
+                            "h-11 w-11 rounded-xl transition-all relative",
                             activeSidebar === 'chat' ? 'bg-[#06b6d4] text-white shadow-lg' : 'text-muted-foreground hover:bg-accent'
                         )}
-                        onClick={() => setActiveSidebar(activeSidebar === 'chat' ? null : 'chat')}
+                        onClick={() => {
+                            if (activeSidebar === 'chat') {
+                                setActiveSidebar(null)
+                            } else {
+                                setActiveSidebar('chat')
+                                markAsRead()
+                            }
+                        }}
                     >
                         <MessageSquare className="h-5 w-5" />
+                        {unreadCount > 0 && activeSidebar !== 'chat' && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-[9px] font-bold text-white items-center justify-center">
+                                    {unreadCount}
+                                </span>
+                            </span>
+                        )}
                     </Button>
                 </div>
 
