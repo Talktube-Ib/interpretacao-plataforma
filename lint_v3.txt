@@ -1,0 +1,76 @@
+﻿
+> interpretation-platform@0.1.0 lint
+> eslint
+
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\page.tsx
+   4:17  warning  'Video' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  10:35  error    Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\page.tsx:10:35
+   8 |     const supabase = await createClient()
+   9 |
+> 10 |     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+     |                                   ^^^^^^^^^^ Cannot call impure function
+  11 |
+  12 |     // Parallel data fetching for performance
+  13 |     const [  react-hooks/purity
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\settings\page.tsx
+  3:10  warning  'Badge' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\users\user-actions-client.tsx
+  51:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\auth\signout\route.ts
+  6:28  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\agenda\page.tsx
+  12:29  warning  'error' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\settings\page.tsx
+  8:10  warning  'User' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\admin\dashboard-stats.tsx
+  10:35  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\admin\dashboard-stats.tsx:10:35
+   8 |     const supabase = await createClient()
+   9 |
+> 10 |     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+     |                                   ^^^^^^^^^^ Cannot call impure function
+  11 |
+  12 |     // Parallel data fetching
+  13 |     const [  react-hooks/purity
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\agenda\agenda-calendar.tsx
+  21:49  warning  'CalendarIcon' is defined but never used  @typescript-eslint/no-unused-vars
+  21:63  warning  'Clock' is defined but never used         @typescript-eslint/no-unused-vars
+  21:70  warning  'Video' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\create-meeting-modal.tsx
+  4:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\AudioSelector.tsx
+  3:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\webrtc-polyfills.tsx
+   8:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:89  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\webrtc\video-player.tsx
+   37:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\hooks\use-webrtc.ts
+   83:22  warning  The ref value 'peersRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'peersRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+   86:8   warning  React Hook useEffect has missing dependencies: 'joinChannel' and 'localStream'. Either include them or remove the dependency array                                                                                                                               react-hooks/exhaustive-deps
+  204:56  error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  208:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+Ô£û 21 problems (8 errors, 13 warnings)
+

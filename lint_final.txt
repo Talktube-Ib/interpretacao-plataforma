@@ -1,0 +1,40 @@
+﻿
+> interpretation-platform@0.1.0 lint
+> eslint
+
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\page.tsx
+  3:17  warning  'Video' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\settings\page.tsx
+  3:10  warning  'Badge' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\users\user-actions-client.tsx
+  51:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\auth\signout\route.ts
+  6:28  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\agenda\page.tsx
+  12:29  warning  'error' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\settings\page.tsx
+  8:10  warning  'User' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\agenda\agenda-calendar.tsx
+  21:49  warning  'CalendarIcon' is defined but never used  @typescript-eslint/no-unused-vars
+  21:63  warning  'Clock' is defined but never used         @typescript-eslint/no-unused-vars
+  21:70  warning  'Video' is defined but never used         @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\create-meeting-modal.tsx
+  4:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\AudioSelector.tsx
+  3:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\hooks\use-webrtc.ts
+  83:22  warning  The ref value 'peersRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'peersRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+  86:8   warning  React Hook useEffect has missing dependencies: 'joinChannel' and 'localStream'. Either include them or remove the dependency array                                                                                                                               react-hooks/exhaustive-deps
+
+Ô£û 13 problems (0 errors, 13 warnings)
+
