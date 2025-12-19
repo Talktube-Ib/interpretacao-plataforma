@@ -42,16 +42,19 @@ function playNotificationSound() {
 export function useChat(channel: RealtimeChannel | null, userId: string, userRole: string) {
     const [messages, setMessages] = useState<Message[]>([])
     const [unreadCount, setUnreadCount] = useState(0)
-    const [isActive, setIsActive] = useState(false) // Is panel open?
+    const [isActive, setIsActive] = useState(false)
+    const isActiveRef = useRef(false)
+
+    // Keep ref in sync
+    useEffect(() => {
+        isActiveRef.current = isActive
+    }, [isActive])
 
     useEffect(() => {
         if (!channel) return
 
         const handleMsg = (event: { payload: { sender: string, text: string, role: string, id?: string, timestamp?: number } }) => {
             const { payload } = event
-            // Don't duplicate if my own echo comes back (Supabase broadcast echoes back to sender usually? No, by default yes unless disabled)
-            // But we add own messages manually for instant feedback. So filter echo.
-            // Actually, for simplicity, let's just ignore echoes if we track them manually.
             if (payload.sender === userId) return;
 
             setMessages(prev => [...prev, {
@@ -62,7 +65,7 @@ export function useChat(channel: RealtimeChannel | null, userId: string, userRol
                 role: payload.role
             }])
 
-            if (!isActive) {
+            if (!isActiveRef.current) {
                 setUnreadCount(prev => prev + 1)
                 playNotificationSound()
             }
@@ -73,7 +76,7 @@ export function useChat(channel: RealtimeChannel | null, userId: string, userRol
         return () => {
             channel.off('broadcast', { event: 'chat-message' })
         }
-    }, [channel, userId, isActive])
+    }, [channel, userId]) // Removed isActive from deps
 
     const sendMessage = (text: string) => {
         if (!channel || !text.trim()) return
