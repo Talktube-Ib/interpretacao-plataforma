@@ -48,7 +48,6 @@ export default async function DashboardPage() {
         .order('start_time', { ascending: true })
 
     return (
-    return (
         <div className="min-h-screen bg-[#f3f4f6] dark:bg-background text-foreground selection:bg-[#06b6d4]/30">
             {/* Header */}
             <div className="bg-white dark:bg-card border-b border-border py-4 px-8 flex justify-between items-center shadow-sm">

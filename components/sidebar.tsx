@@ -17,7 +17,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { ModeToggle } from './mode-toggle'
 import { Logo } from './logo'
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface SidebarProps {
     user: { email?: string }
@@ -85,7 +84,7 @@ export function Sidebar({ user, userRole }: SidebarProps) {
             </div>
 
             {/* Navigation */}
-            <ScrollArea className="flex-1 px-4">
+            <div className="flex-1 px-4 overflow-y-auto no-scrollbar">
                 <div className="space-y-4">
                     <div>
                         <h3 className="mb-2 px-4 text-xs font-semibold text-blue-300/60 uppercase tracking-wider">
@@ -145,7 +144,7 @@ export function Sidebar({ user, userRole }: SidebarProps) {
                         </div>
                     )}
                 </div>
-            </ScrollArea>
+            </div>
 
             {/* Footer / User Profile */}
             <div className="p-4 bg-[#0f172a]/50 backdrop-blur-md border-t border-white/5 mx-4 mb-4 rounded-3xl mt-auto shadow-inner">
