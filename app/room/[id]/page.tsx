@@ -5,7 +5,7 @@ import { useState, use, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff,
-    Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings
+    Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2
 } from 'lucide-react'
 import {
     DropdownMenu,
@@ -27,6 +27,7 @@ import { InterpreterControls } from '@/components/room/interpreter-controls'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
+import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     const { id: roomId } = use(params)
@@ -129,6 +130,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     </div>
                     <div className="h-4 w-px bg-border/50" />
                     <span className="font-semibold text-sm opacity-80">ID: {roomId}</span>
+
+                    <ShareMeetingDialog
+                        roomId={roomId}
+                        trigger={
+                            <Button variant="ghost" size="icon" className="h-6 w-6 ml-2 text-white hover:bg-white/10 rounded-full">
+                                <Share2 className="h-3 w-3" />
+                            </Button>
+                        }
+                    />
+
                     <div className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${userCount > 1 ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'}`}>
                         <Users className="h-3 w-3" />
                         {userCount} Online

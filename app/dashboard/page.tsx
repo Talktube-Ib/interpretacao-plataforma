@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Calendar, Globe, Clock, Shield, Sparkles, Settings } from 'lucide-react'
+import { Calendar, Globe, Clock, Shield, Sparkles, Settings, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CreateMeetingModal from '@/components/create-meeting-modal'
 import { AdminDashboardStats } from '@/components/admin/dashboard-stats'
 import { QuickJoinCard } from '@/components/dashboard/quick-join-card'
 import { MeetingCard } from '@/components/dashboard/meeting-card'
 import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-button'
+import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
