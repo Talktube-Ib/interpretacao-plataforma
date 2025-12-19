@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface Message {
     id: string
@@ -42,7 +41,6 @@ export function useChat(roomId: string, userId: string, userRole: string) {
     const [isActive, setIsActive] = useState(false)
     const isActiveRef = useRef(false)
     const supabase = createClient()
-    const channelRef = useRef<RealtimeChannel | null>(null)
 
     // Keep ref in sync
     useEffect(() => {
@@ -50,71 +48,94 @@ export function useChat(roomId: string, userId: string, userRole: string) {
     }, [isActive])
 
     useEffect(() => {
-        // Create DEDICATED chat channel to avoid WebRTC conflicts
-        const chatChannel = supabase.channel(`chat:${roomId}`, {
-            config: {
-                broadcast: { self: true } // We want to receive our own messages to confirm delivery (optional, but good for sync)
-            }
-        })
+        if (!roomId) return
 
-        channelRef.current = chatChannel
+        // 1. Fetch History
+        const fetchHistory = async () => {
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('room_id', roomId)
+                .order('created_at', { ascending: true })
 
-        const handleMsg = (event: { payload: { sender: string, text: string, role: string, id?: string, timestamp?: number } }) => {
-            const { payload } = event
-            if (payload.sender === userId) return; // Ignore own echo if we handle it optimistically
-
-            console.log("Chat message received:", payload)
-
-            setMessages(prev => {
-                // Avoid duplicates (if any)
-                if (prev.some(m => m.id === payload.id)) return prev
-                return [...prev, {
-                    id: payload.id || Math.random().toString(),
-                    sender: payload.sender,
-                    text: payload.text,
-                    timestamp: payload.timestamp || Date.now(),
-                    role: payload.role
-                }]
-            })
-
-            if (!isActiveRef.current) {
-                console.log("Chat inactive, playing sound")
-                setUnreadCount(prev => prev + 1)
-                playNotificationSound()
+            if (data) {
+                const mapped: Message[] = data.map((d: any) => ({
+                    id: d.id,
+                    sender: d.sender_id,
+                    text: d.content,
+                    timestamp: new Date(d.created_at).getTime(),
+                    role: d.role
+                }))
+                setMessages(mapped)
             }
         }
+        fetchHistory()
 
-        chatChannel
-            .on('broadcast', { event: 'chat-message' }, handleMsg)
-            .subscribe((status) => {
-                console.log(`Chat Channel Status (${roomId}):`, status)
-            })
+        // 2. Subscribe to NEW additions (Realtime)
+        const channel = supabase
+            .channel(`db-messages:${roomId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `room_id=eq.${roomId}`
+                },
+                (payload) => {
+                    const newMsg = payload.new as any
+                    const msg: Message = {
+                        id: newMsg.id,
+                        sender: newMsg.sender_id,
+                        text: newMsg.content,
+                        timestamp: new Date(newMsg.created_at).getTime(),
+                        role: newMsg.role
+                    }
+
+                    setMessages(prev => {
+                        if (prev.some(m => m.id === msg.id)) return prev
+                        return [...prev, msg]
+                    })
+
+                    // Notify if not active and NOT my own message
+                    if (newMsg.sender_id !== userId && !isActiveRef.current) {
+                        setUnreadCount(prev => prev + 1)
+                        playNotificationSound()
+                    }
+                }
+            )
+            .subscribe()
 
         return () => {
-            console.log("Cleaning up chat channel")
-            chatChannel.unsubscribe()
+            channel.unsubscribe()
         }
-    }, [roomId, userId]) // Removed isActive from deps to keep channel stable
+    }, [roomId, userId])
 
     const sendMessage = async (text: string) => {
-        if (!channelRef.current || !text.trim()) return
+        if (!text.trim()) return
 
-        const msg: Message = {
-            id: Math.random().toString(),
+        // Optimistic UI update
+        const tempId = Math.random().toString()
+        const optimisticMsg: Message = {
+            id: tempId,
             sender: userId,
             text,
             timestamp: Date.now(),
             role: userRole
         }
+        setMessages(prev => [...prev, optimisticMsg])
 
-        await channelRef.current.send({
-            type: 'broadcast',
-            event: 'chat-message',
-            payload: msg
+        // Insert into DB
+        const { error } = await supabase.from('messages').insert({
+            room_id: roomId,
+            sender_id: userId,
+            content: text,
+            role: userRole
         })
 
-        // Optimistic update
-        setMessages(prev => [...prev, msg])
+        if (error) {
+            console.error("Failed to send message:", error)
+        }
     }
 
     const markAsRead = () => {
