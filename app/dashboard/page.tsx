@@ -47,87 +47,121 @@ export default async function DashboardPage() {
         .order('start_time', { ascending: true })
 
     return (
-        <div className="min-h-screen bg-background text-foreground selection:bg-[#06b6d4]/30">
-            <main className="container mx-auto px-4 py-8 max-w-7xl animate-in fade-in duration-700">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-                    <div>
-                        <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-foreground">
-                            Olá, {profile?.full_name?.split(' ')[0] || 'Usuário'} <span className="inline-block animate-wave">👋</span>
-                        </h1>
-                        <p className="text-muted-foreground mt-2 text-lg font-medium">Seu centro de comando para conexões globais.</p>
-                    </div>
-                    <div className="w-full md:w-auto flex flex-col sm:flex-row gap-3">
-                        <InstantMeetingButton />
-                        <CreateMeetingModal userId={user.id} />
-                    </div>
+    return (
+        <div className="min-h-screen bg-[#f3f4f6] dark:bg-background text-foreground selection:bg-[#06b6d4]/30">
+            {/* Header */}
+            <div className="bg-white dark:bg-card border-b border-border py-4 px-8 flex justify-between items-center shadow-sm">
+                <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">
+                    TalkTube <span className="text-muted-foreground font-normal text-sm ml-2">Video Conferencing Software</span>
+                </h1>
+                <div className="flex items-center gap-2">
+                    {/* Avatars or controls could go here like the reference */}
                 </div>
+            </div>
 
-                {/* Performance Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-                    {[
-                        { label: 'Reuniões', value: meetings?.length || 0, icon: Calendar, color: 'text-[#06b6d4]' },
-                        { label: 'Idiomas', value: languages.length || 0, icon: Globe, color: 'text-purple-400' },
-                        { label: 'Minutos', value: '120+', icon: Clock, color: 'text-amber-400' },
-                        { label: 'Status', value: 'Premium', icon: Shield, color: 'text-emerald-400' },
-                    ].map((stat, i) => (
-                        <div key={i} className="bg-card border border-border rounded-2xl p-5 hover:bg-accent/50 transition-all group shadow-sm">
-                            <stat.icon className={`h-5 w-5 ${stat.color} mb-3 group-hover:scale-110 transition-transform`} />
-                            <div className="text-2xl font-black text-foreground">{stat.value}</div>
-                            <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">{stat.label}</div>
-                        </div>
-                    ))}
-                </div>
+            <main className="container mx-auto px-6 py-8 max-w-[1600px] animate-in fade-in duration-700">
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
-                    <div className="lg:col-span-1">
-                        <QuickJoinCard />
-                    </div>
-                    <div className="lg:col-span-2">
-                        <div className="bg-gradient-to-br from-indigo-600/10 to-purple-600/5 border border-border rounded-[2.5rem] p-8 h-full flex flex-col justify-center relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-[#06b6d4]/10 rounded-full blur-[100px] group-hover:scale-125 transition-transform duration-1000" />
-                            <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                                <div className="p-6 bg-background/50 backdrop-blur-sm rounded-[2rem] border border-border">
-                                    <Sparkles className="h-10 w-10 text-[#06b6d4]" />
+                {/* Main Action Area */}
+                <div className="flex flex-col xl:flex-row gap-6 mb-10 h-auto xl:h-[400px]">
+                    {/* Personal Room Card - Major Focus */}
+                    <div className="flex-1 bg-white dark:bg-card rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-border relative overflow-hidden flex flex-col justify-center group">
+                        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#06b6d4]/10 to-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 group-hover:scale-110 transition-transform duration-1000" />
+
+                        <div className="relative z-10 max-w-2xl">
+                            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Sua Sala Pessoal</h2>
+                            <p className="text-slate-500 mb-8 text-lg">
+                                Esta é sua sala de reunião pública sempre ativa. Qualquer pessoa com o link pode entrar.
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50 dark:bg-accent/20 p-2 pl-6 rounded-2xl border border-slate-200 dark:border-border/50 max-w-xl">
+                                <span className="text-slate-500 font-mono text-sm truncate flex-1">
+                                    interpreta.ai/room/{user.email?.split('@')[0]}
+                                </span>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                    <Button variant="ghost" className="text-[#06b6d4] hover:bg-[#06b6d4]/10 font-bold">
+                                        Copiar
+                                    </Button>
+                                    <Button className="bg-[#06b6d4] hover:bg-[#0891b2] text-white font-bold px-8 rounded-xl shadow-lg shadow-[#06b6d4]/20">
+                                        Entrar
+                                    </Button>
                                 </div>
-                                <div>
-                                    <h2 className="text-2xl font-black tracking-tight mb-2 text-foreground">Poder da Interpretação</h2>
-                                    <p className="text-muted-foreground max-w-lg leading-relaxed">
-                                        Cadastre seus idiomas nas configurações para desbloquear a <b>Consola do Intérprete</b>.
-                                        Transforme qualquer reunião em um evento global em segundos.
-                                    </p>
-                                </div>
+                            </div>
+
+                            <div className="mt-8 flex items-center gap-2 text-sm font-medium text-[#06b6d4] cursor-pointer hover:underline">
+                                <Settings className="h-4 w-4" />
+                                Editar configurações da sala
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="mb-8 flex items-center justify-between">
-                    <h2 className="text-3xl font-black tracking-tighter flex items-center gap-3 text-foreground">
-                        <div className="w-10 h-10 bg-[#06b6d4]/10 rounded-xl flex items-center justify-center border border-[#06b6d4]/20">
-                            <Calendar className="h-5 w-5 text-[#06b6d4]" />
+                    {/* Quick Private Meeting Card */}
+                    <div className="w-full xl:w-[450px] bg-white dark:bg-card rounded-[2rem] p-8 shadow-sm border border-slate-100 dark:border-border flex flex-col items-center justify-center text-center">
+                        <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-6">
+                            Precisa de uma reunião agora?
+                        </h3>
+                        <div className="w-full">
+                            <InstantMeetingButton />
                         </div>
-                        Próximas Reuniões
-                    </h2>
-                </div>
-
-                {/* Meeting List */}
-                {!meetings || meetings.length === 0 ? (
-                    <div className="text-center py-24 bg-card rounded-[3rem] border-2 border-dashed border-border flex flex-col items-center shadow-inner">
-                        <div className="p-8 rounded-full bg-accent/50 mb-8 border border-border">
-                            <Calendar className="h-16 w-16 text-muted-foreground opacity-20" />
-                        </div>
-                        <h3 className="text-3xl font-black tracking-tighter mb-3 uppercase text-foreground">Rádio em Silêncio</h3>
-                        <p className="text-muted-foreground max-w-sm mx-auto font-medium">
-                            Nenhum evento agendado. Comece criando sua primeira sala agora mesmo.
+                        <p className="text-xs text-muted-foreground mt-4 max-w-[200px]">
+                            Cria uma sala privada instantânea que expira após o uso.
                         </p>
                     </div>
-                ) : (
-                    <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
-                        {meetings.map((meeting) => (
-                            <MeetingCard key={meeting.id} meeting={meeting} />
-                        ))}
+                </div>
+
+                {/* Sub Sections */}
+                <div className="bg-white dark:bg-card rounded-[2.5rem] p-8 shadow-sm border border-slate-100 dark:border-border min-h-[500px]">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-widest">
+                                PROGRAMAÇÃO
+                            </h2>
+                        </div>
+                        <CreateMeetingModal userId={user.id} />
                     </div>
-                )}
+
+                    {/* Table Header */}
+                    <div className="grid grid-cols-12 text-[10px] font-black uppercase text-slate-400 tracking-wider mb-4 px-4">
+                        <div className="col-span-6 md:col-span-4">Evento</div>
+                        <div className="hidden md:block col-span-3">Organizador</div>
+                        <div className="hidden md:block col-span-3">Horário</div>
+                        <div className="col-span-6 md:col-span-2 text-right">Ação</div>
+                    </div>
+
+                    <div className="space-y-2">
+                        {!meetings || meetings.length === 0 ? (
+                            <div className="text-center py-20">
+                                <div className="inline-flex p-4 rounded-full bg-slate-50 dark:bg-accent mb-4">
+                                    <Calendar className="h-8 w-8 text-slate-300" />
+                                </div>
+                                <p className="text-slate-500 font-medium">Nenhuma reunião agendada.</p>
+                            </div>
+                        ) : (
+                            meetings.map((meeting) => (
+                                <div key={meeting.id} className="grid grid-cols-12 items-center p-4 hover:bg-slate-50 dark:hover:bg-accent/30 rounded-2xl transition-colors group cursor-pointer border border-transparent hover:border-slate-100">
+                                    <div className="col-span-6 md:col-span-4 font-bold text-slate-800 dark:text-foreground truncate flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-md">
+                                            {meeting.title.substring(0, 2).toUpperCase()}
+                                        </div>
+                                        {meeting.title}
+                                    </div>
+                                    <div className="hidden md:block col-span-3 text-sm text-slate-500">
+                                        {profile?.full_name || 'Você'}
+                                    </div>
+                                    <div className="hidden md:block col-span-3 text-sm font-mono text-slate-500">
+                                        {new Date(meeting.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                    <div className="col-span-6 md:col-span-2 flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-slate-400 hover:text-blue-500">
+                                            <CreateMeetingModal userId={user.id} />
+                                            {/* Note: Edit button logic would go here ideally */}
+                                            <Sparkles className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </main>
         </div>
     )

@@ -26,6 +26,7 @@ import { ParticipantList } from '@/components/room/participant-list'
 import { InterpreterControls } from '@/components/room/interpreter-controls'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/logo'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     const { id: roomId } = use(params)
@@ -123,7 +124,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             {/* Top Bar */}
             <div className="absolute top-0 left-0 right-0 p-4 z-[40] flex justify-between items-center bg-gradient-to-b from-background to-transparent pointer-events-none">
                 <div className="bg-card/40 backdrop-blur-md px-4 py-2 rounded-full pointer-events-auto border border-border flex items-center gap-4 shadow-xl">
-                    <span className="font-semibold text-sm">Meeting ID: {roomId}</span>
+                    <div className="scale-75 origin-left -ml-2">
+                        <Logo />
+                    </div>
+                    <div className="h-4 w-px bg-border/50" />
+                    <span className="font-semibold text-sm opacity-80">ID: {roomId}</span>
                     <div className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${userCount > 1 ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'}`}>
                         <Users className="h-3 w-3" />
                         {userCount} Online
@@ -139,9 +144,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     <motion.div
                         layout
                         className={`grid gap-4 w-full content-center justify-items-center transition-all ${peers.length === 0 ? 'grid-cols-1 max-w-xl' :
-                                peers.length === 1 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
-                                    peers.length <= 4 ? 'grid-cols-2 max-w-5xl' :
-                                        'grid-cols-2 md:grid-cols-3 max-w-[1400px]'
+                            peers.length === 1 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
+                                peers.length <= 4 ? 'grid-cols-2 max-w-5xl' :
+                                    'grid-cols-2 md:grid-cols-3 max-w-[1400px]'
                             }`}
                         style={{ maxHeight: 'calc(100vh - 180px)' }}
                     >
