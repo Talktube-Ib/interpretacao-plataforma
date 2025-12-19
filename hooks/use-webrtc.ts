@@ -370,3 +370,4 @@ export function useWebRTC(roomId: string, userId: string, userRole: string = 'pa
             channel: channelState, // Export state instead of ref
         }
     }
+}
