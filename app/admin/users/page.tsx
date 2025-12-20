@@ -87,7 +87,7 @@ export default async function AdminUsersPage({
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    {profile.status === 'active' ? (
+                                    {(!profile.status || profile.status === 'active') ? (
                                         <div className="flex items-center text-green-500 text-sm">
                                             <div className="h-2 w-2 rounded-full bg-green-500 mr-2" /> Ativo
                                         </div>
