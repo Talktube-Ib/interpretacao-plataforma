@@ -99,7 +99,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     const [viewMode, setViewMode] = useState<'gallery' | 'speaker'>('gallery')
     const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null)
-    const [currentPage, setCurrentPage] = useState(1)
+    const [pinnedSpeakerId, setPinnedSpeakerId] = useState<string | null>(null)
+    const [currentPage, setCurrentPage] = useState(0)
     const itemsPerPage = 49
 
     const {
@@ -213,8 +214,17 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // Automatic Speaker Detection
     const handlePeerSpeaking = (id: string, isSpeaking: boolean) => {
-        if (isSpeaking) {
+        if (isSpeaking && !pinnedSpeakerId) {
             setActiveSpeakerId(id)
+        }
+    }
+
+    const handleSpeakerChange = (id: string) => {
+        if (pinnedSpeakerId === id) {
+            setPinnedSpeakerId(null) // Unpin if clicking same
+        } else {
+            setPinnedSpeakerId(id)
+            setViewMode('speaker') // Auto switch to speaker mode when pinning
         }
     }
 
@@ -293,6 +303,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         cameraOn={cameraOn}
                         mode={viewMode}
                         activeSpeakerId={activeSpeakerId}
+                        pinnedSpeakerId={pinnedSpeakerId}
+                        onSpeakerChange={handleSpeakerChange}
                         onPeerSpeaking={handlePeerSpeaking}
                         localUserName={userName}
                         selectedLang={selectedLang}
@@ -508,8 +520,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     <SettingsDialog
                         audioDevices={audioInputs}
                         videoDevices={videoInputs}
-                        currentAudioId={lobbyConfig?.audioDeviceId}
-                        currentVideoId={lobbyConfig?.videoDeviceId}
+                        currentAudioId={localStorage.getItem('preferredAudioDevice') || undefined}
+                        currentVideoId={localStorage.getItem('preferredVideoDevice') || undefined}
+                        localStream={localStream}
                         onSwitch={switchDeviceWebRTC}
                     />
                 </div>

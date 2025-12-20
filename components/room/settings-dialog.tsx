@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { Settings, Mic, Video, Volume2, Globe, Shield, User } from 'lucide-react'
+import { AudioMeter } from './audio-meter'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -14,6 +15,7 @@ interface SettingsDialogProps {
     currentVideoId?: string
     onSwitch: (kind: 'audio' | 'video', deviceId: string) => void
     trigger?: React.ReactNode
+    localStream?: MediaStream | null
 }
 
 export function SettingsDialog({
@@ -22,7 +24,8 @@ export function SettingsDialog({
     currentAudioId,
     currentVideoId,
     onSwitch,
-    trigger
+    trigger,
+    localStream
 }: SettingsDialogProps) {
     return (
         <Dialog>
@@ -89,9 +92,7 @@ export function SettingsDialog({
                         </Label>
                         <div className="flex items-center gap-4">
                             <div className="flex-1 bg-accent/20 rounded-2xl h-12 flex items-center px-4 gap-3 border border-border/30">
-                                <div className="h-1 flex-1 bg-muted-foreground/20 rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary w-[30%] animate-pulse transition-all duration-300" />
-                                </div>
+                                <AudioMeter stream={localStream || null} />
                             </div>
                             <Button variant="outline" className="rounded-2xl h-12 border-border/50 font-bold px-6 hover:bg-accent/50">
                                 Testar

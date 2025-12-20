@@ -13,6 +13,7 @@ interface VideoGridProps {
     mode: 'gallery' | 'speaker'
     onSpeakerChange?: (userId: string) => void
     activeSpeakerId?: string | null
+    pinnedSpeakerId?: string | null
     onPeerSpeaking?: (id: string, isSpeaking: boolean) => void
     localUserName?: string
     selectedLang?: string
@@ -26,7 +27,9 @@ export function VideoGrid({
     micOn,
     cameraOn,
     mode,
+    onSpeakerChange,
     activeSpeakerId,
+    pinnedSpeakerId,
     onPeerSpeaking,
     localUserName = "Você",
     selectedLang = 'original',
@@ -43,8 +46,9 @@ export function VideoGrid({
     const galleryLayout = useGalleryLayout(containerRef, allParticipants.length)
 
     // Find the main speaker for Speaker Mode
-    // Default to first peer or local if activeSpeakerId is null
-    const speakerData = allParticipants.find(p => p.userId === activeSpeakerId) || allParticipants[0]
+    // Priority: Pinned > Active Speaker > First participant
+    const currentSpeakerId = pinnedSpeakerId || activeSpeakerId || allParticipants[0]?.userId
+    const speakerData = allParticipants.find(p => p.userId === currentSpeakerId) || allParticipants[0]
     const others = allParticipants.filter(p => p.userId !== speakerData?.userId)
 
     const calcVolume = (p: any) => {
@@ -74,7 +78,11 @@ export function VideoGrid({
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.5 }}
-                                className="w-full h-full box-border"
+                                onClick={() => onSpeakerChange?.(p.userId)}
+                                className={cn(
+                                    "w-full h-full box-border cursor-pointer transition-transform active:scale-[0.98]",
+                                    pinnedSpeakerId === p.userId && "ring-4 ring-amber-500 rounded-[2.5rem]"
+                                )}
                             >
                                 {p.isLocal ? (
                                     <LocalVideo stream={p.stream} role={p.role} micOff={!p.micOn} cameraOff={!p.cameraOn} name={p.name} onSpeakingChange={(s) => onPeerSpeaking?.('local', s)} />
@@ -129,7 +137,11 @@ export function VideoGrid({
                                     layoutId={p.userId}
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    className="aspect-video w-48 md:w-full shrink-0"
+                                    onClick={() => onSpeakerChange?.(p.userId)}
+                                    className={cn(
+                                        "aspect-video w-48 md:w-full shrink-0 cursor-pointer transition-transform active:scale-95",
+                                        pinnedSpeakerId === p.userId && "ring-2 ring-amber-500 rounded-2xl"
+                                    )}
                                 >
                                     {p.isLocal ? (
                                         <LocalVideo stream={p.stream} role={p.role} micOff={!p.micOn} cameraOff={!p.cameraOn} name={p.name} onSpeakingChange={(s) => onPeerSpeaking?.('local', s)} />
