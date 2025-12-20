@@ -51,12 +51,25 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
     // Languages State
     const [selectedLangs, setSelectedLangs] = useState<string[]>(profile.languages || [])
 
-    const handleSaveLimits = async () => {
+    const handleAction = async (actionFn: () => Promise<{ success: boolean; error?: string }>, successMsg?: string) => {
         try {
-            await updateUserLimits(profile.id, limits)
+            const result = await actionFn()
+            if (!result.success) {
+                alert(`Erro: ${result.error}`)
+            } else if (successMsg) {
+                // Optional success feedback
+            }
+        } catch (err) {
+            alert('Erro inesperado ao executar ação.')
+        }
+    }
+
+    const handleSaveLimits = async () => {
+        const result = await updateUserLimits(profile.id, limits)
+        if (result.success) {
             setOpenLimits(false)
-        } catch (error) {
-            alert('Erro ao salvar limites')
+        } else {
+            alert(`Erro ao salvar limites: ${result.error}`)
         }
     }
 
@@ -65,14 +78,20 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
     }
 
     const confirmInterpreterPromotion = async () => {
-        try {
-            await updateUserRole(profile.id, 'interpreter')
-            await updateProfileLanguages(profile.id, selectedLangs)
-            setOpenLang(false)
-            alert('Usuário promovido a Intérprete com sucesso!')
-        } catch (error) {
-            alert('Erro ao promover.')
+        const roleResult = await updateUserRole(profile.id, 'interpreter')
+        if (!roleResult.success) {
+            alert(`Erro ao atualizar papel: ${roleResult.error}`)
+            return
         }
+
+        const langResult = await updateProfileLanguages(profile.id, selectedLangs)
+        if (!langResult.success) {
+            alert(`Erro ao salvar idiomas: ${langResult.error}`)
+            return
+        }
+
+        setOpenLang(false)
+        alert('Usuário promovido a Intérprete com sucesso!')
     }
 
     const handleLangToggle = (code: string) => {
@@ -114,6 +133,20 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
                                 onChange={(e) => setLimits({ ...limits, max_participants: parseInt(e.target.value) })}
                                 className="col-span-3 bg-white/5 border-white/10"
                             />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="recording" className="text-right">Gravação</Label>
+                            <div className="col-span-3 flex items-center space-x-2">
+                                <Checkbox
+                                    id="recording"
+                                    checked={limits.can_record}
+                                    onCheckedChange={(checked) => setLimits({ ...limits, can_record: checked as boolean })}
+                                    className="border-white/30 data-[state=checked]:bg-[#06b6d4]"
+                                />
+                                <label htmlFor="recording" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    Permitir Gravação
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
@@ -167,54 +200,81 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0 text-white">
+                    <Button variant="ghost" className="h-8 w-8 p-0 text-white hover:bg-white/10 transition-colors">
                         <span className="sr-only">Open menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-[#0f172a] border-white/10 text-gray-200">
                     <DropdownMenuLabel>Ações de Usuário</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(profile.id)}>
+                    <DropdownMenuItem
+                        onClick={() => navigator.clipboard.writeText(profile.id)}
+                        className="hover:bg-white/5 focus:bg-white/5 cursor-pointer"
+                    >
                         Copiar ID
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-white/10" />
 
                     <DropdownMenuLabel>Alterar Cargo</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => updateUserRole(profile.id, 'participant')}>
+                    <DropdownMenuItem
+                        onClick={() => handleAction(() => updateUserRole(profile.id, 'participant'))}
+                        className="hover:bg-white/5 focus:bg-white/5 cursor-pointer"
+                    >
                         Tornar Usuário Padrão
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handlePromoteToInterpreter} className="text-blue-400">
+                    <DropdownMenuItem
+                        onClick={handlePromoteToInterpreter}
+                        className="text-blue-400 hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer"
+                    >
                         Tornar Intérprete
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateUserRole(profile.id, 'admin')} className="text-orange-500">
+                    <DropdownMenuItem
+                        onClick={() => handleAction(() => updateUserRole(profile.id, 'admin'))}
+                        className="text-orange-500 hover:bg-orange-500/10 focus:bg-orange-500/10 cursor-pointer"
+                    >
                         Tornar Admin
                     </DropdownMenuItem>
 
-                    <DropdownMenuSeparator />
+                    <DropdownMenuSeparator className="bg-white/10" />
 
                     <DropdownMenuLabel>Governança</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => setOpenLimits(true)} className="text-[#06b6d4]">
+                    <DropdownMenuItem
+                        onClick={() => setOpenLimits(true)}
+                        className="text-[#06b6d4] hover:bg-[#06b6d4]/10 focus:bg-[#06b6d4]/10 cursor-pointer"
+                    >
                         <Settings2 className="h-4 w-4 mr-2" />
                         Editar Limites
                     </DropdownMenuItem>
                     {profile.role === 'interpreter' && (
-                        <DropdownMenuItem onClick={() => setOpenLang(true)} className="text-[#06b6d4]">
+                        <DropdownMenuItem
+                            onClick={() => setOpenLang(true)}
+                            className="text-[#06b6d4] hover:bg-[#06b6d4]/10 focus:bg-[#06b6d4]/10 cursor-pointer"
+                        >
                             <Languages className="h-4 w-4 mr-2" />
                             Editar Idiomas
                         </DropdownMenuItem>
                     )}
                     {status !== 'active' && (
-                        <DropdownMenuItem onClick={() => updateUserStatus(profile.id, 'active')} className="text-green-500">
+                        <DropdownMenuItem
+                            onClick={() => handleAction(() => updateUserStatus(profile.id, 'active'))}
+                            className="text-green-500 hover:bg-green-500/10 focus:bg-green-500/10 cursor-pointer"
+                        >
                             Ativar Usuário
                         </DropdownMenuItem>
                     )}
                     {status !== 'suspended' && (
-                        <DropdownMenuItem onClick={() => updateUserStatus(profile.id, 'suspended')} className="text-yellow-500">
+                        <DropdownMenuItem
+                            onClick={() => handleAction(() => updateUserStatus(profile.id, 'suspended'))}
+                            className="text-yellow-500 hover:bg-yellow-500/10 focus:bg-yellow-500/10 cursor-pointer"
+                        >
                             Suspender Usuário
                         </DropdownMenuItem>
                     )}
                     {status !== 'banned' && (
-                        <DropdownMenuItem onClick={() => updateUserStatus(profile.id, 'banned')} className="text-red-500 font-bold">
+                        <DropdownMenuItem
+                            onClick={() => handleAction(() => updateUserStatus(profile.id, 'banned'))}
+                            className="text-red-500 font-bold hover:bg-red-500/10 focus:bg-red-500/10 cursor-pointer"
+                        >
                             Banir Usuário
                         </DropdownMenuItem>
                     )}
