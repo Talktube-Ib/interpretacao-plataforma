@@ -237,3 +237,43 @@ export async function cleanupExpiredMeetings() {
         return { success: false, error: 'Erro inesperado no servidor.' }
     }
 }
+
+export async function killAllActiveMeetings() {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: 'Usuário não autenticado.' }
+
+    // Check if admin
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'admin') return { success: false, error: 'Permissão negada.' }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { success: false, error: 'Chave de Serviço ausente.' }
+
+    try {
+        const supabaseAdmin = await createAdminClient()
+
+        const { data, error, count } = await supabaseAdmin
+            .from('meetings')
+            .update({ status: 'ended', end_time: new Date().toISOString() })
+            .eq('status', 'active')
+            .select('id')
+
+        if (error) return { success: false, error: error.message }
+
+        if (count && count > 0) {
+            await logAdminAction({
+                action: 'MEETING_KILL_ALL',
+                targetResource: 'meeting',
+                targetId: 'multiple',
+                details: { count, reason: 'manual_kill_all', ended_ids: data?.map(m => m.id) }
+            })
+        }
+
+        revalidatePath('/admin/meetings')
+        return { success: true, count: data?.length || 0 }
+    } catch (err) {
+        console.error(err)
+        return { success: false, error: 'Erro interno.' }
+    }
+}

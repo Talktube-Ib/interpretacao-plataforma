@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale'
 import { KillMeetingButton } from './kill-button'
 
 import { CleanupButton } from './cleanup-button'
+import { KillAllButton } from './kill-all-button'
 
 export default async function AdminMeetingsPage() {
     const supabase = await createClient()
@@ -41,7 +42,10 @@ export default async function AdminMeetingsPage() {
         <div className="p-8">
             <div className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">Monitoramento de Reuniões</h1>
-                <CleanupButton />
+                <div className="flex gap-2">
+                    <KillAllButton />
+                    <CleanupButton />
+                </div>
             </div>
 
             <div className="rounded-md border border-white/10 bg-white/5">

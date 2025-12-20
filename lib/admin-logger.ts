@@ -1,3 +1,4 @@
+
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 
@@ -15,6 +16,7 @@ export type AdminAction =
     | 'USER_DELETE'
     | 'USER_INVITE'
     | 'MEETING_KILL'
+    | 'MEETING_KILL_ALL'
 
 interface LogParams {
     action: AdminAction
