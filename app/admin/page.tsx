@@ -1,6 +1,9 @@
 import { getAdminStats } from './fetchers'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Users, Video, Activity, Clock, TrendingUp, Calendar } from 'lucide-react'
+import { GrowthChart } from './charts/growth-chart'
+import { StatusChart } from './charts/status-chart'
+import { SecurityLogWidget } from './charts/security-log-widget'
 
 export default async function AdminDashboard() {
     const [
@@ -8,8 +11,11 @@ export default async function AdminDashboard() {
         { count: totalMeetings },
         { count: activeMeetings },
         { data: recentUsers },
+        { data: growthUsers }, // 30 days
+        { data: growthMeetings }, // 30 days
         { data: endedMeetings },
-        { data: settings }
+        { data: settings },
+        { data: logs }
     ] = await getAdminStats()
 
     const maxCapacity = settings?.max_concurrent_meetings || 10
@@ -17,6 +23,63 @@ export default async function AdminDashboard() {
 
     // Calculate metrics
     const newUsersCount = recentUsers?.length || 0
+
+    // Process Growth Data (Last 30 days by day)
+    const dailyStats = new Map<string, { users: number, meetings: number }>()
+    // Initialize map with last 30 days to ensure continuity
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date()
+        d.setDate(d.getDate() - i)
+        const dayStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        dailyStats.set(dayStr, { users: 0, meetings: 0 })
+    }
+
+    growthUsers?.forEach(u => {
+        const day = new Date(u.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        if (dailyStats.has(day)) {
+            const current = dailyStats.get(day)!
+            dailyStats.set(day, { ...current, users: current.users + 1 })
+        }
+    })
+
+    growthMeetings?.forEach(m => {
+        const day = new Date(m.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+        if (dailyStats.has(day)) {
+            const current = dailyStats.get(day)!
+            dailyStats.set(day, { ...current, meetings: current.meetings + 1 })
+        }
+    })
+
+    const chartData = Array.from(dailyStats.entries()).map(([date, stats]) => ({
+        date,
+        users: stats.users,
+        meetings: stats.meetings
+    }))
+
+    // Process Status Distribution
+    const statusCounts = {
+        active: activeMeetings || 0,
+        scheduled: (totalMeetings || 0) - (activeMeetings || 0) - (endedMeetings?.length || 0),
+        ended: endedMeetings?.length || 0
+    }
+    // Correct scheduled calculation (total - active - ended might be negative if logic is weird, so clamp)
+    // Actually, growthMeetings has all meetings for last 30 days, need to be careful.
+    // Let's rely on the simple counts we have.
+    // Note: totalMeetings is TOTAL count.
+
+    // Better approximation if we don't fetch all meetings:
+    // We only fetched ended meetings to calc duration.
+    // Let's trust the counts but careful with 'scheduled'.
+
+    // Actually, 'endedMeetings' variable above only holds ended meetings *with valid times*, not necessarily ALL ended meetings count.
+    // But we have totalMeetings count.
+
+    const statusData = [
+        { name: 'Em Andamento', value: statusCounts.active, color: '#10b981' }, // green-500
+        { name: 'Agendadas', value: Math.max(0, (totalMeetings || 0) - statusCounts.active - (endedMeetings?.length || 0)), color: '#8b5cf6' }, // violet-500
+        { name: 'Encerradas', value: endedMeetings?.length || 0, color: '#64748b' } // slate-500
+    ]
+
 
     // Calculate total minutes (rough approximation if end_time exists)
     let totalMinutes = 0
@@ -69,11 +132,12 @@ export default async function AdminDashboard() {
         }
     ]
 
-    console.log('Rendering Admin Dashboard 2.0')
     return (
-        <div className="p-8 space-y-8">
+        <div className="p-8 space-y-8 animate-in fade-in duration-500">
             <div>
-                <h1 className="text-3xl font-bold">Visão Geral - Admin 2.0 🚀</h1>
+                <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                    Visão Geral - Admin 2.0 🚀
+                </h1>
                 <p className="text-gray-400">Métricas de saúde e crescimento do sistema.</p>
             </div>
 
@@ -98,33 +162,21 @@ export default async function AdminDashboard() {
                 ))}
             </div>
 
-            {/* Quick Actions / Future Graph Placeholder */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4 bg-white/5 border-white/10">
-                    <CardHeader>
-                        <CardTitle>Atividade Recente</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[200px] flex items-center justify-center text-gray-500 text-sm border-2 border-dashed border-white/10 rounded-lg">
-                            Gráfico de atividade (Em breve)
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="col-span-3 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-white/10">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-indigo-400" />
-                            Insights
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="text-sm text-gray-300">
-                            <p className="mb-2">• <span className="text-green-400 font-semibold">{Number(activeMeetings) > 0 ? 'Alta Demanda' : 'Normal'}</span>: {activeMeetings} reuniões simultâneas.</p>
-                            <p className="mb-2">• <span className="text-indigo-400 font-semibold">Ocupação</span>: {utilizationRate}% da capacidade global ({maxCapacity} salas).</p>
-                            <p className="mb-2">• A base de usuários cresceu <span className="font-semibold text-white">{newUsersCount}</span> nesta semana.</p>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Main Content Grid */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+                {/* Growth Chart */}
+                <GrowthChart data={chartData} />
+
+                {/* Status Distribution */}
+                <StatusChart data={statusData} />
+            </div>
+
+            {/* Security Logs */}
+            <div className="grid gap-6 grid-cols-1">
+                <SecurityLogWidget logs={logs?.map((l: any) => ({
+                    ...l,
+                    admin: Array.isArray(l.admin) ? l.admin[0] : l.admin // Handle Supabase single relation join weirdness
+                })) || []} />
             </div>
         </div>
     )

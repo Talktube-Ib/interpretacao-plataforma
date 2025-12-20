@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { Calendar, Globe, Clock, Shield, Sparkles, Settings, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CreateMeetingModal from '@/components/create-meeting-modal'
-import { AdminDashboardStats } from '@/components/admin/dashboard-stats'
 import { QuickJoinCard } from '@/components/dashboard/quick-join-card'
 import { MeetingCard } from '@/components/dashboard/meeting-card'
 import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-button'
@@ -24,12 +23,13 @@ export default async function DashboardPage() {
     // Check Role & Profile
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role, full_name, limits')
+        .select('role, full_name, limits, personal_meeting_id')
         .eq('id', user.id)
         .single()
 
     const role = profile?.role || 'user'
     const languages = profile?.limits?.languages || []
+    const personalRoomId = profile?.personal_meeting_id || user.id // Fallback just in case, though migration should have covered it
 
     // Admin logic removed - Admins now have a dedicated /admin route and can usage this dashboard as a regular user
 
@@ -69,22 +69,29 @@ export default async function DashboardPage() {
 
                             <div className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50 dark:bg-accent/20 p-2 pl-6 rounded-2xl border border-slate-200 dark:border-border/50 max-w-xl">
                                 <span className="text-slate-500 font-mono text-sm truncate flex-1">
-                                    interpreta.ai/room/{user.email?.split('@')[0]}
+                                    interpreta.ai/room/{personalRoomId}
                                 </span>
                                 <div className="flex gap-2 w-full sm:w-auto">
-                                    <Button variant="ghost" className="text-[#06b6d4] hover:bg-[#06b6d4]/10 font-bold">
-                                        Copiar
-                                    </Button>
-                                    <Button className="bg-[#06b6d4] hover:bg-[#0891b2] text-white font-bold px-8 rounded-xl shadow-lg shadow-[#06b6d4]/20">
-                                        Entrar
-                                    </Button>
+                                    <ShareMeetingDialog
+                                        roomId={personalRoomId}
+                                        trigger={
+                                            <Button variant="ghost" className="text-[#06b6d4] hover:bg-[#06b6d4]/10 font-bold">
+                                                Copiar
+                                            </Button>
+                                        }
+                                    />
+                                    <Link href={`/room/${personalRoomId}`}>
+                                        <Button className="bg-[#06b6d4] hover:bg-[#0891b2] text-white font-bold px-8 rounded-xl shadow-lg shadow-[#06b6d4]/20">
+                                            Entrar
+                                        </Button>
+                                    </Link>
                                 </div>
                             </div>
 
-                            <div className="mt-8 flex items-center gap-2 text-sm font-medium text-[#06b6d4] cursor-pointer hover:underline">
+                            <Link href="/dashboard/settings" className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-[#06b6d4] cursor-pointer hover:underline">
                                 <Settings className="h-4 w-4" />
                                 Editar configurações da sala
-                            </div>
+                            </Link>
                         </div>
                     </div>
 
