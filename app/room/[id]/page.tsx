@@ -5,8 +5,9 @@ import { useState, use, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff,
-    Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2
+    Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2, Hand, Smile
 } from 'lucide-react'
+import { FloatingReactions } from '@/components/room/floating-reactions'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -114,7 +115,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         mediaError,
         channel,
         updateMetadata,
-        switchDevice: switchDeviceWebRTC
+        switchDevice: switchDeviceWebRTC,
+        sendEmoji,
+        toggleHand,
+        localHandRaised,
+        reactions
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {})
 
     // Populate Device Lists
@@ -309,6 +314,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         localUserName={userName}
                         selectedLang={selectedLang}
                         volumeBalance={volumeBalance}
+                        handRaised={localHandRaised}
                     />
 
                     {/* Pagination Controls */}
@@ -525,6 +531,48 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         localStream={localStream}
                         onSwitch={switchDeviceWebRTC}
                     />
+
+                    <div className="w-px h-10 bg-border/50 hidden md:block" />
+
+                    {/* Raised Hand */}
+                    <Button
+                        variant={localHandRaised ? "default" : "secondary"}
+                        size="icon"
+                        className={cn(
+                            "h-14 w-14 rounded-2xl shadow-xl transition-all active:scale-95 border-0",
+                            localHandRaised ? "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20" : "bg-accent/50 text-foreground hover:bg-accent"
+                        )}
+                        onClick={toggleHand}
+                        title="Levantar a Mão"
+                    >
+                        <Hand className={cn("h-6 w-6", localHandRaised && "animate-bounce")} />
+                    </Button>
+
+                    {/* Reactions Menu */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="secondary"
+                                size="icon"
+                                className="h-14 w-14 rounded-2xl shadow-xl bg-accent/50 text-foreground hover:bg-accent border-0"
+                                title="Enviar Reação"
+                            >
+                                <Smile className="h-6 w-6" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="top" align="center" className="p-2 gap-2 flex bg-card/80 backdrop-blur-xl border-border rounded-2xl mb-4">
+                            {['❤️', '👏', '🎉', '😂', '😮', '😢', '👍', '🔥'].map((emoji) => (
+                                <Button
+                                    key={emoji}
+                                    variant="ghost"
+                                    className="h-12 w-12 text-2xl p-0 hover:bg-white/10 rounded-xl"
+                                    onClick={() => sendEmoji(emoji)}
+                                >
+                                    {emoji}
+                                </Button>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 <div className="w-px h-10 bg-border/50 hidden md:block" />

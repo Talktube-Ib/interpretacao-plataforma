@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from "react"
-import { Mic, User, Shield, VideoOff, Globe, MicOff } from "lucide-react"
+"use client"
+
+import React, { useEffect, useRef, useState } from "react"
+import { VideoOff, Globe, MicOff, Hand, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface VideoProps {
@@ -9,6 +11,9 @@ interface VideoProps {
     volume?: number
     isLocal?: boolean
     cameraOff?: boolean
+    micOff?: boolean
+    handRaised?: boolean
+    onSpeakingChange?: (isSpeaking: boolean) => void
 }
 
 function AudioMeter({ stream, onSpeakingChange }: { stream?: MediaStream | null, onSpeakingChange?: (isSpeaking: boolean) => void }) {
@@ -42,7 +47,6 @@ function AudioMeter({ stream, onSpeakingChange }: { stream?: MediaStream | null,
             const average = sum / bufferLength
             setLevel(average)
 
-            // Simple debounce/threshold for speaking
             if (average > 30) {
                 speakingCount = Math.min(speakingCount + 1, 10)
             } else {
@@ -80,7 +84,7 @@ function AudioMeter({ stream, onSpeakingChange }: { stream?: MediaStream | null,
     )
 }
 
-export function RemoteVideo({ stream, name = "Participante", role = "participant", volume = 1.0, micOff, cameraOff, onSpeakingChange }: VideoProps & { micOff?: boolean, onSpeakingChange?: (isSpeaking: boolean) => void }) {
+export function RemoteVideo({ stream, name = "Participante", role = "participant", volume = 1.0, micOff, cameraOff, handRaised, onSpeakingChange }: VideoProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isSpeaking, setIsSpeaking] = useState(false)
 
@@ -123,38 +127,32 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
                         className="w-full h-full object-cover rounded-[2.3rem]"
                     />
 
-                    {/* Top Identity Badge */}
-                    <div className="absolute top-4 left-4 flex items-center gap-2">
-                        <div className="bg-background/40 backdrop-blur-xl border border-border/50 px-3 py-1.5 rounded-2xl flex items-center gap-2 shadow-sm">
-                            <div className={cn(
-                                "w-2 h-2 rounded-full",
-                                role === 'interpreter' ? "bg-purple-500" : "bg-[#06b6d4]",
-                                isSpeaking && "animate-ping"
-                            )} />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
-                                {role === 'interpreter' ? 'Intérprete' : 'Participante'}
-                            </span>
-                        </div>
+                    {/* Status Icons */}
+                    <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+                        {micOff && (
+                            <div className="bg-destructive/80 backdrop-blur-md p-1.5 rounded-lg shadow-lg">
+                                <MicOff className="h-4 w-4 text-white" />
+                            </div>
+                        )}
+                        {handRaised && (
+                            <div className="bg-amber-500 backdrop-blur-md p-1.5 rounded-lg shadow-lg animate-bounce">
+                                <Hand className="h-4 w-4 text-white fill-current" />
+                            </div>
+                        )}
                     </div>
 
-                    {/* Left Bottom Name & Status */}
+                    {/* Bottom Info Bar */}
                     <div className="absolute bottom-4 left-4 flex items-center gap-2">
-                        <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 flex items-center gap-3">
-                            <div className="bg-white/10 p-1.5 rounded-lg">
+                        <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 flex items-center gap-2">
+                            <div className="bg-white/10 p-1 rounded-md">
                                 <User className="h-3 w-3 text-white" />
                             </div>
                             <span className="text-xs font-bold text-white tracking-tight">
-                                {name.split('-')[1] || name}
+                                {name}
                             </span>
-                            {micOff && (
-                                <div className="bg-red-500/80 p-1 rounded-md ml-1">
-                                    <MicOff className="h-3 w-3 text-white" />
-                                </div>
-                            )}
                         </div>
                     </div>
 
-                    {/* Hidden Audio Meter for Level Detection Only */}
                     <div className="hidden">
                         <AudioMeter stream={stream} onSpeakingChange={(s) => {
                             setIsSpeaking(s)
@@ -188,7 +186,7 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
     )
 }
 
-export function LocalVideo({ stream, role = "participant", micOff, cameraOff, name = "Você", onSpeakingChange }: VideoProps & { micOff?: boolean, onSpeakingChange?: (isSpeaking: boolean) => void }) {
+export function LocalVideo({ stream, role = "participant", micOff, cameraOff, name = "Você", handRaised, onSpeakingChange }: VideoProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isSpeaking, setIsSpeaking] = useState(false)
 
@@ -217,27 +215,26 @@ export function LocalVideo({ stream, role = "participant", micOff, cameraOff, na
                         className="w-full h-full object-cover transform -scale-x-100 rounded-[2.3rem]"
                     />
 
-                    {/* Top Identity Badge */}
-                    <div className="absolute top-4 left-4">
-                        <div className="bg-[#06b6d4] px-4 py-1.5 rounded-2xl flex items-center gap-2 shadow-lg shadow-[#06b6d4]/20">
-                            <div className={cn("w-1.5 h-1.5 bg-white rounded-full", isSpeaking && "animate-ping")} />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white">{name} (Local)</span>
-                        </div>
+                    {/* Status Icons */}
+                    <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+                        {micOff && (
+                            <div className="bg-destructive/80 backdrop-blur-md p-1.5 rounded-lg shadow-lg">
+                                <MicOff className="h-4 w-4 text-white" />
+                            </div>
+                        )}
+                        {handRaised && (
+                            <div className="bg-amber-500 backdrop-blur-md p-1.5 rounded-lg shadow-lg animate-bounce">
+                                <Hand className="h-4 w-4 text-white fill-current" />
+                            </div>
+                        )}
                     </div>
 
-                    {/* Bottom Info Bar */}
                     <div className="absolute bottom-4 left-4 flex items-center gap-2">
                         <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 flex items-center gap-2">
-                            <span className="text-xs font-bold text-white tracking-tight">Sua Câmera</span>
-                            {micOff && (
-                                <div className="bg-red-500/80 p-1 rounded-md ml-1">
-                                    <MicOff className="h-3 w-3 text-white" />
-                                </div>
-                            )}
+                            <span className="text-xs font-bold text-white tracking-tight">{name} (Local)</span>
                         </div>
                     </div>
 
-                    {/* Hidden Audio Meter for Level Detection */}
                     <div className="hidden">
                         <AudioMeter stream={stream} onSpeakingChange={(s) => {
                             setIsSpeaking(s)
@@ -258,4 +255,3 @@ export function LocalVideo({ stream, role = "participant", micOff, cameraOff, na
         </div>
     )
 }
-

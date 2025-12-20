@@ -13,6 +13,7 @@ interface PeerData {
     micOn?: boolean
     cameraOn?: boolean
     isSpeaking?: boolean
+    handRaised?: boolean
 }
 
 
@@ -30,6 +31,10 @@ export function useWebRTC(
     const [iceServers, setIceServers] = useState<any[]>([{ urls: 'stun:stun.l.google.com:19302' }]) // Default fallback
     const iceServersRef = useRef<any[]>([{ urls: 'stun:stun.l.google.com:19302' }]) // Ref for closure access
     const [channelState, setChannelState] = useState<RealtimeChannel | null>(null)
+
+    // Reactions & Interactions
+    const [localHandRaised, setLocalHandRaised] = useState(false)
+    const [reactions, setReactions] = useState<{ id: string, emoji: string, userId: string }[]>([])
 
     // Helper to add logs
     const addLog = (msg: string) => {
@@ -156,6 +161,25 @@ export function useWebRTC(
                     if (existing) {
                         const update = kind === 'mic' ? { micOn: enabled } : { cameraOn: enabled }
                         newMap.set(remoteUserId, { ...existing, ...update })
+                    }
+                    return newMap
+                })
+            })
+            .on('broadcast', { event: 'reaction' }, (event: { payload: { userId: string, emoji: string } }) => {
+                const { userId: senderId, emoji } = event.payload
+                const id = Math.random().toString(36).substr(2, 9)
+                setReactions(prev => [...prev, { id, emoji, userId: senderId }])
+                setTimeout(() => {
+                    setReactions(prev => prev.filter(r => r.id !== id))
+                }, 5000)
+            })
+            .on('broadcast', { event: 'hand-toggle' }, (event: { payload: { userId: string, enabled: boolean } }) => {
+                const { userId: remoteUserId, enabled } = event.payload
+                setPeers(prev => {
+                    const newMap = new Map(prev)
+                    const existing = newMap.get(remoteUserId)
+                    if (existing) {
+                        newMap.set(remoteUserId, { ...existing, handRaised: enabled })
                     }
                     return newMap
                 })
@@ -483,25 +507,51 @@ export function useWebRTC(
             if (kind === 'audio') currentAudioDeviceId.current = deviceId
             else currentVideoDeviceId.current = deviceId
             addLog(`Switched ${kind} device to ${deviceId}`)
-        } catch (e) {
-            console.error(`Failed to switch ${kind} device`, e)
-            addLog(`Failed to switch device: ${e}`)
+        } catch (err) {
+            console.error(`Failed to switch ${kind} device:`, err)
         }
+    }
+
+    const sendEmoji = (emoji: string) => {
+        channelRef.current?.send({
+            type: 'broadcast',
+            event: 'reaction',
+            payload: { userId, emoji }
+        })
+        const id = Math.random().toString(36).substr(2, 9)
+        setReactions(prev => [...prev, { id, emoji, userId }])
+        setTimeout(() => {
+            setReactions(prev => prev.filter(r => r.id !== id))
+        }, 5000)
+    }
+
+    const toggleHand = () => {
+        const newState = !localHandRaised
+        setLocalHandRaised(newState)
+        channelRef.current?.send({
+            type: 'broadcast',
+            event: 'hand-toggle',
+            payload: { userId, enabled: newState }
+        })
     }
 
     return {
         localStream,
         peers: Array.from(peers.values()),
+        logs,
+        userCount,
+        mediaError,
         toggleMic,
         toggleCamera,
         shareScreen,
         stopScreenShare,
-        updateMetadata,
         switchDevice,
-        logs,
-        userCount,
-        mediaError,
-        channel: channelState, // Export state instead of ref
+        sendEmoji,
+        toggleHand,
+        updateMetadata,
+        localHandRaised,
+        reactions,
+        channel: channelState
     }
 }
 
