@@ -28,32 +28,25 @@ export function FloatingReactions({ reactions }: FloatingReactionsProps) {
             <AnimatePresence>
                 {reactions.map((r) => {
                     const seed = getSeed(r.id)
-                    const startX = (seed % 80) + 10 // Entre 10 e 90vw
-                    const drift = (seed % 20) - 10 // Entre -10 e 10vw
+                    const startX = (seed % 70) + 15 // Entre 15 e 85vw
 
                     return (
                         <motion.div
                             key={r.id}
-                            initial={{ y: '105vh', opacity: 0, x: `${startX}vw`, scale: 0.5 }}
+                            initial={{ y: '100%', opacity: 0, x: `${startX}vw`, scale: 0.5 }}
                             animate={{
-                                y: '-10vh',
+                                y: '-20vh',
                                 opacity: [0, 1, 1, 0],
-                                x: [
-                                    `${startX}vw`,
-                                    `${startX + drift}vw`,
-                                    `${startX - drift}vw`,
-                                    `${startX + drift / 2}vw`
-                                ],
-                                scale: [0.5, 1.2, 1, 0.8],
-                                rotate: [0, 15, -15, 0]
+                                scale: [0.5, 1.5, 1.2, 0.8],
+                                rotate: [0, 20, -20, 0],
                             }}
                             exit={{ opacity: 0 }}
                             transition={{
-                                duration: 5 + (seed % 3),
-                                ease: "linear",
+                                duration: 4 + (seed % 2),
+                                ease: "easeOut",
                                 times: [0, 0.1, 0.8, 1]
                             }}
-                            className="absolute text-6xl filter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] select-none"
+                            className="absolute text-7xl filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] select-none z-[100]"
                         >
                             {r.emoji}
                         </motion.div>

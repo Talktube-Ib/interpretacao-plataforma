@@ -684,6 +684,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     </Link>
                 </Button>
             </div>
+
+            {/* Floating Reactions Overlay */}
+            <FloatingReactions reactions={reactions} />
         </div>
     )
 }
