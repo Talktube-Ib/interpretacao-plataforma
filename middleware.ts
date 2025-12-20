@@ -68,6 +68,15 @@ export async function middleware(request: NextRequest) {
                 return response
             }
         }
+
+        // 3. Force Password Reset
+        if (
+            user.user_metadata?.must_reset_password &&
+            !request.nextUrl.pathname.startsWith('/update-password') &&
+            !request.nextUrl.pathname.startsWith('/auth') // Allow auth related routes e.g. logout
+        ) {
+            return NextResponse.redirect(new URL('/update-password', request.url))
+        }
     }
 
     if (user && request.nextUrl.pathname.startsWith('/login')) {
