@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { updateProfile } from './actions'
-import { User, Shield, Languages, Globe } from 'lucide-react'
+import { User, Shield, Languages, Globe, Briefcase, Building, FileText } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
 
 export default async function SettingsPage() {
     const supabase = await createClient()
@@ -73,6 +74,46 @@ export default async function SettingsPage() {
                                             placeholder="Seu nome"
                                         />
                                     </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Briefcase className="h-3 w-3 text-[#06b6d4]" />
+                                            <Label htmlFor="jobTitle" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cargo / Função</Label>
+                                        </div>
+                                        <Input
+                                            id="jobTitle"
+                                            name="jobTitle"
+                                            defaultValue={profile?.job_title || ''}
+                                            className="bg-background border-border text-foreground h-12 rounded-xl"
+                                            placeholder="Ex: CEO, Intérprete Sênior"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Building className="h-3 w-3 text-[#06b6d4]" />
+                                            <Label htmlFor="company" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Empresa / Agência</Label>
+                                        </div>
+                                        <Input
+                                            id="company"
+                                            name="company"
+                                            defaultValue={profile?.company || ''}
+                                            className="bg-background border-border text-foreground h-12 rounded-xl"
+                                            placeholder="Nome da sua organização"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-[#06b6d4]" />
+                                        <Label htmlFor="bio" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Biografia Resumida</Label>
+                                    </div>
+                                    <Textarea
+                                        id="bio"
+                                        name="bio"
+                                        defaultValue={profile?.bio || ''}
+                                        className="bg-background border-border text-foreground rounded-2xl min-h-[100px] resize-none"
+                                        placeholder="Conte um pouco sobre sua trajetória profissional..."
+                                    />
                                 </div>
 
                                 <div className="space-y-3 p-6 bg-purple-500/5 rounded-3xl border border-purple-500/10">
@@ -83,7 +124,7 @@ export default async function SettingsPage() {
                                     <Input
                                         id="languages"
                                         name="languages"
-                                        defaultValue={profile?.limits?.languages?.join(', ') || ''}
+                                        defaultValue={profile?.languages?.join(', ') || ''}
                                         className="bg-background border-border text-foreground h-12 rounded-xl placeholder:text-muted-foreground/50"
                                         placeholder="ex: pt, en, es (separados por vírgula)"
                                     />

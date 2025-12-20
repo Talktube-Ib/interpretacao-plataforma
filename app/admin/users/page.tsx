@@ -13,6 +13,7 @@ import {
 import { Badge } from "../../../components/ui/badge"
 import { Input } from "../../../components/ui/input"
 import { Search } from 'lucide-react'
+import { CreateUserDialog } from './create-user-dialog'
 import { UserActionsClient } from './user-actions-client'
 
 export default async function AdminUsersPage({
@@ -34,22 +35,25 @@ export default async function AdminUsersPage({
     const { data: profiles, error } = await dbQuery.order('created_at', { ascending: false })
 
     if (error) {
-        return <div className="p-8 text-red-500">Error loading users: {error.message}</div>
+        return <div className="p-8 text-red-500">Erro ao carregar usuários: {error.message}</div>
     }
 
     return (
         <div className="p-8">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">User Management</h1>
-                <form className="relative w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                        name="q"
-                        defaultValue={query}
-                        placeholder="Search name or email..."
-                        className="pl-10 bg-white/5 border-white/10 text-white"
-                    />
-                </form>
+                <h1 className="text-3xl font-bold">Gestão de Usuários</h1>
+                <div className="flex items-center gap-4">
+                    <form className="relative w-72">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                            name="q"
+                            defaultValue={query}
+                            placeholder="Buscar nome ou email..."
+                            className="pl-10 bg-white/5 border-white/10 text-white"
+                        />
+                    </form>
+                    <CreateUserDialog />
+                </div>
             </div>
 
             <div className="rounded-md border border-white/10 bg-white/5">

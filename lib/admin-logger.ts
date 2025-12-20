@@ -9,6 +9,9 @@ export type AdminAction =
     | 'MEETING_FORCE_END'
     | 'MEETING_LOCK'
     | 'SETTINGS_UPDATE'
+    | 'USER_CREATE'
+    | 'USER_DELETE'
+    | 'USER_INVITE'
 
 interface LogParams {
     action: AdminAction

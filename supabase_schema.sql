@@ -7,6 +7,9 @@ create table public.profiles (
   role text default 'user' check (role in ('admin', 'user')),
   status text not null default 'active' check (status in ('active', 'suspended', 'banned')),
   limits jsonb default '{"max_meetings": 1, "max_participants": 5, "can_record": false}'::jsonb,
+  job_title text,
+  company text,
+  bio text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -63,6 +66,7 @@ alter table public.interpreter_assignments enable row level security;
 
 -- Add active status
 alter table public.profiles add column if not exists active boolean default true;
+alter table public.profiles add column if not exists languages text[] default '{}';
 
 -- Update RLS for profiles
 drop policy if exists "Public profiles are viewable by everyone." on public.profiles;

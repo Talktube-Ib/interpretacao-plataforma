@@ -106,3 +106,39 @@ export async function updateProfileLanguages(userId: string, languages: string[]
 
     revalidatePath('/admin/users')
 }
+
+export async function createUser(formData: FormData) {
+    const supabase = await createClient()
+
+    // Auth check
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Não autorizado')
+
+    // Verificar se é admin
+    const { data: requesterProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    if (requesterProfile?.role !== 'admin') throw new Error('Permissão negada')
+
+    const email = formData.get('email') as string
+    const fullName = formData.get('fullName') as string
+    const role = formData.get('role') as string || 'participant'
+
+    // Usar inviteUserByEmail para enviar e-mail de convite
+    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+        data: {
+            full_name: fullName,
+            role: role
+        }
+    })
+
+    if (error) throw new Error(error.message)
+
+    await logAdminAction({
+        action: 'USER_CREATE',
+        targetResource: 'user',
+        targetId: data.user.id,
+        details: { email, role, full_name: fullName, method: 'invite' }
+    })
+
+    revalidatePath('/admin/users')
+    return { success: true }
+}
