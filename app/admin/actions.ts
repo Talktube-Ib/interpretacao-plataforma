@@ -108,77 +108,73 @@ export async function updateProfileLanguages(userId: string, languages: string[]
 }
 
 export async function createUser(formData: FormData) {
-    // 1. Check permission as logged in user
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Não autorizado')
+    try {
+        // 1. Check permission as logged in user
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Não autorizado' }
 
-    const { data: requesterProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-    if (requesterProfile?.role !== 'admin') throw new Error('Permissão negada')
+        const { data: requesterProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        if (requesterProfile?.role !== 'admin') return { success: false, error: 'Permissão negada' }
 
-    // 2. Extract data
-    const email = formData.get('email') as string
-    const fullName = formData.get('fullName') as string
-    const role = formData.get('role') as string || 'participant'
-    const password = formData.get('password') as string
+        // 2. Extract data
+        const rawEmail = formData.get('email') as string
+        const email = rawEmail?.trim()
+        const fullName = (formData.get('fullName') as string)?.trim()
+        const role = formData.get('role') as string || 'participant'
+        const password = formData.get('password') as string
 
-    if (!password || password.length < 6) {
-        throw new Error('A senha deve ter pelo menos 6 caracteres.')
-    }
-
-    // 3. Create user using Admin Client (Bypass email confirmation)
-    const supabaseAdmin = await createAdminClient()
-
-    const { data: newUser, error } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-            full_name: fullName,
-            must_reset_password: true
+        if (!email || !email.includes('@')) {
+            return { success: false, error: 'Email inválido.' }
         }
-    })
 
-    if (error) throw new Error(error.message)
-
-    // 4. Update role (if different from default 'user')
-    // Note: The trigger might create the profile, but we must ensure the role is set correctly.
-    // Ideally we update it here to be sure.
-    if (newUser?.user && role !== 'participant') { // 'participant' is the default 'user' role usually
-        // We might need to wait a tiny bit or just update directly.
-        // With admin client we can update public tables too if RLS allows or we use admin client for that too.
-        // Let's use admin client for profile update to be safe and fast.
-
-        const { error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .update({ role: role === 'interpreter' ? 'user' : role }) // Assuming 'interpreter' is just a user with capabilities, or do we have distinct roles? 
-            // The schema says role in ('admin', 'user'). Interpreter isn't a role in DB enum yet maybe?
-            // Let's check schema assumption. The schema only has 'admin' and 'user'.
-            // If role is 'interpreter', it is a 'user' but maybe we store it differently?
-            // For now, let's stick to 'admin' or 'user'. 
-            // If the UI sends 'interpreter', we save as 'user'. 
-            // Wait, the previous code didn't handle 'interpreter' specifically in DB role, just 'user'.
-            // Let's assume 'interpreter' is just a context. Or we fail if it's not in enum.
-            // Actually, let's map: 'admin' -> 'admin', others -> 'user'.
-            // Better yet, update the profile with the specific metadata if needed. 
-            // For now, just setting 'role' column.
-            .eq('id', newUser.user.id)
-
-        if (profileError) {
-            console.error('Error updating role:', profileError)
-            // Non-fatal, user is created but role might be wrong.
+        if (!password || password.length < 6) {
+            return { success: false, error: 'A senha deve ter pelo menos 6 caracteres.' }
         }
+
+        // 3. Create user using Admin Client (Bypass email confirmation)
+        const supabaseAdmin = await createAdminClient()
+
+        const { data: newUser, error } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+                full_name: fullName,
+                must_reset_password: true
+            }
+        })
+
+        if (error) {
+            console.error('Supabase createUser error:', error)
+            return { success: false, error: error.message }
+        }
+
+        // 4. Update role (if different from default 'user')
+        if (newUser?.user && role !== 'participant') {
+            const { error: profileError } = await supabaseAdmin
+                .from('profiles')
+                .update({ role: role === 'interpreter' ? 'user' : role })
+                .eq('id', newUser.user.id)
+
+            if (profileError) {
+                console.error('Error updating role:', profileError)
+            }
+        }
+
+        await logAdminAction({
+            action: 'USER_CREATE',
+            targetResource: 'user',
+            targetId: newUser!.user.id,
+            details: { email, role, full_name: fullName, method: 'manual_create' }
+        })
+
+        revalidatePath('/admin/users')
+        return { success: true }
+    } catch (err: any) {
+        console.error('Unexpected error in createUser:', err)
+        return { success: false, error: err.message || 'Erro inesperado ao criar usuário.' }
     }
-
-    await logAdminAction({
-        action: 'USER_CREATE',
-        targetResource: 'user',
-        targetId: newUser!.user.id,
-        details: { email, role, full_name: fullName, method: 'manual_create' }
-    })
-
-    revalidatePath('/admin/users')
-    return { success: true }
 }
 
 export async function cleanupExpiredMeetings() {

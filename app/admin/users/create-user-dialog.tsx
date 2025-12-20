@@ -56,13 +56,18 @@ export function CreateUserDialog() {
     async function onSubmit(formData: FormData) {
         setLoading(true)
         try {
-            await createUser(formData)
-            setOpen(false)
-            setPassword('')
-            alert('Usuário criado com sucesso! Envie as credenciais para o usuário.')
+            const result = await createUser(formData)
+
+            if (result.success) {
+                setOpen(false)
+                setPassword('')
+                alert('Usuário criado com sucesso! Envie as credenciais para o usuário.')
+            } else {
+                alert('Erro ao criar usuário: ' + (result as any).error)
+            }
         } catch (error) {
             console.error(error)
-            alert('Erro ao criar usuário: ' + (error as Error).message)
+            alert('Erro inesperado: ' + (error as Error).message)
         } finally {
             setLoading(false)
         }
