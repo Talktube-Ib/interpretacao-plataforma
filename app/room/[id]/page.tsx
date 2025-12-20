@@ -43,6 +43,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // User Identity Logic
     const [userId, setUserId] = useState('')
+    const [userName, setUserName] = useState('Participante')
     const [currentRole, setCurrentRole] = useState<'participant' | 'interpreter'>('participant')
     const [isLoaded, setIsLoaded] = useState(false)
 
@@ -55,17 +56,20 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 setUserId(user.id)
                 const { data: profile } = await supabase
                     .from('profiles')
-                    .select('role')
+                    .select('role, full_name, username')
                     .eq('id', user.id)
                     .single()
 
-                if (profile?.role === 'interpreter') {
-                    setCurrentRole('interpreter')
-                } else {
-                    setCurrentRole('participant')
+                if (profile) {
+                    setUserName(profile.full_name || profile.username || user.email?.split('@')[0] || 'Participante')
+                    if (profile.role === 'interpreter') {
+                        setCurrentRole('interpreter')
+                    }
                 }
             } else {
-                setUserId('guest-' + Math.random().toString(36).substr(2, 9))
+                const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
+                setUserId(guestId)
+                setUserName('Convidado-' + guestId.slice(6, 10))
                 setCurrentRole('participant')
             }
             setIsLoaded(true)
