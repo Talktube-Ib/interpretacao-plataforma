@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 import { LANGUAGES } from '@/lib/languages'
-import { checkAndEndMeeting } from '@/app/actions/meeting' // NEW IMPORT
+import { checkAndEndMeeting, restartPersonalMeeting } from '@/app/actions/meeting' // NEW IMPORT
 
 import { VideoGrid } from '@/components/room/video-grid'
 import { LayoutGrid, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -72,7 +72,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 // Check Meeting Interpreters (Item 1)
                 const { data: meeting } = await supabase
                     .from('meetings')
-                    .select('settings, start_time, status')
+                    .select('settings, start_time, status, host_id')
                     .eq('id', roomId)
                     .single()
 
@@ -82,15 +82,31 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     const diffMinutes = (Date.now() - startTime) / (1000 * 60)
 
                     if (diffMinutes > 120) {
-                        // Call server action to officially close it
+                        // Expired. Kill it.
                         const { expired } = await checkAndEndMeeting(roomId)
                         if (expired) {
+                            // IF HOST, AUTO RESTART
+                            if (meeting.host_id === user.id) {
+                                console.log('Host joined expired meeting. Restarting...')
+                                await restartPersonalMeeting(roomId)
+                                window.location.reload()
+                                return
+                            }
+
                             alert('Esta reunião excedeu o limite de tempo de 120 minutos e foi encerrada.')
                             window.location.href = '/dashboard'
                             return
                         }
                     }
                 } else if (meeting?.status === 'ended') {
+                    // IF HOST, AUTO RESTART
+                    if (meeting.host_id === user.id) {
+                        console.log('Host joined ended meeting. Restarting...')
+                        await restartPersonalMeeting(roomId)
+                        window.location.reload()
+                        return
+                    }
+
                     alert('Esta reunião já foi encerrada.')
                     window.location.href = '/dashboard'
                     return

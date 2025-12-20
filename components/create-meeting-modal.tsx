@@ -133,7 +133,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                                             value={interpreter.name}
                                             onChange={e => {
                                                 const newInt = [...interpreters]
-                                                newInt[index].name = e.target.value
+                                                newInt[index] = { ...newInt[index], name: e.target.value }
                                                 setInterpreters(newInt)
                                             }}
                                         />
@@ -144,7 +144,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                                             value={interpreter.email}
                                             onChange={e => {
                                                 const newInt = [...interpreters]
-                                                newInt[index].email = e.target.value
+                                                newInt[index] = { ...newInt[index], email: e.target.value }
                                                 setInterpreters(newInt)
                                             }}
                                         />
@@ -154,13 +154,18 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                                                     key={lang}
                                                     type="button"
                                                     onClick={() => {
-                                                        const newInt = [...interpreters]
-                                                        if (newInt[index].languages.includes(lang)) {
-                                                            newInt[index].languages = newInt[index].languages.filter(l => l !== lang)
+                                                        const newInt = [...interpreters];
+                                                        const currentLangs = newInt[index].languages || []; // Safety check
+
+                                                        let newLangs;
+                                                        if (currentLangs.includes(lang)) {
+                                                            newLangs = currentLangs.filter(l => l !== lang);
                                                         } else {
-                                                            newInt[index].languages.push(lang)
+                                                            newLangs = [...currentLangs, lang];
                                                         }
-                                                        setInterpreters(newInt)
+
+                                                        newInt[index] = { ...newInt[index], languages: newLangs };
+                                                        setInterpreters(newInt);
                                                     }}
                                                     className={cn(
                                                         "text-[10px] px-2 py-1 rounded-md font-bold uppercase",

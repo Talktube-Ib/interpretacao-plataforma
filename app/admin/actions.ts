@@ -256,7 +256,7 @@ export async function killAllActiveMeetings() {
         const { data, error, count } = await supabaseAdmin
             .from('meetings')
             .update({ status: 'ended', end_time: new Date().toISOString() })
-            .eq('status', 'active')
+            .in('status', ['active', 'scheduled'])
             .select('id')
 
         if (error) return { success: false, error: error.message }

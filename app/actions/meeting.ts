@@ -34,3 +34,33 @@ export async function checkAndEndMeeting(meetingId: string) {
 
     return { expired: false }
 }
+
+export async function restartPersonalMeeting(meetingId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { success: false }
+
+    // Check ownership
+    const { data: meeting } = await supabase
+        .from('meetings')
+        .select('host_id')
+        .eq('id', meetingId)
+        .single()
+
+    if (meeting?.host_id === user.id) {
+        // It's their meeting. Restart it.
+        await supabase
+            .from('meetings')
+            .update({
+                status: 'active',
+                start_time: new Date().toISOString(),
+                end_time: null
+            })
+            .eq('id', meetingId)
+
+        return { success: true }
+    }
+
+    return { success: false }
+}

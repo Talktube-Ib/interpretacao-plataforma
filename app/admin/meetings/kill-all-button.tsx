@@ -9,7 +9,7 @@ export function KillAllButton() {
     const [loading, setLoading] = useState(false)
 
     async function handleKillAll() {
-        if (!confirm('!!! ATENÇÃO !!!\n\nIsso irá encerrar TODAS as reuniões que estão "active" neste momento, independente do horário de início.\n\nTodos os participantes serão desconectados.\n\nTem certeza absoluta?')) {
+        if (!confirm('!!! ATENÇÃO !!!\n\nIsso irá encerrar TODAS as reuniões que estão "active" ou "scheduled" (agendadas) neste momento.\n\nTodos os participantes serão desconectados.\n\nTem certeza absoluta?')) {
             return
         }
 
