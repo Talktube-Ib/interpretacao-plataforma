@@ -12,11 +12,17 @@ export function ParticipantList({
     peers,
     userRole,
     userCount,
+    isHost,
+    hostId,
+    onPromote,
     onClose
 }: {
-    peers: Peer[],
+    peers: any[],
     userRole: string,
     userCount: number,
+    isHost: boolean,
+    hostId: string | null,
+    onPromote: (id: string) => void,
     onClose?: () => void
 }) {
     return (
@@ -47,7 +53,14 @@ export function ParticipantList({
                         </div>
                         <div className="flex flex-col">
                             <span className="text-sm font-bold text-foreground">Você</span>
-                            <span className="text-[10px] text-muted-foreground uppercase font-black">{userRole === 'admin' ? 'Host' : userRole}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-muted-foreground uppercase font-black">{userRole}</span>
+                                {isHost && (
+                                    <span className="bg-[#06b6d4]/20 text-[#06b6d4] text-[8px] px-1.5 py-0.5 rounded-full font-black border border-[#06b6d4]/30 uppercase tracking-tighter shadow-sm">
+                                        Host
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     {userRole === 'interpreter' && <Mic className="h-3 w-3 text-purple-400" />}
@@ -56,16 +69,32 @@ export function ParticipantList({
                 {/* Others */}
                 {peers.map((peer) => (
                     <div key={peer.userId} className="flex items-center justify-between p-3 rounded-2xl bg-accent/50 border border-border hover:border-[#06b6d4]/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center border border-border">
-                                <UserIcon className="h-4 w-4 text-muted-foreground" />
-                            </div>
+                        <div className="flex-1 min-w-0">
                             <div className="flex flex-col">
-                                <span className="text-sm font-bold text-foreground truncate w-32">{peer.userId.split('-')[1] || peer.userId}</span>
-                                <span className="text-[10px] text-muted-foreground uppercase font-black">{peer.role}</span>
+                                <span className="text-sm font-bold text-foreground truncate">{peer.name || peer.userId.split('-')[1] || peer.userId}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-muted-foreground uppercase font-black">{peer.role}</span>
+                                    {peer.userId === hostId && (
+                                        <span className="bg-[#06b6d4]/20 text-[#06b6d4] text-[8px] px-1.5 py-0.5 rounded-full font-black border border-[#06b6d4]/30 uppercase tracking-tighter">
+                                            Host
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        {peer.role === 'interpreter' && <Mic className="h-3 w-3 text-purple-400" />}
+                        <div className="flex items-center gap-2">
+                            {peer.role === 'interpreter' && <Mic className="h-3 w-3 text-purple-400" />}
+                            {isHost && peer.userId !== hostId && !peer.isPresentation && (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => onPromote(peer.userId)}
+                                    className="h-7 text-[9px] font-black uppercase px-2 rounded-lg border-[#06b6d4]/30 text-[#06b6d4] hover:bg-[#06b6d4] hover:text-white transition-all shadow-sm active:scale-95"
+                                >
+                                    Tornar Host
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 ))}
 

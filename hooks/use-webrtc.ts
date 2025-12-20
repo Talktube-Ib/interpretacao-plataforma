@@ -18,6 +18,7 @@ interface PeerData {
     name?: string
     isPresentation?: boolean
     parentUserId?: string
+    isHost?: boolean
 }
 
 
@@ -45,6 +46,8 @@ export function useWebRTC(
     const videoElementRef = useRef<HTMLVideoElement | null>(null)
     const originalMicTrackRef = useRef<MediaStreamTrack | null>(null)
     const currentMixedTrackRef = useRef<MediaStreamTrack | null>(null)
+
+    const [hostId, setHostId] = useState<string | null>(null)
 
     // Helper to add logs
     const addLog = (msg: string) => {
@@ -102,6 +105,12 @@ export function useWebRTC(
 
                 setLocalStream(stream)
                 originalMicTrackRef.current = stream.getAudioTracks()[0]
+                // Fetch Initial Host
+                const { data: meeting } = await supabase.from('meetings').select('host_id').eq('id', roomId).single()
+                if (meeting?.host_id) {
+                    setHostId(meeting.host_id)
+                }
+
                 joinChannel(stream)
             } catch (err: unknown) {
                 const error = err as Error
@@ -182,6 +191,11 @@ export function useWebRTC(
                 setTimeout(() => {
                     setReactions(prev => prev.filter(r => r.id !== id))
                 }, 5000)
+            })
+            .on('broadcast', { event: 'host-update' }, (event: { payload: { hostId: string } }) => {
+                const { hostId: newHostId } = event.payload
+                addLog(`Host update: New host is ${newHostId}`)
+                setHostId(newHostId)
             })
             .on('broadcast', { event: 'hand-toggle' }, (event: { payload: { userId: string, enabled: boolean } }) => {
                 const { userId: remoteUserId, enabled } = event.payload
@@ -411,6 +425,10 @@ export function useWebRTC(
     }
 
     const shareScreen = async (onEnd?: () => void) => {
+        if (hostId !== userId) {
+            alert("Apenas o Host pode compartilhar tela.")
+            return
+        }
         try {
             if (!localStream) return
 
@@ -496,6 +514,10 @@ export function useWebRTC(
     }
 
     const shareVideoFile = async (file: File, onEnd?: () => void) => {
+        if (hostId !== userId) {
+            alert("Apenas o Host pode compartilhar arquivos de vídeo.")
+            return
+        }
         try {
             if (!localStream) return
 
@@ -704,6 +726,22 @@ export function useWebRTC(
         }
     }
 
+    const promoteToHost = (targetUserId: string) => {
+        if (hostId !== userId) {
+            addLog(`Error: Only current host can promote others`)
+            return
+        }
+
+        addLog(`Promoting ${targetUserId} to Host...`)
+        if (channelRef.current) {
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'host-update',
+                payload: { hostId: targetUserId }
+            })
+        }
+    }
+
     const sendEmoji = (emoji: string) => {
         channelRef.current?.send({
             type: 'broadcast',
@@ -745,7 +783,9 @@ export function useWebRTC(
         updateMetadata,
         localHandRaised,
         reactions,
-        channel: channelState
+        channel: channelState,
+        hostId,
+        promoteToHost,
+        isHost: hostId === userId
     }
 }
-

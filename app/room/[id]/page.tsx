@@ -67,6 +67,23 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         setCurrentRole('interpreter')
                     }
                 }
+
+                // Check Meeting Interpreters (Item 1)
+                const { data: meeting } = await supabase
+                    .from('meetings')
+                    .select('settings')
+                    .eq('id', roomId)
+                    .single()
+
+                if (meeting?.settings?.interpreters) {
+                    const isPreConfigured = meeting.settings.interpreters.some(
+                        (i: any) => i.email.toLowerCase() === user.email?.toLowerCase()
+                    )
+                    if (isPreConfigured) {
+                        console.log(`User identified as pre-configured interpreter!`)
+                        setCurrentRole('interpreter')
+                    }
+                }
             } else {
                 const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
                 setUserId(guestId)
@@ -120,7 +137,10 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         shareVideoFile,
         toggleHand,
         localHandRaised,
-        reactions
+        reactions,
+        hostId,
+        promoteToHost,
+        isHost
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {})
 
     // Populate Device Lists
@@ -294,26 +314,55 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     </div>
                 </div>
 
-                {/* View Mode Controls */}
-                <div className="bg-card/40 backdrop-blur-md p-1.5 rounded-2xl flex items-center gap-1 border border-border pointer-events-auto shadow-xl">
-                    <Button
-                        variant={viewMode === 'gallery' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('gallery')}
-                        className="rounded-xl h-8 px-3 text-xs gap-2"
-                    >
-                        <LayoutGrid className="h-3.5 w-3.5" />
-                        Galeria
-                    </Button>
-                    <Button
-                        variant={viewMode === 'speaker' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setViewMode('speaker')}
-                        className="rounded-xl h-8 px-3 text-xs gap-2"
-                    >
-                        <Maximize2 className="h-3.5 w-3.5" />
-                        Orador
-                    </Button>
+                {/* View Mode Controls - Zoom style */}
+                <div className="bg-card/40 backdrop-blur-md p-1 rounded-2xl border border-border pointer-events-auto shadow-xl">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="flex items-center gap-2 px-4 h-10 font-bold text-sm rounded-xl hover:bg-white/10">
+                                <Maximize2 className="h-4 w-4" />
+                                Visualização
+                                <ChevronUp className="h-3 w-3 opacity-50 rotate-180" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="bottom" align="end" className="w-56 mt-2 rounded-2xl bg-black/90 backdrop-blur-3xl border-white/10 p-2 shadow-2xl z-[100]">
+                            <DropdownMenuItem
+                                onClick={() => setViewMode('gallery')}
+                                className={cn("rounded-xl p-3 flex items-center justify-between cursor-pointer", viewMode === 'gallery' && "bg-[#06b6d4]/20 text-[#06b6d4]")}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <LayoutGrid className="h-4 w-4" />
+                                    <span className="font-semibold">Galeria</span>
+                                </div>
+                                {viewMode === 'gallery' && <div className="h-2 w-2 rounded-full bg-[#06b6d4]" />}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => setViewMode('speaker')}
+                                className={cn("rounded-xl p-3 flex items-center justify-between cursor-pointer", viewMode === 'speaker' && "bg-[#06b6d4]/20 text-[#06b6d4]")}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <Users className="h-4 w-4" />
+                                    <span className="font-semibold">Orador</span>
+                                </div>
+                                {viewMode === 'speaker' && <div className="h-2 w-2 rounded-full bg-[#06b6d4]" />}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuItem
+                                onClick={() => {
+                                    if (typeof document !== 'undefined') {
+                                        if (!document.fullscreenElement) {
+                                            document.documentElement.requestFullscreen()
+                                        } else {
+                                            document.exitFullscreen()
+                                        }
+                                    }
+                                }}
+                                className="rounded-xl p-3 flex items-center gap-3 cursor-pointer"
+                            >
+                                <Maximize2 className="h-4 w-4" />
+                                <span className="font-semibold">Tela Cheia</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
@@ -399,7 +448,10 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                     peers={peers}
                                     userRole={currentRole}
                                     userCount={userCount}
-                                    onClose={() => setActiveSidebar(null)} // Add close prop
+                                    isHost={isHost}
+                                    hostId={hostId}
+                                    onPromote={promoteToHost}
+                                    onClose={() => setActiveSidebar(null)}
                                 />
                             </div>
                         </motion.div>
@@ -626,26 +678,49 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                 <div className="w-px h-10 bg-border/50 hidden md:block" />
 
-                <div className="relative">
-                    <Button
-                        variant={selectedLang === 'original' ? "outline" : "default"}
-                        size="lg"
-                        className={`h-16 px-8 rounded-2xl border-2 transition-all active:scale-95 ${selectedLang !== 'original'
-                            ? 'bg-[#06b6d4] hover:bg-[#0891b2] border-[#06b6d4] text-white shadow-[0_0_30px_rgba(6,182,212,0.4)]'
-                            : 'border-border bg-accent/20 text-foreground hover:bg-accent/40'
-                            }`}
-                        onClick={() => setShowLangMenu(!showLangMenu)}
-                    >
-                        <Globe className="h-6 w-6 mr-3" />
-                        <div className="flex flex-col items-start leading-tight">
-                            <span className="opacity-70 uppercase tracking-[0.2em] text-[8px] font-black">Escutando</span>
-                            <span className="font-black text-sm">
-                                {ROOM_LANGUAGES.find(l => l.code === selectedLang)?.name || 'Original'}
-                            </span>
-                        </div>
-                    </Button>
-
-                </div>
+                {/* Language Selection - Globe style */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant={selectedLang === 'original' ? "secondary" : "default"}
+                            size="icon"
+                            className={cn(
+                                "h-14 w-14 rounded-2xl shadow-xl transition-all active:scale-95 border-0",
+                                selectedLang !== 'original' ? "bg-[#06b6d4] text-white hover:bg-[#0891b2]" : "bg-accent/50 text-foreground hover:bg-accent"
+                            )}
+                            title="Idioma da Reunião"
+                        >
+                            <Globe className="h-6 w-6" />
+                            {selectedLang !== 'original' && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-4 w-4 bg-cyan-500 border border-white dark:border-black text-[8px] items-center justify-center font-bold">
+                                        {selectedLang.toUpperCase()}
+                                    </span>
+                                </span>
+                            )}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="top" align="end" className="w-56 mb-4 rounded-2xl bg-card border-border p-2 shadow-2xl">
+                        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 font-bold">Idioma de Audição</DropdownMenuLabel>
+                        {ROOM_LANGUAGES.map((lang) => (
+                            <DropdownMenuItem
+                                key={lang.code}
+                                onClick={() => handleLangChange(lang.code)}
+                                className={cn(
+                                    "rounded-xl p-3 flex items-center justify-between cursor-pointer",
+                                    selectedLang === lang.code && "bg-[#06b6d4]/20 text-[#06b6d4]"
+                                )}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-lg">{lang.flag}</span>
+                                    <span className="font-semibold">{lang.name}</span>
+                                </div>
+                                {selectedLang === lang.code && <div className="h-2 w-2 rounded-full bg-[#06b6d4]" />}
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
 
                 {selectedLang !== 'original' && (
                     <motion.div
