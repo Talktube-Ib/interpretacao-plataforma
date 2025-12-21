@@ -132,7 +132,7 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
 
     return (
         <div className={cn(
-            "bg-card rounded-[2.5rem] overflow-hidden relative border-4 transition-all duration-500 group w-full h-full shadow-2xl",
+            "bg-pink-500/20 rounded-[2.5rem] overflow-hidden relative border-4 transition-all duration-500 group w-full h-full shadow-2xl",
             isSpeaking
                 ? role === 'interpreter'
                     ? "border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.4)] scale-[1.02] z-10"
@@ -185,11 +185,26 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
                     </div>
 
                     {/* Debug Overlay */}
-                    <div className="absolute top-2 left-2 z-50 bg-black/50 text-[10px] text-green-400 font-mono p-1 rounded pointer-events-none">
+                    <div className="absolute top-2 left-2 z-50 bg-black/50 text-[10px] text-green-400 font-mono p-1 rounded pointer-events-auto">
+                        <button
+                            className="bg-red-500 text-white px-2 py-1 rounded mb-1 hover:bg-red-600"
+                            onClick={() => {
+                                if (videoRef.current) {
+                                    videoRef.current.muted = false;
+                                    videoRef.current.play()
+                                        .then(() => alert("Started!"))
+                                        .catch(e => alert("Err: " + e));
+                                }
+                            }}
+                        >
+                            FORCE PLAY
+                        </button><br />
                         D: {stream.id.slice(0, 4)}<br />
                         A: {stream.getAudioTracks().length} | {stream.getAudioTracks()[0]?.enabled ? 'E' : 'D'} | {stream.getAudioTracks()[0]?.readyState}<br />
                         V: {stream.getVideoTracks().length} | {stream.getVideoTracks()[0]?.enabled ? 'E' : 'D'} | {stream.getVideoTracks()[0]?.readyState}<br />
-                        S: {connectionState}
+                        S: {connectionState}<br />
+                        Vol: {volume}<br />
+                        Size: {videoRef.current?.videoWidth}x{videoRef.current?.videoHeight}
                     </div>
                 </>
             ) : (
