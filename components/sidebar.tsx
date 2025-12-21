@@ -86,7 +86,7 @@ export function Sidebar({ user, userRole, userAvatar, unreadMessagesCount = 0 }:
     ]
 
     return (
-        <div className="flex flex-col h-full bg-card border-r border-border dark:bg-gradient-to-b dark:from-[#1e3a8a] dark:to-[#0f172a] dark:border-none shadow-2xl overflow-hidden transition-colors duration-300">
+        <div className="flex flex-col h-full bg-card border-r border-border dark:bg-gradient-to-b dark:from-[#1e3a8a] dark:to-[#0f172a] dark:border-none shadow-2xl transition-colors duration-300">
             {/* Branding Header */}
             <div className="flex items-center justify-center p-6 pb-2">
                 <Logo className="scale-125" />
@@ -182,7 +182,7 @@ export function Sidebar({ user, userRole, userAvatar, unreadMessagesCount = 0 }:
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between mb-4 gap-2">
+                <div className="flex items-center justify-end mb-4 gap-2">
                     <LanguageSwitcher />
                     <ModeToggle />
                 </div>
