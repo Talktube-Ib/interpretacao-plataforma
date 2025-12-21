@@ -30,11 +30,11 @@ export default async function AdminLayout({
     }
 
     return (
-        <div className="h-full relative bg-[#020817]">
+        <div className="h-full relative bg-background text-foreground">
             <div className="hidden h-full md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 z-[80]">
                 <Sidebar user={user} userRole={role} />
             </div>
-            <main className="md:pl-72 h-full text-white">
+            <main className="md:pl-72 h-full">
                 {children}
             </main>
         </div>
