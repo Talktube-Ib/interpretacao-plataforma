@@ -64,3 +64,32 @@ export async function restartPersonalMeeting(meetingId: string) {
 
     return { success: false }
 }
+
+export async function endMeeting(meetingId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: 'Unauthorized' }
+
+    // Check if user is host
+    const { data: meeting } = await supabase
+        .from('meetings')
+        .select('host_id')
+        .eq('id', meetingId)
+        .single()
+
+    if (!meeting || meeting.host_id !== user.id) {
+        return { error: 'Only host can end meeting' }
+    }
+
+    const { error } = await supabase
+        .from('meetings')
+        .update({
+            status: 'ended',
+            end_time: new Date().toISOString()
+        })
+        .eq('id', meetingId)
+
+    if (error) return { error: error.message }
+    return { success: true }
+}

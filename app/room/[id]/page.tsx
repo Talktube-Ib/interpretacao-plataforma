@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 import { LANGUAGES } from '@/lib/languages'
-import { checkAndEndMeeting, restartPersonalMeeting } from '@/app/actions/meeting' // NEW IMPORT
+import { checkAndEndMeeting, restartPersonalMeeting, endMeeting } from '@/app/actions/meeting' // NEW IMPORT
 
 import { VideoGrid } from '@/components/room/video-grid'
 import { LayoutGrid, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -872,10 +872,31 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     </Button>
                 </div>
 
-                <Button asChild variant="destructive" size="lg" className="h-14 px-8 rounded-2xl font-black shadow-xl shadow-red-900/20 active:scale-95 border-0 bg-red-500 hover:bg-red-600">
-                    <Link href="/dashboard">
-                        <PhoneOff className="h-5 w-5 mr-3" /> Sair
-                    </Link>
+                <Button
+                    variant="destructive"
+                    size="lg"
+                    className="h-14 px-8 rounded-2xl font-black shadow-xl shadow-red-900/20 active:scale-95 border-0 bg-red-500 hover:bg-red-600"
+                    onClick={async () => {
+                        if (currentRole === 'interpreter') {
+                            // Interpreters just leave
+                            const supabase = createClient()
+                            await supabase.auth.signOut() // Optional: sign out if guest? 
+                            window.location.href = '/dashboard'
+                            return
+                        }
+
+                        // Check if host
+                        if (isHost) {
+                            if (confirm('Você é o anfitrião. Sair encerrará a reunião para todos. Continuar?')) {
+                                await endMeeting(roomId)
+                                window.location.href = '/dashboard'
+                            }
+                        } else {
+                            window.location.href = '/dashboard'
+                        }
+                    }}
+                >
+                    <PhoneOff className="h-5 w-5 mr-3" /> Sair
                 </Button>
             </div>
 
