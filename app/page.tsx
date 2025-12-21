@@ -14,13 +14,13 @@ import {
 import { Logo } from '@/components/logo'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { useLanguage } from '@/components/providers/language-provider'
-import { motion } from 'framer-motion'
+import { motion, Variants } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 export default function LandingPage() {
   const { t } = useLanguage()
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -31,12 +31,12 @@ export default function LandingPage() {
     }
   }
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.5, ease: "easeOut" }
+      transition: { duration: 0.5, ease: "easeOut" as const }
     }
   }
 
