@@ -85,6 +85,7 @@ export default function LandingPage() {
             <Link href="#features" className="hover:text-white transition-colors">Funcionalidades</Link>
             <Link href="#tech" className="hover:text-white transition-colors">Tecnologia</Link>
             <Link href="#use-cases" className="hover:text-white transition-colors">Casos de Uso</Link>
+            <Link href="#pricing" className="hover:text-white transition-colors">{t('landing.pricing') || 'Planos'}</Link>
           </nav>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
@@ -270,6 +271,70 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* PRICING */}
+        <section id="pricing" className="py-24 relative">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
+                {t('landing.pricing_title') || 'Planos Flexíveis'}
+              </h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
+                {t('landing.pricing_subtitle') || 'Escolha a melhor opção para sua organização.'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {/* Monthly */}
+              <div className="p-8 rounded-3xl border border-white/10 bg-[#0a0f1e] hover:border-cyan-500/30 transition-all flex flex-col">
+                <h3 className="text-xl font-bold text-white mb-2">{t('landing.plan_monthly_name') || 'Mensal'}</h3>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold text-white">{t('landing.plan_monthly_price')}</span>
+                  <span className="text-gray-500 text-sm ml-2">{t('landing.plan_monthly_period')}</span>
+                </div>
+                <p className="text-gray-400 text-sm mb-8 flex-grow">{t('landing.plan_monthly_desc')}</p>
+                <Link href="/login">
+                  <Button className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10">
+                    {t('landing.button_subscribe') || 'Começar Agora'}
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Semiannual */}
+              <div className="p-8 rounded-3xl border border-cyan-500/50 bg-[#0a0f1e] relative flex flex-col transform md:-translate-y-4 shadow-2xl shadow-cyan-900/20">
+                <div className="absolute top-0 right-0 bg-cyan-500 text-[#020817] text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl">
+                  POPULAR
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">{t('landing.plan_semiannual_name') || 'Semestral'}</h3>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold text-white">{t('landing.plan_semiannual_price')}</span>
+                  <span className="text-gray-500 text-sm ml-2">{t('landing.plan_semiannual_period')}</span>
+                </div>
+                <p className="text-gray-400 text-sm mb-8 flex-grow">{t('landing.plan_semiannual_desc')}</p>
+                <Link href="/login">
+                  <Button className="w-full bg-cyan-500 hover:bg-cyan-400 text-[#020817] font-bold">
+                    {t('landing.button_subscribe') || 'Começar Agora'}
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Annual */}
+              <div className="p-8 rounded-3xl border border-white/10 bg-[#0a0f1e] hover:border-cyan-500/30 transition-all flex flex-col">
+                <h3 className="text-xl font-bold text-white mb-2">{t('landing.plan_yearly_name') || 'Anual'}</h3>
+                <div className="mb-6">
+                  <span className="text-4xl font-bold text-white">{t('landing.plan_yearly_price')}</span>
+                  <span className="text-gray-500 text-sm ml-2">{t('landing.plan_yearly_period')}</span>
+                </div>
+                <p className="text-gray-400 text-sm mb-8 flex-grow">{t('landing.plan_yearly_desc')}</p>
+                <Link href="/login">
+                  <Button className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10">
+                    {t('landing.button_subscribe') || 'Começar Agora'}
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
