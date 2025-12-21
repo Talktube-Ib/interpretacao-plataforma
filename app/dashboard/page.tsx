@@ -8,41 +8,54 @@ import { QuickJoinCard } from '@/components/dashboard/quick-join-card'
 import { MeetingCard } from '@/components/dashboard/meeting-card'
 import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-button'
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
+import { cookies } from 'next/headers'
+import { DemoBanner } from '@/components/demo-banner'
 
 export default async function DashboardPage() {
-    const supabase = await createClient()
+    const cookieStore = await cookies()
+    const isDemo = cookieStore.get('demo_mode')?.value === 'true'
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    let user = null
+    let profile = null
+    let meetings: any[] | null = []
 
-    if (!user) {
-        redirect('/login')
+    if (isDemo) {
+        user = { id: 'demo-user', email: 'demo@interpret.io' }
+        profile = { role: 'demo', full_name: 'Demo User', personal_meeting_id: 'demo-room' }
+        meetings = [
+            { id: 'demo-meeting-1', title: 'Reunião de Exemplo 01', start_time: new Date().toISOString(), host_id: 'demo' },
+            { id: 'demo-meeting-2', title: 'Pauta Trimestral', start_time: new Date(Date.now() + 86400000).toISOString(), host_id: 'demo' }
+        ]
+    } else {
+        const supabase = await createClient()
+        const { data: userData } = await supabase.auth.getUser()
+        user = userData.user
+
+        if (!user) {
+            redirect('/login')
+        }
+
+        const { data: profileData } = await supabase
+            .from('profiles')
+            .select('role, full_name, limits, personal_meeting_id')
+            .eq('id', user.id)
+            .single()
+        profile = profileData
+
+        const { data: meetingsData } = await supabase
+            .from('meetings')
+            .select('*')
+            .or(`host_id.eq.${user.id}`)
+            .order('start_time', { ascending: true })
+        meetings = meetingsData
     }
 
-    // Check Role & Profile
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, full_name, limits, personal_meeting_id')
-        .eq('id', user.id)
-        .single()
-
     const role = profile?.role || 'user'
-    const languages = profile?.limits?.languages || []
-    const personalRoomId = profile?.personal_meeting_id || user.id // Fallback just in case, though migration should have covered it
-
-    // Admin logic removed - Admins now have a dedicated /admin route and can usage this dashboard as a regular user
-
-
-    // Fetch meetings
-    const { data: meetings } = await supabase
-        .from('meetings')
-        .select('*')
-        .or(`host_id.eq.${user.id}`)
-        .order('start_time', { ascending: true })
+    const personalRoomId = profile?.personal_meeting_id || user.id
 
     return (
         <div className="min-h-screen bg-[#f3f4f6] dark:bg-background text-foreground selection:bg-[#06b6d4]/30">
+            {isDemo && <DemoBanner />}
             {/* Header */}
             <div className="bg-white dark:bg-card border-b border-border py-4 px-8 flex justify-between items-center shadow-sm">
                 <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight">

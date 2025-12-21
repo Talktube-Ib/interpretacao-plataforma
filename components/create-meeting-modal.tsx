@@ -30,6 +30,12 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        if (userId === 'demo-user') {
+            alert('Funcionalidade indisponível no modo de demonstração.')
+            return
+        }
+
         setLoading(true)
 
         // Combine date and time

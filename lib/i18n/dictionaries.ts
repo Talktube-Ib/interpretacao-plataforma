@@ -167,7 +167,27 @@ export const dictionaries = {
             authority_ib: "IB Technology – Interpret Brasil",
             footer_copyright: "© 2024 TalkTube. All rights reserved.",
             login: "Login",
-            get_started: "Create Account"
+            get_started: "Create Account",
+
+            // Use Cases
+            use_cases_title: "Use Cases",
+            use_case_1_title: "Board Meetings",
+            use_case_1_desc: "Bank-grade security for critical multilingual decisions.",
+            use_case_2_title: "Global Webinars",
+            use_case_2_desc: "Scale to massive audiences without language barriers.",
+            use_case_3_title: "Training",
+            use_case_3_desc: "Ensure your global team understands every detail.",
+
+            // FAQ
+            faq_title: "Common Questions",
+            faq_1_q: "Do I need to install any software?",
+            faq_1_a: "No. TalkTube runs 100% in the browser (Chrome, Edge, Safari, Firefox). Just click the link.",
+            faq_2_q: "Does it work on slow connections?",
+            faq_2_a: "Yes. Our technology automatically adjusts quality to keep audio stable even on 3G/4G.",
+            faq_3_q: "How do I hire interpreters?",
+            faq_3_a: "You can bring your own interpreters or hire through our certified partner network.",
+            faq_4_q: "Can I record the meeting?",
+            faq_4_a: "Yes! The system records video and all audio tracks separately for flexible editing."
         }
     },
     es: {
@@ -241,7 +261,27 @@ export const dictionaries = {
             authority_ib: "Tecnología IB – Interpret Brasil",
             footer_copyright: "© 2024 TalkTube. Todos los derechos reservados.",
             login: "Ingresar",
-            get_started: "Crear Cuenta"
+            get_started: "Crear Cuenta",
+
+            // Use Cases
+            use_cases_title: "Casos de Uso",
+            use_case_1_title: "Reuniones de Directorio",
+            use_case_1_desc: "Seguridad de nivel bancario para decisiones críticas multilingües.",
+            use_case_2_title: "Webinars Globales",
+            use_case_2_desc: "Escala a audiencias masivas sin barreras de idioma.",
+            use_case_3_title: "Entrenamientos",
+            use_case_3_desc: "Asegúrese de que su equipo global entienda cada detalle.",
+
+            // FAQ
+            faq_title: "Preguntas Frecuentes",
+            faq_1_q: "¿Necesito instalar algún software?",
+            faq_1_a: "No. TalkTube se ejecuta 100% en el navegador (Chrome, Edge, Safari, Firefox). Solo haga clic en el enlace.",
+            faq_2_q: "¿Funciona en conexiones lentas?",
+            faq_2_a: "Sí. Nuestra tecnología ajusta automáticamente la calidad para mantener el audio estable incluso en 3G/4G.",
+            faq_3_q: "¿Cómo contrato intérpretes?",
+            faq_3_a: "Puede traer sus propios intérpretes o contratar a través de nuestra red de socios certificados.",
+            faq_4_q: "¿Puedo grabar la reunión?",
+            faq_4_a: "¡Sí! El sistema graba video y todas las pistas de audio por separado para una edición flexible."
         }
     }
 }
