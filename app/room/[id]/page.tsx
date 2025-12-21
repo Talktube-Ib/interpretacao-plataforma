@@ -24,6 +24,7 @@ import { useWebRTC } from '@/hooks/use-webrtc'
 import { useChat } from '@/hooks/use-chat'
 import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { ChatPanel } from '@/components/room/chat-panel'
+import { DebugLogs } from '@/components/debug-logs' // NEW
 import { ParticipantList } from '@/components/room/participant-list'
 import { InterpreterControls } from '@/components/room/interpreter-controls'
 import { InterpreterConsole } from '@/components/room/InterpreterConsole'
@@ -196,7 +197,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         reactions,
         hostId,
         promoteToHost,
-        isHost
+        isHost,
+        logs // NEW
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {})
 
     // Populate Device Lists
@@ -371,7 +373,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 </div>
 
                 {/* View Mode Controls - Zoom style */}
-                <div className="bg-card/40 backdrop-blur-md p-1 rounded-2xl border border-border pointer-events-auto shadow-xl">
+                <div className="bg-card/40 backdrop-blur-md p-1 rounded-2xl border border-border pointer-events-auto shadow-xl flex gap-2">
+                    <DebugLogs logs={logs || []} />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="flex items-center gap-2 px-4 h-10 font-bold text-sm rounded-xl hover:bg-white/10">
