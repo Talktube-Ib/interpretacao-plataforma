@@ -102,6 +102,7 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
 
             videoRef.current.onloadedmetadata = async () => {
                 try {
+                    console.log(`[RemoteVideo] Loaded metadata for ${stream.id}`)
                     await videoRef.current?.play()
                 } catch (e) {
                     console.error("Autoplay blocked:", e)
@@ -125,6 +126,8 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
                         ref={videoRef}
                         autoPlay
                         playsInline
+                        onPlay={() => console.log(`[RemoteVideo] Playing stream ${stream.id}`)}
+                        onError={(e) => console.error(`[RemoteVideo] Error playing stream ${stream.id}:`, e)}
                         className="w-full h-full object-cover rounded-[2.3rem]"
                     />
 
@@ -159,6 +162,14 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
                             setIsSpeaking(s)
                             onSpeakingChange?.(s)
                         }} />
+                    </div>
+
+                    {/* Debug Overlay */}
+                    <div className="absolute top-2 left-2 z-50 bg-black/50 text-[10px] text-green-400 font-mono p-1 rounded pointer-events-none">
+                        D: {stream.id.slice(0, 4)}<br />
+                        A: {stream.getAudioTracks().length} | {stream.getAudioTracks()[0]?.enabled ? 'E' : 'D'} | {stream.getAudioTracks()[0]?.readyState}<br />
+                        V: {stream.getVideoTracks().length} | {stream.getVideoTracks()[0]?.enabled ? 'E' : 'D'} | {stream.getVideoTracks()[0]?.readyState}<br />
+                        S: {connectionState}
                     </div>
                 </>
             ) : (
