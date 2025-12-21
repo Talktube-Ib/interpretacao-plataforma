@@ -125,22 +125,7 @@ export default function SettingsForm({ user, profile }: SettingsFormProps) {
                                 />
                             </div>
 
-                            <div className="space-y-3 p-6 bg-purple-500/5 rounded-3xl border border-purple-500/10">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Languages className="h-4 w-4 text-purple-400" />
-                                    <Label htmlFor="languages" className="text-[10px] font-black uppercase tracking-widest text-purple-400">Canal do Intérprete</Label>
-                                </div>
-                                <Input
-                                    id="languages"
-                                    name="languages"
-                                    defaultValue={profile?.languages?.join(', ') || ''}
-                                    className="bg-background border-border text-foreground h-12 rounded-xl placeholder:text-muted-foreground/50"
-                                    placeholder="ex: pt, en, es (separados por vírgula)"
-                                />
-                                <p className="text-[10px] text-muted-foreground leading-relaxed font-medium">
-                                    Cadastre aqui os idiomas que você domina. Isso habilitará controles extras de voz e canais exclusivos durante as transmissões.
-                                </p>
-                            </div>
+
                         </CardContent>
                         <CardFooter className="bg-accent/5 border-t border-border p-8">
                             <Button

@@ -63,6 +63,7 @@ export function useWebRTC(
     // 1. Initialize User Media (Camera/Mic)
     useEffect(() => {
         let mounted = true
+        let activeStream: MediaStream | null = null
 
         const init = async () => {
             try {
@@ -96,6 +97,8 @@ export function useWebRTC(
                 addLog(`Initializing media with constraints: ${JSON.stringify(constraints)}`)
                 const stream = await navigator.mediaDevices.getUserMedia(constraints)
 
+                activeStream = stream // Store for cleanup
+
                 addLog(`Media acquired: ${stream.getAudioTracks().length} audio tracks, ${stream.getVideoTracks().length} video tracks`)
 
                 if (!mounted) {
@@ -125,21 +128,39 @@ export function useWebRTC(
 
         return () => {
             mounted = false
-            // Cleanup
-            localStream?.getTracks().forEach(track => track.stop()) // Keep media alive for flicker-free exp? No, stop it.
-            // Actually, for dev exp, stopping is safer.
+            // Cleanup strict
+            console.log("Cleaning up WebRTC...", activeStream)
 
-            if (channelRef.current) {
-                addLog(`Cleaning up channel...`)
-                channelRef.current.unsubscribe()
-                channelRef.current = null
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => {
+                    console.log(`Stopping track: ${track.kind} - ${track.label}`)
+                    track.stop()
+                    track.enabled = false
+                })
             }
+            // Fallback: Stop specific refs if they exist
+            if (originalMicTrackRef.current) originalMicTrackRef.current.stop()
 
+            // Clean peers
             peersRef.current.forEach(p => p.peer.destroy())
             peersRef.current.clear()
             setPeers(new Map())
+
+            if (channelRef.current) {
+                channelRef.current.unsubscribe()
+                channelRef.current = null
+            }
         }
     }, [roomId, userId])
+
+    // Add global beforeunload for strict cleanup on refresh/close
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            localStream?.getTracks().forEach(t => t.stop())
+        }
+        window.addEventListener('beforeunload', handleBeforeUnload)
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    }, [localStream])
 
     // 2. Signaling Logic (Supabase Realtime)
     const joinChannel = (stream: MediaStream | null) => {

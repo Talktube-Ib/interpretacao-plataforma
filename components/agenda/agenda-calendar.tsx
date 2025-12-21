@@ -46,11 +46,14 @@ export function AgendaCalendar({ meetings, userId }: AgendaCalendarProps) {
         if (viewMode === 'month') {
             const nextMonth = addMonths(currentDate, 1)
             setCurrentDate(nextMonth)
-            setSelectedDate(startOfMonth(nextMonth)) // Auto-select 1st of next month
+            // Ideally, keep same day of month or go to 1st
+            const newSelected = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), selectedDate.getDate())
+            // If invalid date (e.g. Feb 30), it auto corrects or we can fallback to 1st
+            setSelectedDate(startOfMonth(nextMonth))
         } else {
             const nextWeek = addDays(currentDate, 7)
             setCurrentDate(nextWeek)
-            setSelectedDate(nextWeek)
+            // For week view, it keeps the week focus
         }
     }
 
@@ -62,7 +65,7 @@ export function AgendaCalendar({ meetings, userId }: AgendaCalendarProps) {
         } else {
             const prevWeek = addDays(currentDate, -7)
             setCurrentDate(prevWeek)
-            setSelectedDate(prevWeek)
+            // For week view
         }
     }
 
@@ -102,7 +105,16 @@ export function AgendaCalendar({ meetings, userId }: AgendaCalendarProps) {
                             <Button variant="ghost" size="icon" onClick={prevPeriod} className="h-8 w-8 hover:bg-accent">
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={goToToday} className="h-8 text-[10px] font-black uppercase px-3 hover:bg-accent text-[#06b6d4]">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={goToToday}
+                                disabled={isSameDay(currentDate, new Date())}
+                                className={cn(
+                                    "h-8 text-[10px] font-black uppercase px-3 hover:bg-accent text-[#06b6d4]",
+                                    isSameDay(currentDate, new Date()) && "opacity-0 pointer-events-none"
+                                )}
+                            >
                                 Ir para Hoje
                             </Button>
                             <Button variant="ghost" size="icon" onClick={nextPeriod} className="h-8 w-8 hover:bg-accent">
@@ -218,7 +230,7 @@ export function AgendaCalendar({ meetings, userId }: AgendaCalendarProps) {
                                             {format(new Date(meeting.start_time), 'HH:mm')}
                                         </span>
                                     </div>
-                                    <Button asChild size="sm" className="w-full h-8 bg-[#06b6d4] hover:bg-[#0891b2] text-white rounded-lg font-bold border-0">
+                                    <Button asChild size="sm" className="w-full h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold border-0 shadow-lg shadow-emerald-500/20 animate-pulse hover:animate-none">
                                         <Link href={`/room/${meeting.id}`}>
                                             Entrar
                                         </Link>

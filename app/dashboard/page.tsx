@@ -81,7 +81,7 @@ export default async function DashboardPage() {
                                         }
                                     />
                                     <Link href={`/room/${personalRoomId}`}>
-                                        <Button className="bg-[#06b6d4] hover:bg-[#0891b2] text-white font-bold px-8 rounded-xl shadow-lg shadow-[#06b6d4]/20">
+                                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 rounded-xl shadow-lg shadow-emerald-600/20 animate-pulse hover:animate-none transition-all">
                                             Entrar
                                         </Button>
                                     </Link>

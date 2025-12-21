@@ -24,9 +24,10 @@ interface SidebarProps {
     user: { email?: string }
     userRole: string
     userAvatar?: string | null
+    unreadMessagesCount?: number
 }
 
-export function Sidebar({ user, userRole, userAvatar }: SidebarProps) {
+export function Sidebar({ user, userRole, userAvatar, unreadMessagesCount = 0 }: SidebarProps) {
     const pathname = usePathname()
 
     const routes = [
@@ -44,6 +45,7 @@ export function Sidebar({ user, userRole, userAvatar }: SidebarProps) {
             label: 'Mensagens',
             icon: MessageSquare,
             href: '/dashboard/messages',
+            badge: unreadMessagesCount
         },
         {
             label: 'Configurações',
@@ -110,6 +112,12 @@ export function Sidebar({ user, userRole, userAvatar }: SidebarProps) {
                                         <div className="flex items-center flex-1">
                                             <route.icon className={cn('h-5 w-5 mr-3', isActive ? 'text-[#22d3ee]' : 'text-blue-300/50 group-hover:text-white')} />
                                             {route.label}
+                                            {/* Badge */}
+                                            {route.badge && route.badge > 0 && (
+                                                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-md shadow-red-500/20">
+                                                    {route.badge}
+                                                </span>
+                                            )}
                                         </div>
                                     </Link>
                                 )

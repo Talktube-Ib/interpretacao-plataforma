@@ -169,7 +169,7 @@ export function PreCallLobby({ onJoin, userName }: PreCallLobbyProps) {
 
                     <div className="pt-4 space-y-4">
                         <Button
-                            className="w-full h-16 rounded-2xl text-lg font-bold shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
+                            className="w-full h-16 rounded-2xl text-lg font-bold shadow-xl shadow-emerald-500/20 hover:scale-[1.02] transition-all bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse hover:animate-none"
                             onClick={() => {
                                 if (stream) stream.getTracks().forEach(t => t.stop())
                                 onJoin({ micOn, cameraOn, audioDeviceId: selectedAudio, videoDeviceId: selectedVideo })
