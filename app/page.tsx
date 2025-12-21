@@ -7,6 +7,7 @@ import {
   Mic,
   Video,
   Users,
+  Globe,
   CheckCircle2,
   ArrowRight,
   PlayCircle
