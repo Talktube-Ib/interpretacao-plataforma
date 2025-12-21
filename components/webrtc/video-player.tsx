@@ -96,19 +96,38 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
     }, [volume])
 
     useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream
-            videoRef.current.muted = false
+        if (!videoRef.current || !stream) return
 
-            videoRef.current.onloadedmetadata = async () => {
-                try {
-                    console.log(`[RemoteVideo] Loaded metadata for ${stream.id}`)
-                    await videoRef.current?.play()
-                } catch (e) {
-                    console.error("Autoplay blocked:", e)
+        // Force reset source
+        videoRef.current.srcObject = null
+
+        // Small timeout to ensure DOM is ready and browser processed cleanup
+        const timer = setTimeout(async () => {
+            if (!videoRef.current) return
+
+            console.log(`[RemoteVideo] Attaching stream ${stream.id} to video element`)
+            videoRef.current.srcObject = stream
+
+            // Critical for iOS/Mobile: playsInline is already on prop, but we must call play()
+            try {
+                await videoRef.current.play()
+                console.log(`[RemoteVideo] Playback started for ${stream.id}`)
+            } catch (e) {
+                console.error(`[RemoteVideo] Play failed for ${stream.id}:`, e)
+                // Retry muted if failed (browsers block unmuted autoplay)
+                if (videoRef.current) {
+                    videoRef.current.muted = true
+                    try {
+                        await videoRef.current.play()
+                        console.log(`[RemoteVideo] Muted playback started for ${stream.id}`)
+                    } catch (e2) {
+                        console.error(`[RemoteVideo] Muted play also failed for ${stream.id}:`, e2)
+                    }
                 }
             }
-        }
+        }, 100)
+
+        return () => clearTimeout(timer)
     }, [stream])
 
     return (
@@ -126,6 +145,7 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
                         ref={videoRef}
                         autoPlay
                         playsInline
+                        muted={false} // Ensure it's not muted by default unless necessary, but handle carefully
                         onPlay={() => console.log(`[RemoteVideo] Playing stream ${stream.id}`)}
                         onError={(e) => console.error(`[RemoteVideo] Error playing stream ${stream.id}:`, e)}
                         className="w-full h-full object-cover rounded-[2.3rem]"
