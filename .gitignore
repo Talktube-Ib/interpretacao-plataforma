@@ -30,9 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
-!.env.local
+# Keep .env.local for now as requested by user context, or ignore it?
+# Usually we ignore it. Let's revert to standard safety: IGNORE .env.local
+.env.local
 
 # vercel
 .vercel
@@ -40,3 +42,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# logs and temp
+*.log
+*.txt
+url.txt
+build_log*
+lint_last.txt

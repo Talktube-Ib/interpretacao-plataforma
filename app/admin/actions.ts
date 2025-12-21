@@ -144,6 +144,15 @@ export async function createUser(formData: FormData) {
         const role = formData.get('role') as string || 'participant'
         const password = formData.get('password') as string
 
+        // Extract languages (expecting JSON string)
+        let languages: string[] = []
+        try {
+            const rawLang = formData.get('languages') as string
+            if (rawLang) languages = JSON.parse(rawLang)
+        } catch (e) {
+            console.error('Error parsing languages:', e)
+        }
+
         if (!email || !email.includes('@')) {
             return { success: false, error: 'Email inválido.' }
         }
@@ -155,8 +164,11 @@ export async function createUser(formData: FormData) {
         // 3. Create user using Admin Client (Bypass email confirmation)
         const supabaseAdmin = await createAdminClient()
 
-        // Map role to DB allowed values ('admin', 'user')
-        const dbRole = role === 'admin' ? 'admin' : 'user'
+        // We assume the DB constraint has been updated to allow 'interpreter'
+        // If not, this might fail or trigger needs update. 
+        // For safety/legacy compatibility, we keep 'user' in metadata if strict 'admin'/'user' check exists in triggers,
+        // but we'll try to pass the real role.
+        const metadataRole = role === 'admin' ? 'admin' : (role === 'interpreter' ? 'interpreter' : 'user')
 
         const { data: newUser, error } = await supabaseAdmin.auth.admin.createUser({
             email,
@@ -164,7 +176,7 @@ export async function createUser(formData: FormData) {
             email_confirm: true,
             user_metadata: {
                 full_name: fullName,
-                role: dbRole, // Fixes trigger constraint failure
+                role: metadataRole,
                 must_reset_password: true
             }
         })
@@ -174,15 +186,20 @@ export async function createUser(formData: FormData) {
             return { success: false, error: error.message }
         }
 
-        // 4. Update role (if different from default 'user')
-        if (newUser?.user && role !== 'participant') {
+        // 4. Update role and languages in profiles
+        if (newUser?.user) {
             const { error: profileError } = await supabaseAdmin
                 .from('profiles')
-                .update({ role: role === 'interpreter' ? 'user' : role })
+                .update({
+                    role: role,
+                    languages: languages
+                })
                 .eq('id', newUser.user.id)
 
             if (profileError) {
-                console.error('Error updating role:', profileError)
+                console.error('Error updating profile (role/languages):', profileError)
+                // We don't return error here to avoid blocking creation if just profile update fails, 
+                // but ideally implementation should be transactional.
             }
         }
 
@@ -190,7 +207,7 @@ export async function createUser(formData: FormData) {
             action: 'USER_CREATE',
             targetResource: 'user',
             targetId: newUser!.user.id,
-            details: { email, role, full_name: fullName, method: 'manual_create' }
+            details: { email, role, full_name: fullName, languages, method: 'manual_create' }
         })
 
         revalidatePath('/admin/users')

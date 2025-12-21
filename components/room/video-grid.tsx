@@ -60,12 +60,36 @@ export function VideoGrid({
     const others = allParticipants.filter(p => p.userId !== speakerData?.userId && p.role !== 'presentation')
 
     const calcVolume = (p: any) => {
-        if (selectedLang === 'original') return 1.0
-        if (p.role === 'interpreter' && p.language === selectedLang) {
-            return volumeBalance / 100
+        // 1. Always mute local user to prevent echo/feedback (redundant with video element muted prop but safe)
+        if (p.isLocal) return 0
+
+        // 2. If listening to "Original" (Floor)
+        if (selectedLang === 'original' || selectedLang === 'floor') {
+            // Hear everyone who is NOT an interpreter (Participants, Host, Presentation)
+            if (p.role !== 'interpreter') return 1.0
+            // Silence all interpreters
+            return 0
         }
-        // If it's a normal participant or interpreter for another language, it's the "background"
-        return (100 - volumeBalance) / 100
+
+        // 3. If listening to a specific Language (Interpretation)
+
+        // Target Interpreter Channel
+        if (p.role === 'interpreter' && p.language === selectedLang) {
+            return volumeBalance / 100 // e.g. 0.8 or 1.0
+        }
+
+        // Other Interpreters -> STRICT SILENCE (Prevent Bleed)
+        if (p.role === 'interpreter' && p.language !== selectedLang) {
+            return 0
+        }
+
+        // Floor (Original Speaker) -> Background Volume (Mix)
+        // Only if they are NOT an interpreter
+        if (p.role !== 'interpreter') {
+            return (100 - volumeBalance) / 100
+        }
+
+        return 0
     }
 
     return (

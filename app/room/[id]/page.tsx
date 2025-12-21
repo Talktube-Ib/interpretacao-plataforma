@@ -26,6 +26,7 @@ import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { ChatPanel } from '@/components/room/chat-panel'
 import { ParticipantList } from '@/components/room/participant-list'
 import { InterpreterControls } from '@/components/room/interpreter-controls'
+import { InterpreterConsole } from '@/components/room/InterpreterConsole'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
@@ -521,7 +522,21 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 </div>
             )}
 
-            {/* Interpreter Floating Controls (Moved to Root) */}
+
+
+            {/* Interpreter Console (Central Cockpit) */}
+            {currentRole === 'interpreter' && (
+                <InterpreterConsole
+                    active={micOn}
+                    onToggleActive={handleToggleMic}
+                    currentLanguage={myBroadcastLang}
+                    isListeningToFloor={selectedLang === 'original'}
+                    onListenToFloor={() => handleLangChange('original')}
+                    onHandover={() => sendEmoji('🔄')}
+                />
+            )}
+
+            {/* Interpreter Floating Controls (Output Channel Selector) */}
             <InterpreterControls
                 role={currentRole}
                 currentLanguage={myBroadcastLang}

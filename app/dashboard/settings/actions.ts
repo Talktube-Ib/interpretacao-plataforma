@@ -42,7 +42,7 @@ export async function updateProfile(formData: FormData) {
 
         if (error) return { success: false, error: error.message }
 
-        revalidatePath('/dashboard/settings')
+        revalidatePath('/', 'layout')
         return { success: true }
     } catch (err: any) {
         return { success: false, error: err.message || 'Erro inesperado' }

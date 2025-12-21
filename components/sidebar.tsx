@@ -18,12 +18,15 @@ import { Button } from '@/components/ui/button'
 import { ModeToggle } from './mode-toggle'
 import { Logo } from './logo'
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
 interface SidebarProps {
     user: { email?: string }
     userRole: string
+    userAvatar?: string | null
 }
 
-export function Sidebar({ user, userRole }: SidebarProps) {
+export function Sidebar({ user, userRole, userAvatar }: SidebarProps) {
     const pathname = usePathname()
 
     const routes = [
@@ -149,9 +152,12 @@ export function Sidebar({ user, userRole }: SidebarProps) {
             {/* Footer / User Profile */}
             <div className="p-4 bg-[#0f172a]/50 backdrop-blur-md border-t border-white/5 mx-4 mb-4 rounded-3xl mt-auto shadow-inner">
                 <div className="flex items-center gap-x-3 mb-4">
-                    <div className="h-10 w-10 round-full rounded-full bg-gradient-to-tr from-[#22d3ee] to-blue-500 flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/20 shrink-0 border-2 border-white/10">
-                        {user.email?.[0].toUpperCase()}
-                    </div>
+                    <Avatar className="h-10 w-10 border-2 border-white/10 shadow-lg shadow-cyan-500/20">
+                        <AvatarImage src={userAvatar || ''} />
+                        <AvatarFallback className="bg-gradient-to-tr from-[#22d3ee] to-blue-500 text-white font-bold">
+                            {user.email?.[0].toUpperCase()}
+                        </AvatarFallback>
+                    </Avatar>
                     <div className="flex flex-col min-w-0">
                         <span className="text-sm font-bold text-white truncate max-w-[120px]">{user.email?.split('@')[0]}</span>
                         <span className="text-[10px] text-blue-300/80 font-bold uppercase tracking-wider">

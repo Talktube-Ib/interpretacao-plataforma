@@ -27,6 +27,29 @@ export function CreateUserDialog() {
     const [loading, setLoading] = useState(false)
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
+    const [selectedRole, setSelectedRole] = useState('participant')
+    const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
+
+    // Available languages for interpreters
+    const AVAILABLE_LANGUAGES = [
+        { code: 'pt', name: 'Português' },
+        { code: 'en', name: 'Inglês' },
+        { code: 'es', name: 'Espanhol' },
+        { code: 'fr', name: 'Francês' },
+        { code: 'de', name: 'Alemão' },
+        { code: 'it', name: 'Italiano' },
+        { code: 'zh', name: 'Chinês' },
+        { code: 'ru', name: 'Russo' },
+        { code: 'jp', name: 'Japonês' },
+    ]
+
+    const toggleLanguage = (code: string) => {
+        if (selectedLanguages.includes(code)) {
+            setSelectedLanguages(prev => prev.filter(l => l !== code))
+        } else {
+            setSelectedLanguages(prev => [...prev, code])
+        }
+    }
 
     // Password Strength Calculation
     const getStrength = (pass: string) => {
@@ -55,12 +78,20 @@ export function CreateUserDialog() {
 
     async function onSubmit(formData: FormData) {
         setLoading(true)
+
+        // Append selected languages if interpreter
+        if (selectedRole === 'interpreter') {
+            formData.append('languages', JSON.stringify(selectedLanguages))
+        }
+
         try {
             const result = await createUser(formData)
 
             if (result.success) {
                 setOpen(false)
                 setPassword('')
+                setSelectedLanguages([])
+                setSelectedRole('participant')
                 alert('Usuário criado com sucesso! Envie as credenciais para o usuário.')
             } else {
                 alert('Erro ao criar usuário: ' + (result as any).error)
@@ -153,7 +184,11 @@ export function CreateUserDialog() {
 
                     <div className="grid gap-2">
                         <Label htmlFor="role">Função / Cargo</Label>
-                        <Select name="role" defaultValue="participant">
+                        <Select
+                            name="role"
+                            defaultValue="participant"
+                            onValueChange={(val) => setSelectedRole(val)}
+                        >
                             <SelectTrigger className="bg-white/5 border-white/10">
                                 <SelectValue placeholder="Selecione..." />
                             </SelectTrigger>
@@ -164,6 +199,28 @@ export function CreateUserDialog() {
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {selectedRole === 'interpreter' && (
+                        <div className="grid gap-2 animate-in fade-in slide-in-from-top-2">
+                            <Label>Idiomas de Interpretação</Label>
+                            <div className="grid grid-cols-2 gap-2 p-3 border border-white/10 rounded-md bg-white/5 max-h-40 overflow-y-auto">
+                                {AVAILABLE_LANGUAGES.map((lang) => (
+                                    <label key={lang.code} className="flex items-center gap-2 cursor-pointer hover:bg-white/5 p-1 rounded transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            value={lang.code}
+                                            checked={selectedLanguages.includes(lang.code)}
+                                            onChange={() => toggleLanguage(lang.code)}
+                                            className="rounded border-white/20 bg-black/50 text-[#06b6d4] focus:ring-[#06b6d4]"
+                                        />
+                                        <span className="text-sm">{lang.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Selecione os idiomas que este intérprete domina.</p>
+                        </div>
+                    )}
+
                     <DialogFooter>
                         <Button type="submit" disabled={loading} className="w-full bg-[#06b6d4] hover:bg-[#0891b2]">
                             {loading ? (

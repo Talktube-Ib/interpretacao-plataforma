@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Briefcase, Building, FileText, Languages, Shield, User } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 interface SettingsFormProps {
@@ -16,6 +17,7 @@ interface SettingsFormProps {
 }
 
 export default function SettingsForm({ user, profile }: SettingsFormProps) {
+    const router = useRouter()
     const [loading, setLoading] = useState(false)
 
     async function handleSubmit(formData: FormData) {
@@ -56,7 +58,9 @@ export default function SettingsForm({ user, profile }: SettingsFormProps) {
                                 uid={user.id}
                                 url={profile?.avatar_url}
                                 email={user.email!}
-                                onUploadComplete={() => { }}
+                                onUploadComplete={(url) => {
+                                    router.refresh()
+                                }}
                             />
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

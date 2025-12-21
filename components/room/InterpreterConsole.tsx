@@ -6,11 +6,17 @@ import { cn } from "@/lib/utils"
 export function InterpreterConsole({
     active,
     onToggleActive,
-    currentLanguage
+    currentLanguage,
+    isListeningToFloor,
+    onListenToFloor,
+    onHandover
 }: {
     active: boolean,
     onToggleActive: () => void,
-    currentLanguage: string
+    currentLanguage: string,
+    isListeningToFloor: boolean,
+    onListenToFloor: () => void,
+    onHandover: () => void
 }) {
     return (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-black/80 backdrop-blur-xl border border-border p-4 rounded-xl shadow-2xl z-50 animate-in slide-in-from-bottom">
@@ -28,8 +34,12 @@ export function InterpreterConsole({
 
             <div className="grid grid-cols-3 gap-4">
                 <Button
-                    variant="outline"
-                    className="h-16 flex flex-col items-center justify-center gap-1 border-dashed"
+                    variant={isListeningToFloor ? "default" : "outline"}
+                    className={cn(
+                        "h-16 flex flex-col items-center justify-center gap-1 border-dashed transition-all",
+                        isListeningToFloor ? "bg-[#06b6d4] text-white border-[#06b6d4]" : "text-muted-foreground"
+                    )}
+                    onClick={onListenToFloor}
                 >
                     <Radio className="h-5 w-5" />
                     <span className="text-xs">Ouvir Piso</span>
@@ -46,7 +56,8 @@ export function InterpreterConsole({
 
                 <Button
                     variant="secondary"
-                    className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-yellow-500/10 hover:text-yellow-500"
+                    className="h-16 flex flex-col items-center justify-center gap-1 hover:bg-yellow-500/10 hover:text-yellow-500 transition-colors"
+                    onClick={onHandover}
                 >
                     <RefreshCw className="h-5 w-5" />
                     <span className="text-xs">Passar Vez (Handover)</span>

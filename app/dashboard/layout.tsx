@@ -15,20 +15,20 @@ export default async function DashboardLayout({
         redirect('/login')
     }
 
-    // Fetch role efficiently - usually from metadata or profile
-    // Using profile query for correctness as users might be updated by admin
+    // Fetch role and avatar efficiently
     const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, avatar_url')
         .eq('id', user.id)
         .single()
 
     const role = profile?.role || user.user_metadata?.role || 'participant'
+    const avatar = profile?.avatar_url
 
     return (
         <div className="h-full relative bg-background">
             <div className="hidden h-full md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 z-[80]">
-                <Sidebar user={user} userRole={role} />
+                <Sidebar user={user} userRole={role} userAvatar={avatar} />
             </div>
             <main className="md:pl-72 h-full">
                 {children}
