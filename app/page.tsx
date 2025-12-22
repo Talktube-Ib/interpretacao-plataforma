@@ -10,7 +10,9 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  Headphones
+
+  Headphones,
+  User
 } from 'lucide-react'
 import {
   Accordion,
@@ -95,6 +97,11 @@ export default function LandingPage() {
                 Área do Cliente
               </Button>
             </Link>
+            <Link href="/login" className="md:hidden">
+              <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white hover:bg-white/5">
+                <User className="w-5 h-5" />
+              </Button>
+            </Link>
             <Button
               onClick={handleDemoClick}
               className="bg-white text-[#020817] hover:bg-gray-100 font-bold px-4 md:px-6 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:scale-105"
@@ -162,7 +169,7 @@ export default function LandingPage() {
           <div className="container mx-auto px-6 text-center">
             <p className="text-sm text-gray-500 uppercase tracking-widest mb-8">Confiança de líderes globais</p>
             <div className="w-full overflow-hidden flex">
-              <div className="flex animate-[scroll_20s_linear_infinite] w-max gap-12 min-w-full items-center">
+              <div className="flex animate-[scroll_10s_linear_infinite] w-max gap-12 min-w-full items-center">
                 {/* Logos Set 1 */}
                 <img src="/logos/vale.png" alt="Vale" className="h-12 w-auto object-contain grayscale hover:grayscale-0 opacity-70 hover:opacity-100 transition-all duration-500" />
                 <img src="/logos/bndes.png" alt="BNDES" className="h-16 w-auto object-contain grayscale hover:grayscale-0 opacity-70 hover:opacity-100 transition-all duration-500" />
