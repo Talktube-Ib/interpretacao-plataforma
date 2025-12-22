@@ -51,6 +51,8 @@ export function useWebRTC(
     const channelRef = useRef<RealtimeChannel | null>(null)
     const audioContextRef = useRef<AudioContext | null>(null)
     const originalMicTrackRef = useRef<MediaStreamTrack | null>(null)
+    const currentAudioTrackRef = useRef<MediaStreamTrack | null>(null)
+    const mixedAudioTrackRef = useRef<MediaStreamTrack | null>(null)
 
     const [hostId, setHostId] = useState<string | null>(null)
     const peersRef = useRef<Map<string, PeerData>>(new Map())
@@ -111,6 +113,7 @@ export function useWebRTC(
 
                 setLocalStream(stream)
                 originalMicTrackRef.current = stream.getAudioTracks()[0]
+                currentAudioTrackRef.current = stream.getAudioTracks()[0]
                 const { data: meeting } = await supabase.from('meetings').select('host_id').eq('id', roomId).single()
                 if (meeting?.host_id && mounted) {
                     setHostId(meeting.host_id)
@@ -279,51 +282,135 @@ export function useWebRTC(
     }, [userName, userRole, isJoined])
 
     const mixAudio = async (contentStream: MediaStream) => {
-        if (!originalMicTrackRef.current) return contentStream.getAudioTracks()[0]
+        const contentTrack = contentStream.getAudioTracks()[0]
+        if (!originalMicTrackRef.current) return contentTrack
+
         try {
-            if (!audioContextRef.current) { audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)() }
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+            }
             const ctx = audioContextRef.current
             if (ctx.state === 'suspended') await ctx.resume()
+
             const dest = ctx.createMediaStreamDestination()
+
+            // Mic Source
             const micSource = ctx.createMediaStreamSource(new MediaStream([originalMicTrackRef.current]))
-            micSource.connect(dest)
-            if (contentStream.getAudioTracks().length > 0) { const contentSource = ctx.createMediaStreamSource(contentStream); contentSource.connect(dest) }
+            const micGain = ctx.createGain()
+            micGain.gain.value = 1.0
+            micSource.connect(micGain)
+            micGain.connect(dest)
+
+            // Content Source (System Audio)
+            if (contentTrack) {
+                const contentSource = ctx.createMediaStreamSource(new MediaStream([contentTrack]))
+                const contentGain = ctx.createGain()
+                contentGain.gain.value = 1.0 // Balanced
+                contentSource.connect(contentGain)
+                contentGain.connect(dest)
+            }
+
             return dest.stream.getAudioTracks()[0]
-        } catch (e) { return contentStream.getAudioTracks()[0] }
+        } catch (e) {
+            console.error("Audio mixing failed:", e)
+            return contentTrack || originalMicTrackRef.current
+        }
     }
 
     const shareScreen = async (onEnd?: () => void) => {
         if (sharingUserId && sharingUserId !== userId) return
         try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
-            const screenTrack = screenStream.getVideoTracks()[0]; const mixedTrack = await mixAudio(screenStream)
+            console.log("Iniciando compartilhamento de tela com áudio...")
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: { cursor: 'always' } as any,
+                audio: true
+            })
+
+            const screenTrack = screenStream.getVideoTracks()[0]
+            const mixedTrack = await mixAudio(screenStream)
+            mixedAudioTrackRef.current = mixedTrack || null
+
             if (localStream) {
                 localStream.addTrack(screenTrack)
+
+                // If we have a mixed track, swap the CURRENT track for the mixed one
+                if (mixedTrack && currentAudioTrackRef.current) {
+                    const toReplace = currentAudioTrackRef.current
+                    localStream.removeTrack(toReplace)
+                    localStream.addTrack(mixedTrack)
+
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            try { p.peer.replaceTrack(toReplace, mixedTrack, localStream) }
+                            catch (e) { console.error("Falha ao substituir track áudio:", e) }
+                        }
+                    })
+                    currentAudioTrackRef.current = mixedTrack
+                }
+
+                // Add the video track as a second track
                 peersRef.current.forEach(p => {
                     if (!p.isPresentation) {
                         try { p.peer.addTrack(screenTrack, localStream) } catch (e) { }
-                        if (mixedTrack && originalMicTrackRef.current) { try { p.peer.replaceTrack(originalMicTrackRef.current, mixedTrack, localStream) } catch (e) { } }
                     }
                 })
             }
-            setSharingUserId(userId); channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
-            screenTrack.onended = () => stopScreenShare(onEnd, mixedTrack); return screenStream
-        } catch (e: any) { onEnd?.() }
+
+            setSharingUserId(userId)
+            channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
+
+            screenTrack.onended = () => stopScreenShare(onEnd)
+            return screenStream
+        } catch (e: any) {
+            console.error("Screen share failed:", e)
+            onEnd?.()
+        }
     }
 
-    const stopScreenShare = (onEnd?: () => void, mixedTrack?: MediaStreamTrack) => {
+    const stopScreenShare = (onEnd?: () => void) => {
         if (!localStream) return
-        const tracks = localStream.getVideoTracks(); const primaryId = localStream.getVideoTracks()[0]?.id; const screenTrack = tracks.find(t => t.id !== primaryId)
+        const tracks = localStream.getTracks()
+        const primaryVideoId = localStream.getVideoTracks()[0]?.id
+        const screenTrack = localStream.getVideoTracks().find(t => t.id !== primaryVideoId)
+
+        const mixedTrack = mixedAudioTrackRef.current
+
         if (screenTrack) {
-            screenTrack.stop(); localStream.removeTrack(screenTrack)
+            screenTrack.stop()
+            localStream.removeTrack(screenTrack)
+        }
+
+        // Restore original mic track if it was replaced
+        if (mixedTrack && originalMicTrackRef.current && currentAudioTrackRef.current === mixedTrack) {
+            localStream.removeTrack(mixedTrack)
+            localStream.addTrack(originalMicTrackRef.current)
+            mixedTrack.stop()
+
+            const toRepl = mixedTrack
+            const restore = originalMicTrackRef.current
+
+            peersRef.current.forEach(p => {
+                if (!p.isPresentation) {
+                    if (screenTrack) {
+                        try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
+                    }
+                    try { p.peer.replaceTrack(toRepl, restore, localStream) } catch (e) { }
+                }
+            })
+            currentAudioTrackRef.current = restore
+            mixedAudioTrackRef.current = null
+        } else if (screenTrack) {
+            // If just screen video without mixed audio
             peersRef.current.forEach(p => {
                 if (!p.isPresentation) {
                     try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
-                    if (mixedTrack && originalMicTrackRef.current) { try { p.peer.replaceTrack(originalMicTrackRef.current, mixedTrack, localStream) } catch (e) { } }
                 }
             })
         }
-        setSharingUserId(null); channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } }); onEnd?.()
+
+        setSharingUserId(null)
+        channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } })
+        onEnd?.()
     }
 
     const shareVideoFile = async (file: File, onEnd?: () => void) => {
@@ -331,22 +418,40 @@ export function useWebRTC(
         try {
             const video = document.createElement('video'); video.src = URL.createObjectURL(file); video.muted = true; video.playsInline = true; await video.play()
             const fileStream = (video as any).captureStream ? (video as any).captureStream() : (video as any).mozCaptureStream()
-            const fileTrack = fileStream.getVideoTracks()[0]; const mixedTrack = await mixAudio(fileStream)
+            const fileTrack = fileStream.getVideoTracks()[0];
+            const mixedTrack = await mixAudio(fileStream)
+            mixedAudioTrackRef.current = mixedTrack || null
+
             if (localStream && fileTrack) {
                 localStream.addTrack(fileTrack)
+
+                if (mixedTrack && currentAudioTrackRef.current) {
+                    const toReplace = currentAudioTrackRef.current
+                    localStream.removeTrack(toReplace)
+                    localStream.addTrack(mixedTrack)
+
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            try { p.peer.replaceTrack(toReplace, mixedTrack, localStream) } catch (e) { }
+                        }
+                    })
+                    currentAudioTrackRef.current = mixedTrack
+                }
+
                 peersRef.current.forEach(p => {
                     if (!p.isPresentation) {
                         try { p.peer.addTrack(fileTrack, localStream) } catch (e) { }
-                        if (mixedTrack && originalMicTrackRef.current) { try { p.peer.replaceTrack(originalMicTrackRef.current, mixedTrack, localStream) } catch (e) { } }
                     }
                 })
             }
             setSharingUserId(userId); channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
-            video.onended = () => stopScreenShare(onEnd, mixedTrack)
+            video.onended = () => stopScreenShare(onEnd)
         } catch (e) { }
     }
 
     const toggleMic = (enabled: boolean) => {
+        if (originalMicTrackRef.current) originalMicTrackRef.current.enabled = enabled
+        if (mixedAudioTrackRef.current) mixedAudioTrackRef.current.enabled = enabled
         localStream?.getAudioTracks().forEach(t => t.enabled = enabled)
         updateMetadata({ micOn: enabled })
     }
