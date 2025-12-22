@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { VideoOff, Globe, MicOff, Hand, User, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-console.log("[VideoPlayer] LOADED - v4.0 - TEST-DEPLOY")
+console.log("[VideoPlayer] LOADED - v4.1 - RETRY-DEPLOY")
 
 interface VideoProps {
     stream?: MediaStream | null
