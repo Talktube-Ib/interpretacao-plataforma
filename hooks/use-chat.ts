@@ -43,6 +43,7 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
     const isActiveRef = useRef(false)
     const supabase = createClient()
     const channelRef = useRef<any>(null)
+    const seenMessagesRef = useRef<Set<string>>(new Set())
 
     // Keep ref in sync
     useEffect(() => {
@@ -61,14 +62,20 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
                 .order('created_at', { ascending: true })
 
             if (data) {
-                const mapped: Message[] = data.map((d: any) => ({
-                    id: d.id,
-                    sender: d.sender_id,
-                    senderName: d.sender_name,
-                    text: d.content,
-                    timestamp: new Date(d.created_at).getTime(),
-                    role: d.role
-                }))
+                const mapped: Message[] = data.map((d: any) => {
+                    const msg = {
+                        id: d.id,
+                        sender: d.sender_id,
+                        senderName: d.sender_name,
+                        text: d.content,
+                        timestamp: new Date(d.created_at).getTime(),
+                        role: d.role
+                    }
+                    seenMessagesRef.current.add(msg.id)
+                    // Also add a fuzzy key for history
+                    seenMessagesRef.current.add(`${msg.sender}:${msg.text}:${Math.floor(msg.timestamp / 2000)}`)
+                    return msg
+                })
                 setMessages(mapped)
             }
         }
@@ -77,6 +84,26 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
         // 2. Subscribe to NEW additions (Realtime & Broadcast Fallback)
         const channel = supabase.channel(`room-chat:${roomId}`)
         channelRef.current = channel
+
+        const handleNewMessage = (msg: Message, fromPostgres = false) => {
+            const fuzzyKey = `${msg.sender}:${msg.text}:${Math.floor(msg.timestamp / 2000)}`
+
+            // Deduplicate by exact ID OR fuzzy key (sender+text+time window)
+            if (seenMessagesRef.current.has(msg.id) || seenMessagesRef.current.has(fuzzyKey)) {
+                return
+            }
+
+            seenMessagesRef.current.add(msg.id)
+            seenMessagesRef.current.add(fuzzyKey)
+
+            setMessages(prev => [...prev, msg])
+
+            // Notify if not active and NOT my own message
+            if (msg.sender !== userId && !isActiveRef.current) {
+                setUnreadCount(prev => prev + 1)
+                playNotificationSound()
+            }
+        }
 
         channel
             .on(
@@ -99,33 +126,13 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
                         timestamp: new Date(newMsg.created_at).getTime(),
                         role: newMsg.role
                     }
-
-                    setMessages(prev => {
-                        // CRITICAL: Deduplicate by ID
-                        if (prev.some(m => m.id === msg.id)) return prev
-                        return [...prev, msg]
-                    })
-
-                    // Notify if not active and NOT my own message
-                    if (newMsg.sender_id !== userId && !isActiveRef.current) {
-                        setUnreadCount(prev => prev + 1)
-                        playNotificationSound()
-                    }
+                    handleNewMessage(msg, true)
                 }
             )
             .on('broadcast', { event: 'chat-message' }, (payload) => {
                 const msg = payload.payload as Message
                 if (msg.sender === userId) return // Ignore own
-
-                setMessages(prev => {
-                    if (prev.some(m => m.id === msg.id)) return prev
-                    return [...prev, msg]
-                })
-
-                if (!isActiveRef.current) {
-                    setUnreadCount(prev => prev + 1)
-                    playNotificationSound()
-                }
+                handleNewMessage(msg)
             })
             .subscribe()
 
@@ -137,17 +144,22 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
     const sendMessage = async (text: string) => {
         if (!text.trim()) return
 
-        // Use a consistent ID to prevent duplication between Broadcast and Postgres
         const msgId = crypto.randomUUID?.() || Math.random().toString(36).substring(2, 15)
+        const timestamp = Date.now()
 
         const msg: Message = {
             id: msgId,
             sender: userId,
             senderName: userName,
             text,
-            timestamp: Date.now(),
+            timestamp,
             role: userRole
         }
+
+        // Add to seen BEFORE optimistic update to avoid duplicates if broadcast arrives too fast
+        const fuzzyKey = `${msg.sender}:${msg.text}:${Math.floor(msg.timestamp / 2000)}`
+        seenMessagesRef.current.add(msg.id)
+        seenMessagesRef.current.add(fuzzyKey)
 
         // 1. Optimistic local update
         setMessages(prev => [...prev, msg])
@@ -161,19 +173,14 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
 
         // 3. Persistent storage
         try {
-            const { error } = await supabase.from('messages').insert({
-                id: msgId, // Use the same ID
+            await supabase.from('messages').insert({
+                id: msgId,
                 room_id: roomId,
                 sender_id: userId,
                 sender_name: userName,
                 content: text,
                 role: userRole
             })
-            if (error) {
-                console.error("DB Chat Insert failed:", error)
-                // If it failed because of the ID manually set (unlikely in modern Supabase), 
-                // we might want a fallback, but generally it works.
-            }
         } catch (e) {
             console.error("Chat Insert exception:", e)
         }
