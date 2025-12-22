@@ -137,11 +137,7 @@ export default function LandingPage() {
               Perfeita para eventos multilíngue presenciais, híbridos e totalmente remotos com interpretação simultânea feita por profissionais especializados no seu idioma e ramo de trabalho.
             </motion.p>
 
-            <motion.div variants={itemVariants} className="py-2">
-              <blockquote className="text-xl md:text-2xl font-serif italic text-cyan-200/80 border-l-4 border-cyan-500/50 pl-6 max-w-2xl mx-auto">
-                "A comunicação oral é um fenômeno humano, vai além de palavras."
-              </blockquote>
-            </motion.div>
+
 
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4 justify-center pt-8">
               <Button
@@ -436,14 +432,26 @@ export default function LandingPage() {
               </div>
               <div className="md:w-1/2 relative">
                 <div className="aspect-video bg-gradient-to-br from-gray-800 to-black rounded-2xl border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden">
-                  {/* Ideally an image of Interpret Brasil here, using a placeholder for now or a reliable abstract image */}
-                  <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-50 hover:scale-105 transition-transform duration-700" />
+                  <img
+                    src="/images/ib-meeting.jpg"
+                    alt="Reunião Presencial Interpret Brasil"
+                    className="absolute inset-0 w-full h-full object-cover object-center opacity-80 hover:opacity-100 hover:scale-105 transition-all duration-700"
+                  />
                   <div className="relative z-10 bg-black/60 backdrop-blur-sm p-6 rounded-xl border border-white/10 text-center">
                     <span className="text-2xl font-bold text-white block mb-1">20+ Anos</span>
                     <span className="text-sm text-gray-400 uppercase tracking-widest">de Excelência</span>
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Visual Separator */}
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-16" />
+
+            <div className="text-center">
+              <blockquote className="text-2xl md:text-3xl font-serif italic text-cyan-200/90 max-w-3xl mx-auto leading-relaxed">
+                "A comunicação oral é um fenômeno humano, vai além de palavras."
+              </blockquote>
             </div>
           </div>
         </section>
