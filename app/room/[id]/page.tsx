@@ -831,7 +831,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             )}
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent side="top" align="end" className="w-56 mb-4 rounded-2xl bg-card border-border p-2 shadow-2xl">
+                    <DropdownMenuContent side="top" align="end" className="w-56 max-h-[70vh] overflow-y-auto mb-4 rounded-2xl bg-card border-border p-2 shadow-2xl custom-scrollbar">
                         <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 font-bold">Idioma de Audição</DropdownMenuLabel>
                         {ROOM_LANGUAGES.map((lang) => (
                             <DropdownMenuItem
