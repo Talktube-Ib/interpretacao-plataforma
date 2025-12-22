@@ -118,6 +118,7 @@ export function useWebRTC(
                     video: initialConfig.cameraOn !== false ? { deviceId: initialConfig.videoDeviceId ? { exact: initialConfig.videoDeviceId } : undefined } : true
                 }
                 const stream = await navigator.mediaDevices.getUserMedia(constraints)
+                setMediaError(null) // Clear any previous errors
                 activeStream = stream
                 if (!mounted) { stream.getTracks().forEach(t => t.stop()); return }
 
@@ -138,8 +139,11 @@ export function useWebRTC(
                 if (mounted && isJoined) joinChannel(stream)
             } catch (err: any) {
                 if (!mounted) return
-                setMediaError(err.message)
-                if (isJoined) joinChannel(null)
+                // Only set error if we don't have a valid stream already (prevent transient false positives)
+                if (!activeStream) {
+                    setMediaError(err.message)
+                    if (isJoined) joinChannel(null)
+                }
             }
         }
         init()
