@@ -5,17 +5,19 @@ import { Button } from "@/components/ui/button"
 
 interface InterpreterControlsProps {
     role: string
+    isHost?: boolean
     currentLanguage?: string
     onLanguageChange: (lang: string) => void
 }
 
 import { LANGUAGES } from "@/lib/languages"
 
-export function InterpreterControls({ role, currentLanguage = 'floor', onLanguageChange }: InterpreterControlsProps) {
+export function InterpreterControls({ role, isHost, currentLanguage = 'floor', onLanguageChange }: InterpreterControlsProps) {
     const [isOpen, setIsOpen] = React.useState(false)
 
-    const r = role.toLowerCase()
-    if (r !== 'interpreter' && r !== 'admin') return null
+    const r = (role || '').toLowerCase()
+    const canInterpret = r.includes('interpreter') || r.includes('admin') || isHost
+    if (!canInterpret) return null
 
     return (
         <div className="fixed bottom-24 right-6 z-50">

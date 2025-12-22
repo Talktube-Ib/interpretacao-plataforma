@@ -582,7 +582,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
 
             {/* Interpreter Console (Central Cockpit) */}
-            {(currentRole.toLowerCase() === 'interpreter' || currentRole.toLowerCase() === 'admin') && (
+            {(currentRole.toLowerCase().includes('interpreter') || currentRole.toLowerCase().includes('admin') || isHost) && (
                 <InterpreterConsole
                     active={micOn}
                     onToggleActive={handleToggleMic}
@@ -596,6 +596,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             {/* Interpreter Floating Controls (Output Channel Selector) */}
             <InterpreterControls
                 role={currentRole}
+                isHost={isHost}
                 currentLanguage={myBroadcastLang}
                 onLanguageChange={(lang) => {
                     setMyBroadcastLang(lang)
