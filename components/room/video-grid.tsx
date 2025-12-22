@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { useGalleryLayout } from '@/hooks/use-gallery-layout'
 import { cn } from '@/lib/utils'
+import { Activity } from 'lucide-react'
 
 interface VideoGridProps {
     peers: any[]
@@ -92,8 +93,16 @@ export function VideoGrid({
         return 0
     }
 
+    console.log(`[VideoGrid] Rendering ${allParticipants.length} items. Peers: ${peers.length}`)
+
     return (
-        <div ref={containerRef} className="w-full h-full p-2 flex flex-col items-center justify-center overflow-hidden">
+        <div ref={containerRef} className="w-full h-full p-2 flex flex-col items-center justify-center overflow-hidden relative">
+            {/* FLOATING DEBUG COUNTER */}
+            <div className="absolute top-4 left-4 z-[100] bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-2">
+                <Activity className="h-3 w-3 animate-pulse" />
+                V4.2 PARTICIPANTS: {allParticipants.length}
+            </div>
+
             {mode === 'gallery' ? (
                 <div
                     className="grid gap-2 justify-center content-center transition-all duration-500"

@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { VideoOff, Globe, MicOff, Hand, User, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-console.log("[VideoPlayer] LOADED - v4.1 - RETRY-DEPLOY")
+console.log("[VideoPlayer] LOADED - v4.2 - SYNC-FIX")
 
 interface VideoProps {
     stream?: MediaStream | null
@@ -163,7 +163,7 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
 
             <div className="absolute bottom-4 left-4 z-[99]">
                 <span className="bg-black/60 px-2 py-1 rounded-lg text-xs font-bold text-white border border-white/10 italic">
-                    DEBUG-V4.0
+                    DEBUG-V4.2
                 </span>
             </div>
 
@@ -212,7 +212,7 @@ export function LocalVideo({ stream, name = "Você", role = "participant", micOf
 
             <div className="absolute bottom-4 left-4 z-[99]">
                 <span className="bg-black/60 px-2 py-1 rounded-lg text-xs font-bold text-white border border-white/10 italic">
-                    LOCAL-DEBUG-V4.0
+                    LOCAL-DEBUG-V4.2
                 </span>
             </div>
 
