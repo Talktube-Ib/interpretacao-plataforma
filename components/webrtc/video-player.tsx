@@ -100,32 +100,26 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
         const videoEl = videoRef.current
         if (!videoEl || !stream) return
 
-        // Force reset source to ensure browser detects change
+        console.log(`[RemoteVideo] New Stream Assigned: ${stream.id} (Tracks: ${stream.getTracks().length})`)
         videoEl.srcObject = null
         setIsVideoReady(false)
 
-        // Small delay to clear buffer
         const timer = setTimeout(async () => {
             if (!videoEl) return
             videoEl.srcObject = stream
 
             try {
-                // Ensure muted is false unless retry fails, but browsers require user gesture for unmuted
-                // However, in a call, usually audio context is already unlocked by user clicking 'Join'
-                videoEl.muted = false
+                // FORCE UNMUTED for testing if possible, but keep robust fallback
                 await videoEl.play()
                 setIsVideoReady(true)
-                console.log(`[RemoteVideo] Play success for ${stream.id}`)
             } catch (error) {
-                console.warn(`[RemoteVideo] Autoplay blocked for ${stream.id}, trying muted...`, error)
-                // Fallback: mute and play
+                console.warn(`[RemoteVideo] Autoplay blocked, trying muted...`, error)
                 videoEl.muted = true
                 try {
                     await videoEl.play()
                     setIsVideoReady(true)
-                    console.log(`[RemoteVideo] Muted play success for ${stream.id}`)
                 } catch (e2) {
-                    console.error(`[RemoteVideo] Play failed completely for ${stream.id}`, e2)
+                    console.error(`[RemoteVideo] Play failed completely`, e2)
                 }
             }
         }, 100)
@@ -144,14 +138,16 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
         }
     }, [stream])
 
+    // DEBUG BORDER LOGIC
+    // RED = No Stream Prop
+    // BLUE = Stream Prop Present (Connection likely OK)
+    // GREEN = Video Ready & Playing
+    const debugBorderColor = isVideoReady ? 'border-green-500' : (stream ? 'border-blue-500' : 'border-red-500')
+
     return (
         <div className={cn(
-            "bg-card rounded-[2.5rem] overflow-hidden relative border-4 transition-all duration-500 group w-full h-full shadow-2xl",
-            isSpeaking
-                ? role === 'interpreter'
-                    ? "border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.4)] scale-[1.02] z-10"
-                    : "border-[#06b6d4] shadow-[0_0_40px_rgba(6,182,212,0.4)] scale-[1.02] z-10"
-                : "border-border/30"
+            "bg-zinc-900 rounded-[2.5rem] overflow-hidden relative border-8 transition-all duration-500 w-full h-full shadow-2xl",
+            debugBorderColor
         )}>
             {stream ? (
                 <>
@@ -161,87 +157,45 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
                         autoPlay
                         className={cn(
                             "w-full h-full object-cover rounded-[2.3rem]",
-                            // Use opacity to hide until ready or connected
-                            // If connectionState is failed, we show error UI below
-                            (isVideoReady || connectionState === 'connected') ? "opacity-100" : "opacity-0"
+                            // DISABLE OPACITY HIDING -> Always show what we have, even if black
+                            "opacity-100"
                         )}
                     />
 
-                    {!isVideoReady && connectionState === 'connected' && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/50">
-                            <Globe className="h-8 w-8 text-[#06b6d4] animate-spin" />
-                        </div>
-                    )}
+                    {/* VISIBLE DEBUG INFO OVERLAY */}
+                    <div className="absolute top-10 left-2 z-[60] bg-black/80 text-white text-[10px] font-mono p-2 rounded pointer-events-none">
+                        STRM: {stream.id.slice(0, 5)}<br />
+                        TRK: A={stream.getAudioTracks().length} V={stream.getVideoTracks().length}<br />
+                        RDY: {isVideoReady ? 'YES' : 'NO'}<br />
+                        CONN: {connectionState}
+                    </div>
 
                     {/* Status Icons */}
                     <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
-                        {micOff && (
-                            <div className="bg-destructive/80 backdrop-blur-md p-1.5 rounded-lg shadow-lg">
-                                <MicOff className="h-4 w-4 text-white" />
-                            </div>
-                        )}
-                        {handRaised && (
-                            <div className="bg-amber-500 backdrop-blur-md p-1.5 rounded-lg shadow-lg animate-bounce">
-                                <Hand className="h-4 w-4 text-white fill-current" />
-                            </div>
-                        )}
+                        {micOff && <div className="bg-red-500 p-1 rounded"><MicOff className="h-4 w-4 text-white" /></div>}
                     </div>
 
-                    {/* Bottom Info Bar */}
-                    <div className="absolute bottom-4 left-4 flex items-center gap-2 z-30">
-                        <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 flex items-center gap-2">
-                            <div className="bg-white/10 p-1 rounded-md">
-                                <User className="h-3 w-3 text-white" />
-                            </div>
-                            <span className="text-xs font-bold text-white tracking-tight">
-                                {name}
-                            </span>
-                        </div>
+                    <div className="absolute bottom-4 left-4">
+                        <span className="text-white bg-black/50 px-2 rounded">{name}</span>
                     </div>
 
                     <div className="hidden">
-                        <AudioMeter stream={stream} onSpeakingChange={(s) => {
-                            setIsSpeaking(s)
-                            onSpeakingChange?.(s)
-                        }} />
+                        <AudioMeter stream={stream} onSpeakingChange={setIsSpeaking} />
                     </div>
                 </>
             ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-accent/20">
-                    <div className="relative">
-                        <div className={cn(
-                            "absolute inset-0 rounded-full blur-3xl animate-pulse",
-                            connectionState === 'failed' ? "bg-red-500/20" : "bg-[#06b6d4]/20"
-                        )} />
-                        <div className="relative bg-card/50 backdrop-blur-xl border border-border p-8 rounded-full shadow-inner ring-1 ring-white/5">
-                            {connectionState === 'failed' ? (
-                                <VideoOff className="h-12 w-12 text-red-500 opacity-80" />
-                            ) : cameraOff ? (
-                                <VideoOff className="h-12 w-12 text-muted-foreground opacity-50" />
-                            ) : (
-                                <Globe className="h-12 w-12 text-[#06b6d4] animate-spin-slow" />
-                            )}
-                        </div>
-                    </div>
-                    <div className="mt-6 text-center">
-                        <p className={cn(
-                            "text-[10px] font-black uppercase tracking-[0.3em] animate-pulse",
-                            connectionState === 'failed' ? "text-red-500" : "text-muted-foreground"
-                        )}>
-                            {connectionState === 'failed' ? "Falha na Conexão" :
-                                connectionState === 'connecting' ? "Conectando..." :
-                                    cameraOff ? "Câmera Desligada" : "Sinal de Entrada"}
-                        </p>
-                        <p className="text-sm font-bold text-foreground/50 mt-1 italic">
-                            {connectionState === 'failed' ? "Verifique firewall/rede" :
-                                cameraOff ? name : `Aguardando ${name}...`}
-                        </p>
+                <div className="absolute inset-0 flex items-center justify-center text-white">
+                    <div className="text-center">
+                        <VideoOff className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                        <p>{connectionState}</p>
+                        <p className="text-xs text-zinc-500">No Stream Prop</p>
                     </div>
                 </div>
             )}
         </div>
     )
 }
+
 
 export function LocalVideo({ stream, role = "participant", micOff, cameraOff, name = "Você", handRaised, onSpeakingChange }: VideoProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
