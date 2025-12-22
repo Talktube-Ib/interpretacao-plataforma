@@ -1,97 +1,30 @@
-"use client"
+import { useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { MicOff, VideoOff, Maximize2, Loader2, User } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-import React, { useEffect, useRef, useState } from "react"
-import { VideoOff, Globe, MicOff, Hand, User, Activity } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-console.log("[VideoPlayer] LOADED - v4.2 - SYNC-FIX")
-
-interface VideoProps {
+interface VideoPlayerProps {
     stream?: MediaStream | null
-    name?: string
+    name: string
     role?: string
-    volume?: number
-    isLocal?: boolean
-    cameraOff?: boolean
     micOff?: boolean
+    cameraOff?: boolean
     handRaised?: boolean
-    onSpeakingChange?: (isSpeaking: boolean) => void
+    isSpeaking?: boolean
+    volume?: number
     connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected'
+    onSpeakingChange?: (isSpeaking: boolean) => void
+    isPresentation?: boolean
 }
 
-function AudioMeter({ stream, onSpeakingChange }: { stream?: MediaStream | null, onSpeakingChange?: (isSpeaking: boolean) => void }) {
-    const [level, setLevel] = useState(0)
+export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation }: VideoPlayerProps) {
+    const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
-        if (!stream || stream.getAudioTracks().length === 0) {
-            setLevel(0)
-            onSpeakingChange?.(false)
-            return
+        if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream
         }
-
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
-        const analyser = audioCtx.createAnalyser()
-        const source = audioCtx.createMediaStreamSource(stream)
-        source.connect(analyser)
-
-        analyser.fftSize = 32
-        const bufferLength = analyser.frequencyBinCount
-        const dataArray = new Uint8Array(bufferLength)
-
-        let animationId: number
-        let speakingCount = 0
-
-        const update = () => {
-            analyser.getByteFrequencyData(dataArray)
-            let sum = 0
-            for (let i = 0; i < bufferLength; i++) {
-                sum += dataArray[i]
-            }
-            const average = sum / bufferLength
-            setLevel(average)
-
-            if (average > 30) {
-                speakingCount = Math.min(speakingCount + 1, 10)
-            } else {
-                speakingCount = Math.max(speakingCount - 1, 0)
-            }
-
-            onSpeakingChange?.(speakingCount > 5)
-
-            animationId = requestAnimationFrame(update)
-        }
-        update()
-
-        return () => {
-            cancelAnimationFrame(animationId)
-            audioCtx.close()
-        }
-    }, [stream, onSpeakingChange])
-
-    return (
-        <div className="flex items-end gap-[2px] h-4 w-6">
-            {[1, 2, 3, 4].map((i) => {
-                const height = Math.min(100, (level / 150) * 100 * (i * 0.4 + 0.6))
-                return (
-                    <div
-                        key={i}
-                        className={cn(
-                            "w-[3px] rounded-full transition-all duration-150",
-                            level > 10 ? "bg-[#06b6d4]" : "bg-muted-foreground/30"
-                        )}
-                        style={{ height: `${Math.max(20, height)}%` }}
-                    />
-                )
-            })}
-        </div>
-    )
-}
-
-export function RemoteVideo({ stream, name = "Participante", role = "participant", volume = 1.0, micOff, cameraOff, handRaised, onSpeakingChange, connectionState = 'connected' }: VideoProps) {
-    const videoRef = useRef<HTMLVideoElement>(null)
-    const [isSpeaking, setIsSpeaking] = useState(false)
-    const [isVideoReady, setIsVideoReady] = useState(false)
-    const [tracksCount, setTracksCount] = useState(0)
+    }, [stream])
 
     useEffect(() => {
         if (videoRef.current) {
@@ -99,126 +32,115 @@ export function RemoteVideo({ stream, name = "Participante", role = "participant
         }
     }, [volume])
 
-    useEffect(() => {
-        const videoEl = videoRef.current
-        if (!videoEl || !stream) {
-            setTracksCount(0)
-            setIsVideoReady(false)
-            return
-        }
-
-        setTracksCount(stream.getTracks().length)
-        console.log(`[RemoteVideo] Stream ${stream.id} (${stream.getTracks().length} trks)`)
-
-        videoEl.srcObject = stream
-
-        const attemptPlay = async () => {
-            try {
-                await videoEl.play()
-                setIsVideoReady(true)
-            } catch (error) {
-                videoEl.muted = true
-                try {
-                    await videoEl.play()
-                    setIsVideoReady(true)
-                } catch (e2) { }
-            }
-        }
-
-        if (videoEl.readyState >= 1) {
-            attemptPlay()
-        } else {
-            videoEl.onloadedmetadata = attemptPlay
-        }
-
-        return () => {
-            videoEl.srcObject = null
-        }
-    }, [stream])
-
-    // DEBUG UI
-    const debugBorder = isVideoReady ? 'border-green-500' : (stream ? 'border-blue-500' : 'border-red-500')
+    const isConnecting = connectionState === 'connecting'
 
     return (
         <div className={cn(
-            "rounded-[2rem] overflow-hidden relative border-[12px] bg-zinc-950 w-full h-full transition-all shadow-2xl",
-            debugBorder
+            "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500",
+            isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)]",
         )}>
-            {stream ? (
-                <>
-                    <video ref={videoRef} playsInline autoPlay className="w-full h-full object-cover" />
-                    <div className="absolute inset-x-0 top-0 bg-black/70 p-1 text-[10px] text-white flex justify-between z-[99]">
-                        <span>REMOTE: {name.slice(0, 8)}</span>
-                        <span>TRKS: {tracksCount}</span>
-                        <span>{isVideoReady ? "PLAYING" : "WAITING"}</span>
+            {cameraOff || !stream ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 backdrop-blur-3xl">
+                    <div className="relative">
+                        <div className="h-24 w-24 rounded-full bg-zinc-800/50 flex items-center justify-center border border-white/5">
+                            <User className="h-12 w-12 text-zinc-600" />
+                        </div>
                     </div>
-                </>
-            ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4">
-                    <VideoOff className="h-10 w-10 mb-2 opacity-50" />
-                    <p className="text-xs font-bold uppercase tracking-widest">{connectionState}</p>
-                    <p className="text-[10px] opacity-40">WAITING FOR MEDIA SIGNAL...</p>
+                    <span className="mt-4 text-zinc-400 font-medium tracking-tight">{name}</span>
                 </div>
+            ) : (
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className={cn(
+                        "w-full h-full object-cover",
+                        isPresentation ? "object-contain" : "object-cover"
+                    )}
+                />
             )}
 
-            <div className="absolute bottom-4 left-4 z-[99]">
-                <span className="bg-black/60 px-2 py-1 rounded-lg text-xs font-bold text-white border border-white/10 italic">
-                    DEBUG-V4.2
-                </span>
+            {/* OVERLAYS */}
+            <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between pointer-events-none">
+                <div className="flex items-center gap-3 bg-black/40 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10">
+                    <span className="text-white text-sm font-bold tracking-tight">{name}</span>
+                    {role === 'interpreter' && (
+                        <div className="bg-[#06b6d4] h-1.5 w-1.5 rounded-full animate-pulse" />
+                    )}
+                </div>
+
+                <div className="flex gap-2">
+                    {micOff && (
+                        <div className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 p-2.5 rounded-2xl">
+                            <MicOff className="h-4 w-4 text-red-500" />
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="hidden">
-                <AudioMeter stream={stream} onSpeakingChange={setIsSpeaking} />
-            </div>
+            {/* CONNECTING OVERLAY */}
+            <AnimatePresence>
+                {isConnecting && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 rounded-[2.5rem]"
+                    >
+                        <Loader2 className="h-8 w-8 text-[#06b6d4] animate-spin mb-4" />
+                        <span className="text-zinc-400 text-sm font-medium">Conectando...</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
 
-export function LocalVideo({ stream, name = "Você", role = "participant", micOff, cameraOff }: VideoProps) {
+export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onSpeakingChange }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
-    const [isSpeaking, setIsSpeaking] = useState(false)
-    const [isVideoReady, setIsVideoReady] = useState(false)
 
     useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream
-            videoRef.current.play().then(() => setIsVideoReady(true)).catch(() => { })
         }
     }, [stream])
 
-    // Local is always green if it has a stream
-    const debugBorder = stream ? 'border-cyan-500' : 'border-orange-500'
-
     return (
         <div className={cn(
-            "rounded-[2rem] overflow-hidden relative border-[12px] bg-zinc-950 w-full h-full transition-all shadow-2xl",
-            debugBorder
+            "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500",
+            isSpeaking && "ring-4 ring-[#06b6d4] shadow-lg",
         )}>
-            {stream ? (
-                <>
-                    <video ref={videoRef} playsInline autoPlay muted className="w-full h-full object-cover transform -scale-x-100" />
-                    <div className="absolute inset-x-0 top-0 bg-black/70 p-1 text-[10px] text-white flex justify-between z-[99]">
-                        <span>LOCAL: {name}</span>
-                        <span>TRKS: {stream.getTracks().length}</span>
-                        <span>{isVideoReady ? "PLAYING" : "WAITING"}</span>
+            {cameraOff || !stream ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900">
+                    <div className="h-20 w-20 rounded-full bg-zinc-800 flex items-center justify-center">
+                        <User className="h-10 w-10 text-zinc-600" />
                     </div>
-                </>
-            ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4">
-                    <VideoOff className="h-10 w-10 mb-2 opacity-50" />
-                    <p className="text-[10px] opacity-40">LOCAL CAMERA DISCONNECTED</p>
+                    <span className="mt-3 text-zinc-400 text-sm font-medium tracking-tight">Você</span>
                 </div>
+            ) : (
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover mirror"
+                />
             )}
 
-            <div className="absolute bottom-4 left-4 z-[99]">
-                <span className="bg-black/60 px-2 py-1 rounded-lg text-xs font-bold text-white border border-white/10 italic">
-                    LOCAL-DEBUG-V4.2
-                </span>
+            <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+                <div className="bg-black/40 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10">
+                    <span className="text-white text-sm font-bold tracking-tight">Você</span>
+                </div>
+                {micOff && (
+                    <div className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 p-2.5 rounded-2xl">
+                        <MicOff className="h-4 w-4 text-red-500" />
+                    </div>
+                )}
             </div>
 
-            <div className="hidden">
-                <AudioMeter stream={stream} onSpeakingChange={setIsSpeaking} />
-            </div>
+            <style jsx>{`
+                .mirror { transform: scaleX(-1); }
+            `}</style>
         </div>
     )
 }

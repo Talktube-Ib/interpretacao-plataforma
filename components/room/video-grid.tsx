@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { useGalleryLayout } from '@/hooks/use-gallery-layout'
 import { cn } from '@/lib/utils'
-import { Activity, Monitor } from 'lucide-react'
+import { Monitor } from 'lucide-react'
 
 interface VideoGridProps {
     peers: any[]
@@ -20,8 +20,6 @@ interface VideoGridProps {
     selectedLang?: string
     volumeBalance?: number
     handRaised?: boolean
-    logs?: string[]
-    userCount?: number
 }
 
 export function VideoGrid({
@@ -42,16 +40,21 @@ export function VideoGrid({
 }: VideoGridProps) {
     const containerRef = useRef<HTMLDivElement>(null)
 
+    // Filter out potential ghosts or presentation tracks that are not ready
     const allParticipants = [
         { userId: 'local', isLocal: true, stream: localStream, role: currentRole, micOn, cameraOn, handRaised, name: localUserName },
-        ...peers.map(p => ({ ...p, isLocal: false }))
+        ...peers.filter(p => !p.userId.endsWith('-presentation')).map(p => ({ ...p, isLocal: false }))
     ]
 
     // THEATER MODE DETECTION
-    const presentationPeer = allParticipants.find(p => p.isPresentation === true || (p.stream && p.stream.getVideoTracks().length > 1))
+    const presentationPeer = peers.find(p => p.isPresentation === true) || allParticipants.find(p => p.stream && p.stream.getVideoTracks().length > 1)
     const isTheaterMode = !!presentationPeer
 
-    const galleryLayout = useGalleryLayout(containerRef, isTheaterMode ? Math.max(1, allParticipants.filter(p => p.userId !== (presentationPeer?.userId)).length) : allParticipants.length)
+    const galleryParticipants = isTheaterMode
+        ? allParticipants.filter(p => p.userId !== presentationPeer.userId && !p.isPresentation)
+        : allParticipants
+
+    const galleryLayout = useGalleryLayout(containerRef, galleryParticipants.length)
 
     const calcVolume = (p: any) => {
         if (p.isLocal) return 0
@@ -69,21 +72,24 @@ export function VideoGrid({
     }
 
     return (
-        <div ref={containerRef} className="w-full h-full p-2 flex flex-col items-center justify-center overflow-hidden relative">
-            <div className="absolute top-4 left-4 z-[100] bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-2">
-                <Activity className="h-3 w-3 animate-pulse" />
-                V7.0 {isTheaterMode ? "APRESENTANDO" : "GALLERY"}
-            </div>
-
+        <div ref={containerRef} className="w-full h-full p-4 flex flex-col items-center justify-center overflow-hidden relative">
             {isTheaterMode && presentationPeer ? (
-                <div className="w-full h-full flex flex-col md:flex-row gap-4 p-2 overflow-hidden">
+                <div className="w-full h-full flex flex-col md:flex-row gap-6 p-2 overflow-hidden">
                     {/* MAIN STAGE */}
-                    <div className="flex-[4] h-full relative bg-zinc-950 rounded-[2.5rem] overflow-hidden border-2 border-white/10 shadow-3xl">
+                    <div className="flex-[4] h-full relative bg-zinc-950 rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl">
                         {presentationPeer.isLocal ? (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 bg-zinc-900/80 backdrop-blur-sm z-10">
-                                <Monitor className="h-20 w-20 mb-4 opacity-20" />
-                                <p className="text-xl font-bold">Você está compartilhando sua tela</p>
-                                <p className="text-sm opacity-60">Para evitar o efeito de túnel infinito, as pessoas vêem sua tela mas você vê este aviso.</p>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/40 bg-zinc-900/90 backdrop-blur-xl z-20">
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="flex flex-col items-center text-center px-8"
+                                >
+                                    <div className="h-20 w-20 rounded-full bg-[#06b6d4]/10 flex items-center justify-center mb-6">
+                                        <Monitor className="h-10 w-10 text-[#06b6d4]" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white mb-2">Sua tela está sendo compartilhada</h3>
+                                    <p className="text-sm max-w-sm opacity-60">Para evitar o loop infinito, você vê este aviso enquanto os outros participantes vêem sua tela.</p>
+                                </motion.div>
                             </div>
                         ) : (
                             <RemoteVideo
@@ -92,15 +98,16 @@ export function VideoGrid({
                                 role="presentation"
                                 volume={0}
                                 connectionState="connected"
+                                isPresentation={true}
                             />
                         )}
                     </div>
 
                     {/* SIDEBAR */}
-                    <div className="flex-1 h-full overflow-y-auto no-scrollbar flex flex-col gap-3 min-w-[200px]">
+                    <div className="flex-1 h-full overflow-y-auto no-scrollbar flex flex-col gap-4 min-w-[240px]">
                         <AnimatePresence>
-                            {allParticipants.filter(p => !p.isPresentation && p.userId !== presentationPeer.userId).map((p) => (
-                                <motion.div key={p.userId} layout initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="aspect-video w-full shrink-0">
+                            {galleryParticipants.map((p) => (
+                                <motion.div key={p.userId} layout initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.8 }} className="aspect-video w-full shrink-0">
                                     {p.isLocal ? (
                                         <LocalVideo stream={p.stream} role={p.role} micOff={!p.micOn} cameraOff={!p.cameraOn} name={p.name} />
                                     ) : (
@@ -114,15 +121,23 @@ export function VideoGrid({
             ) : (
                 /* GALLERY */
                 <div
-                    className="grid gap-2 justify-center content-center transition-all duration-500"
+                    className="grid gap-4 justify-center content-center transition-all duration-700"
                     style={{
                         gridTemplateColumns: `repeat(${galleryLayout.cols}, ${galleryLayout.width}px)`,
                         gridTemplateRows: `repeat(${galleryLayout.rows}, ${galleryLayout.height}px)`,
                     }}
                 >
                     <AnimatePresence mode="popLayout">
-                        {allParticipants.map((p) => (
-                            <motion.div key={p.userId} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ width: galleryLayout.width, height: galleryLayout.height }} className="box-border">
+                        {galleryParticipants.map((p) => (
+                            <motion.div
+                                key={p.userId}
+                                layout
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                style={{ width: galleryLayout.width, height: galleryLayout.height }}
+                                className="box-border"
+                            >
                                 {p.isLocal ? (
                                     <LocalVideo stream={p.stream} role={p.role} micOff={!p.micOn} cameraOff={!p.cameraOn} name={p.name} />
                                 ) : (

@@ -193,14 +193,13 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         sendEmoji,
         shareVideoFile,
         toggleHand,
-        localHandRaised: webRTCLocalHandRaised, // Rename to avoid collision
+        localHandRaised,
         isHost,
-        sharingUserId, // NEW
-        isAnySharing, // NEW
-        logs,
+        sharingUserId,
+        isAnySharing,
         reactions,
-        hostId, // Restore hostId
-        promoteToHost // Restore promoteToHost
+        hostId,
+        promoteToHost
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {})
 
     // Populate Device Lists
@@ -379,7 +378,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                 {/* View Mode Controls - Zoom style */}
                 <div className="bg-card/40 backdrop-blur-md p-1 rounded-2xl border border-border pointer-events-auto shadow-xl flex gap-2">
-                    <DebugLogs logs={logs || []} />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="flex items-center gap-2 px-4 h-10 font-bold text-sm rounded-xl hover:bg-white/10">
@@ -448,7 +446,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         localUserName={userName}
                         selectedLang={selectedLang}
                         volumeBalance={volumeBalance}
-                        handRaised={webRTCLocalHandRaised}
+                        handRaised={localHandRaised}
                     />
 
                     {/* Pagination Controls */}
@@ -717,16 +715,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                     {/* Raised Hand */}
                     <Button
-                        variant={webRTCLocalHandRaised ? "default" : "secondary"}
+                        variant={localHandRaised ? "default" : "secondary"}
                         size="icon"
                         className={cn(
                             "h-14 w-14 rounded-2xl shadow-xl transition-all active:scale-95 border-0",
-                            webRTCLocalHandRaised ? "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20" : "bg-accent/50 text-foreground hover:bg-accent"
+                            localHandRaised ? "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20" : "bg-accent/50 text-foreground hover:bg-accent"
                         )}
                         onClick={toggleHand}
                         title="Levantar a Mão"
                     >
-                        <Hand className={cn("h-6 w-6", webRTCLocalHandRaised && "animate-bounce")} />
+                        <Hand className={cn("h-6 w-6", localHandRaised && "animate-bounce")} />
                     </Button>
 
                     {/* Reactions Menu */}
