@@ -63,7 +63,7 @@ export function ParticipantList({
                             </div>
                         </div>
                     </div>
-                    {userRole === 'interpreter' && <Mic className="h-3 w-3 text-purple-400" />}
+                    {(userRole === 'interpreter' || userRole === 'admin') && <Mic className="h-3 w-3 text-purple-400" />}
                 </div>
 
                 {/* Others */}
@@ -83,7 +83,7 @@ export function ParticipantList({
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            {peer.role === 'interpreter' && <Mic className="h-3 w-3 text-purple-400" />}
+                            {(peer.role === 'interpreter' || peer.role === 'admin') && <Mic className="h-3 w-3 text-purple-400" />}
                             {isHost && peer.userId !== hostId && !peer.isPresentation && (
                                 <Button
                                     size="sm"
