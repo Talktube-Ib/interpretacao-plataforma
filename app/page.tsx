@@ -26,6 +26,7 @@ import { startDemoMode } from '@/app/actions/demo'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
+import { FloatingWhatsApp } from '@/components/floating-whatsapp'
 
 export default function LandingPage() {
   const { t } = useLanguage()
@@ -149,8 +150,8 @@ export default function LandingPage() {
                 {isLoadingDemo ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
                 {t('landing.cta_demo') || 'Experimentar Agora'} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/10 bg-white/5 text-white hover:bg-white/10 rounded-full backdrop-blur-sm">
-                Falar com Especialista
+              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/10 bg-white/5 text-white hover:bg-white/10 rounded-full backdrop-blur-sm" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+                Ver Planos
               </Button>
             </motion.div>
           </motion.div>
@@ -369,10 +370,10 @@ export default function LandingPage() {
               </AccordionItem>
               <AccordionItem value="item-3" className="border-white/10">
                 <AccordionTrigger className="text-lg text-white hover:text-cyan-400 hover:no-underline text-left">
-                  Como contrato o serviço?
+                  Posso testar antes de decidir?
                 </AccordionTrigger>
                 <AccordionContent className="text-gray-400">
-                  Operamos em modelo Enterprise. Entre em contato para uma consultoria técnica e setup personalizado de acordo com suas necessidades de segurança e volume.
+                  Sim! Oferecemos <strong>7 dias de garantia incondicional</strong>. Você assina, utiliza a plataforma completa e, se por qualquer motivo não ficar satisfeito dentro da primeira semana, devolvemos 100% do seu dinheiro. Sem burocracia.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -465,6 +466,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+      <FloatingWhatsApp />
     </div >
   )
 }
