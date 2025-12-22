@@ -47,7 +47,8 @@ export function VideoGrid({
     ]
 
     // THEATER MODE DETECTION
-    const presentationPeer = peers.find(p => p.isPresentation === true) || allParticipants.find(p => p.stream && p.stream.getVideoTracks().length > 1)
+    const presentationPeer = peers.find(p => p.isPresentation === true) ||
+        allParticipants.find(p => p.stream && p.stream.getVideoTracks().filter((t: any) => t.readyState === 'live').length > 1)
     const isTheaterMode = !!presentationPeer
 
     const galleryParticipants = isTheaterMode

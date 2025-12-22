@@ -30,7 +30,6 @@ export function useWebRTC(
 ) {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null)
     const [peers, setPeers] = useState<PeerData[]>([])
-    const [logs, setLogs] = useState<string[]>([])
     const [userCount, setUserCount] = useState(0)
     const [mediaError, setMediaError] = useState<string | null>(null)
     const iceServersRef = useRef<any[]>([{ urls: 'stun:stun.l.google.com:19302' }])
@@ -154,6 +153,19 @@ export function useWebRTC(
             .on('broadcast', { event: 'share-ended' }, (event) => {
                 const { sender } = event.payload
                 peersRef.current.delete(`${sender}-presentation`)
+
+                // HARD CLEANUP (v9.3): Force refresh stream to drop dead tracks
+                const actualPeer = peersRef.current.get(sender)
+                if (actualPeer && actualPeer.stream) {
+                    const vTracks = actualPeer.stream.getVideoTracks()
+                    if (vTracks.length > 1) {
+                        // Filter out sharing tracks (keep only primary camera)
+                        const newStream = new MediaStream([vTracks[0]])
+                        actualPeer.stream.getAudioTracks().forEach(t => newStream.addTrack(t))
+                        actualPeer.stream = newStream
+                    }
+                }
+
                 setSharingUserId(null); syncToState()
             })
             .on('presence', { event: 'sync' }, () => {
@@ -205,9 +217,12 @@ export function useWebRTC(
 
     const stopScreenShare = (onEnd?: () => void, mixedTrack?: MediaStreamTrack) => {
         if (!localStream) return
-        const tracks = localStream.getVideoTracks(); const primaryId = localStream.getVideoTracks()[0]?.id; const screenTrack = tracks.find(t => t.id !== primaryId)
+        const tracks = localStream.getVideoTracks()
+        const primaryId = localStream.getVideoTracks()[0]?.id
+        const screenTrack = tracks.find(t => t.id !== primaryId)
         if (screenTrack) {
-            screenTrack.stop(); localStream.removeTrack(screenTrack)
+            screenTrack.stop()
+            localStream.removeTrack(screenTrack)
             peersRef.current.forEach(p => {
                 if (!p.isPresentation) {
                     try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
@@ -215,7 +230,10 @@ export function useWebRTC(
                 }
             })
         }
-        setSharingUserId(null); channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } }); onEnd?.()
+        setSharingUserId(null)
+        // Broadcast immediately
+        channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } })
+        onEnd?.()
     }
 
     const shareVideoFile = async (file: File, onEnd?: () => void) => {
@@ -259,7 +277,6 @@ export function useWebRTC(
         reactions: [],
         localHandRaised,
         hostId,
-        isHost: hostId === userId, // Restore isHost
-        logs: logs // Restore logs
+        isHost: hostId === userId
     }
 }
