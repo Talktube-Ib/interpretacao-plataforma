@@ -82,7 +82,7 @@ export default async function DashboardPage() {
 
                             <div className="flex flex-col sm:flex-row gap-4 items-center bg-slate-50 dark:bg-accent/20 p-2 pl-6 rounded-2xl border border-slate-200 dark:border-border/50 max-w-xl">
                                 <span className="text-slate-500 font-mono text-sm truncate flex-1">
-                                    interpreta.ai/room/{personalRoomId}
+                                    talktube.io/room/{personalRoomId}
                                 </span>
                                 <div className="flex gap-2 w-full sm:w-auto">
                                     <ShareMeetingDialog

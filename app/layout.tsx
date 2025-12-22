@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Interpreta.ai - Interpretação Simultânea",
+  title: "TalkTube - Video Conferencing Software",
   description: "Reuniões globais sem barreiras de idioma via P2P.",
 };
 

@@ -7,9 +7,9 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function test() {
-    console.log('Testing login for admin@interpreta.ai...');
+    console.log('Testing login for admin@talktube.io...');
     const { data, error } = await supabase.auth.signInWithPassword({
-        email: 'admin@interpreta.ai',
+        email: 'admin@talktube.io',
         password: 'password123'
     });
 

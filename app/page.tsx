@@ -481,7 +481,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center opacity-60 hover:opacity-100 transition-opacity">
           <Logo className="scale-90 mb-4 md:mb-0" />
           <div className="text-xs text-gray-600">
-            &copy; 2024 Interpreta.ai. Todos os direitos reservados.
+            &copy; 2024 TalkTube. Todos os direitos reservados.
           </div>
         </div>
       </footer>

@@ -34,9 +34,9 @@ async function createUser(email, password, role, name) {
 }
 
 async function main() {
-    await createUser('admin@interpreta.ai', 'password123', 'admin', 'Admin User');
-    await createUser('host@interpreta.ai', 'password123', 'host', 'Host User');
-    await createUser('interpreter@interpreta.ai', 'password123', 'interpreter', 'Interpreter User');
+    await createUser('admin@talktube.io', 'password123', 'admin', 'Admin User');
+    await createUser('host@talktube.io', 'password123', 'host', 'Host User');
+    await createUser('interpreter@talktube.io', 'password123', 'interpreter', 'Interpreter User');
 }
 
 main();
