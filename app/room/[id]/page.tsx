@@ -144,7 +144,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                 const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
                 setUserId(guestId)
-                setUserName('Convidado-' + guestId.slice(6, 10))
+                setUserName('Convidado')
                 setCurrentRole('participant')
             }
             setIsLoaded(true)
@@ -200,7 +200,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         reactions,
         hostId,
         promoteToHost
-    } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {})
+    } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName)
+
+    const isGuest = userId.startsWith('guest-')
 
     // Populate Device Lists
     useEffect(() => {
@@ -340,10 +342,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         return (
             <PreCallLobby
                 userName={userName}
+                isGuest={isGuest}
                 onJoin={(config) => {
                     setLobbyConfig(config)
                     setMicOn(config.micOn)
                     setCameraOn(config.cameraOn)
+                    setUserName(config.name)
                     setIsJoined(true)
                 }}
             />

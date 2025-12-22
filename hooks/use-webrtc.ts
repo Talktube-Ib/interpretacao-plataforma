@@ -26,7 +26,9 @@ export function useWebRTC(
     roomId: string,
     userId: string,
     userRole: string = 'participant',
-    initialConfig: { micOn?: boolean, cameraOn?: boolean, audioDeviceId?: string, videoDeviceId?: string } = {}
+    initialConfig: { micOn?: boolean, cameraOn?: boolean, audioDeviceId?: string, videoDeviceId?: string } = {},
+    isJoined: boolean = false,
+    userName: string = 'Participante'
 ) {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null)
     const [peers, setPeers] = useState<PeerData[]>([])
@@ -95,10 +97,13 @@ export function useWebRTC(
                 originalMicTrackRef.current = stream.getAudioTracks()[0]
                 const { data: meeting } = await supabase.from('meetings').select('host_id').eq('id', roomId).single()
                 if (meeting?.host_id && mounted) setHostId(meeting.host_id)
-                if (mounted) joinChannel(stream)
+
+                // ONLY JOIN CHANNEL IF isJoined IS TRUE (Lobby fix v11.0)
+                if (mounted && isJoined) joinChannel(stream)
             } catch (err: any) {
                 if (!mounted) return
-                setMediaError(err.message); joinChannel(null)
+                setMediaError(err.message)
+                if (isJoined) joinChannel(null)
             }
         }
         init()
@@ -109,12 +114,18 @@ export function useWebRTC(
             syncToState()
             if (channelRef.current) { channelRef.current.unsubscribe(); channelRef.current = null }
         }
-    }, [roomId, userId])
+    }, [roomId, userId, isJoined]) // Added isJoined to deps
 
-    const createPeer = (targetUserId: string, initiator: boolean, stream: MediaStream | null, targetRole: string) => {
+    const createPeer = (targetUserId: string, initiator: boolean, stream: MediaStream | null, targetRole: string, targetName: string = 'Participante') => {
         if (peersRef.current.get(targetUserId)) return peersRef.current.get(targetUserId)!.peer
         const peer = new SimplePeer({ initiator, trickle: true, stream: stream || undefined, config: { iceServers: iceServersRef.current } })
-        peer.on('signal', (signal) => { channelRef.current?.send({ type: 'broadcast', event: 'signal', payload: { target: targetUserId, sender: userId, signal, role: userRole } }) })
+        peer.on('signal', (signal) => {
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'signal',
+                payload: { target: targetUserId, sender: userId, signal, role: userRole, name: userName }
+            })
+        })
         peer.on('connect', () => { updatePeerData(targetUserId, { connectionState: 'connected' }) })
         peer.on('stream', (remoteStream) => { updatePeerData(targetUserId, { stream: remoteStream, connectionState: 'connected' }) })
         peer.on('track', (track, stream) => {
@@ -131,7 +142,7 @@ export function useWebRTC(
             const p = peersRef.current.get(targetUserId)
             if (p) { p.peer.destroy(); peersRef.current.delete(targetUserId); peersRef.current.delete(`${targetUserId}-presentation`); syncToState() }
         })
-        peersRef.current.set(targetUserId, { peer, userId: targetUserId, role: targetRole, connectionState: 'connecting', lastSignalTime: Date.now() })
+        peersRef.current.set(targetUserId, { peer, userId: targetUserId, role: targetRole, name: targetName, connectionState: 'connecting', lastSignalTime: Date.now() })
         syncToState()
         return peer
     }
@@ -143,30 +154,32 @@ export function useWebRTC(
         setChannelState(newChannel)
         newChannel
             .on('broadcast', { event: 'signal' }, (event) => {
-                const { sender, signal, target } = event.payload
+                const { sender, signal, target, role: r, name: n } = event.payload
                 if (target !== userId) return
                 const existing = peersRef.current.get(sender)
                 if (existing) { existing.lastSignalTime = Date.now(); existing.peer.signal(signal) }
-                else if (signal.type === 'offer') { const newPeer = createPeer(sender, false, stream, event.payload.role || 'participant'); newPeer?.signal(signal) }
+                else if (signal.type === 'offer') {
+                    const newPeer = createPeer(sender, false, stream, r || 'participant', n || 'Participante')
+                    newPeer?.signal(signal)
+                }
             })
             .on('broadcast', { event: 'share-started' }, (event) => { setSharingUserId(event.payload.sender) })
             .on('broadcast', { event: 'share-ended' }, (event) => {
                 const { sender } = event.payload
                 peersRef.current.delete(`${sender}-presentation`)
-
-                // HARD CLEANUP (v9.3): Force refresh stream to drop dead tracks
                 const actualPeer = peersRef.current.get(sender)
                 if (actualPeer && actualPeer.stream) {
                     const vTracks = actualPeer.stream.getVideoTracks()
                     if (vTracks.length > 1) {
-                        // Filter out sharing tracks (keep only primary camera)
                         const newStream = new MediaStream([vTracks[0]])
                         actualPeer.stream.getAudioTracks().forEach(t => newStream.addTrack(t))
                         actualPeer.stream = newStream
                     }
                 }
-
                 setSharingUserId(null); syncToState()
+            })
+            .on('broadcast', { event: 'host-promoted' }, (event) => {
+                setHostId(event.payload.newHostId)
             })
             .on('presence', { event: 'sync' }, () => {
                 const state = newChannel.presenceState(); const users = Object.keys(state); setUserCount(users.length)
@@ -175,11 +188,39 @@ export function useWebRTC(
                     if (id !== userId && !id.endsWith('-presentation') && !users.includes(id)) { p.peer.destroy(); peersRef.current.delete(id); peersRef.current.delete(`${id}-presentation`); changed = true }
                 })
                 users.forEach(remoteId => {
-                    if (remoteId !== userId && !peersRef.current.has(remoteId)) { createPeer(remoteId, userId > remoteId, stream, (state[remoteId] as any[])?.[0]?.role || 'participant'); changed = true }
+                    const remoteData = (state[remoteId] as any[])?.[0]
+                    if (remoteId !== userId && !peersRef.current.has(remoteId)) {
+                        createPeer(remoteId, userId > remoteId, stream, remoteData?.role || 'participant', remoteData?.name || 'Participante')
+                        changed = true
+                    } else if (remoteId !== userId && peersRef.current.has(remoteId)) {
+                        // Update name if changed
+                        const p = peersRef.current.get(remoteId)!
+                        if (remoteData?.name && p.name !== remoteData.name) {
+                            p.name = remoteData.name
+                            changed = true
+                        }
+                    }
                 })
                 if (changed) syncToState()
             })
-            .subscribe(async (status) => { if (status === 'SUBSCRIBED') await newChannel.track({ userId, role: userRole }) })
+            .subscribe(async (status) => { if (status === 'SUBSCRIBED') await newChannel.track({ userId, role: userRole, name: userName }) })
+    }
+
+    const promoteToHost = async (newHostId: string) => {
+        if (hostId !== userId) return // Only current host can promote
+        try {
+            // Update Database
+            await supabase.from('meetings').update({ host_id: newHostId }).eq('id', roomId)
+            // Broadcast to everyone
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'host-promoted',
+                payload: { newHostId }
+            })
+            setHostId(newHostId)
+        } catch (e) {
+            console.error("Failed to promote host:", e)
+        }
     }
 
     const mixAudio = async (contentStream: MediaStream) => {
@@ -217,12 +258,9 @@ export function useWebRTC(
 
     const stopScreenShare = (onEnd?: () => void, mixedTrack?: MediaStreamTrack) => {
         if (!localStream) return
-        const tracks = localStream.getVideoTracks()
-        const primaryId = localStream.getVideoTracks()[0]?.id
-        const screenTrack = tracks.find(t => t.id !== primaryId)
+        const tracks = localStream.getVideoTracks(); const primaryId = localStream.getVideoTracks()[0]?.id; const screenTrack = tracks.find(t => t.id !== primaryId)
         if (screenTrack) {
-            screenTrack.stop()
-            localStream.removeTrack(screenTrack)
+            screenTrack.stop(); localStream.removeTrack(screenTrack)
             peersRef.current.forEach(p => {
                 if (!p.isPresentation) {
                     try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
@@ -230,10 +268,7 @@ export function useWebRTC(
                 }
             })
         }
-        setSharingUserId(null)
-        // Broadcast immediately
-        channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } })
-        onEnd?.()
+        setSharingUserId(null); channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } }); onEnd?.()
     }
 
     const shareVideoFile = async (file: File, onEnd?: () => void) => {
@@ -272,7 +307,7 @@ export function useWebRTC(
         sendEmoji: (e: string) => { },
         toggleHand: () => { setLocalHandRaised(!localHandRaised) },
         updateMetadata: (m: any) => { },
-        promoteToHost: (id: string) => { },
+        promoteToHost,
         mediaError,
         reactions: [],
         localHandRaised,
