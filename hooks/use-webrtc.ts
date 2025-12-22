@@ -53,6 +53,7 @@ export function useWebRTC(
     const originalMicTrackRef = useRef<MediaStreamTrack | null>(null)
     const currentAudioTrackRef = useRef<MediaStreamTrack | null>(null)
     const mixedAudioTrackRef = useRef<MediaStreamTrack | null>(null)
+    const screenVideoTrackRef = useRef<MediaStreamTrack | null>(null)
 
     const [hostId, setHostId] = useState<string | null>(null)
     const peersRef = useRef<Map<string, PeerData>>(new Map())
@@ -363,6 +364,7 @@ export function useWebRTC(
             })
 
             const screenTrack = screenStream.getVideoTracks()[0]
+            screenVideoTrackRef.current = screenTrack
 
             // Check if user actually shared audio
             const hasSystemAudio = screenStream.getAudioTracks().length > 0
@@ -420,15 +422,17 @@ export function useWebRTC(
 
     const stopScreenShare = (onEnd?: () => void) => {
         if (!localStream) return
-        const tracks = localStream.getTracks()
-        const primaryVideoId = localStream.getVideoTracks()[0]?.id
-        const screenTrack = localStream.getVideoTracks().find(t => t.id !== primaryVideoId)
 
+        // FIX: Use the explicit Ref to find the track, do NOT guess based on ID
+        const screenTrack = screenVideoTrackRef.current
         const mixedTrack = mixedAudioTrackRef.current
 
         if (screenTrack) {
-            screenTrack.stop()
-            localStream.removeTrack(screenTrack)
+            try {
+                screenTrack.stop()
+                localStream.removeTrack(screenTrack)
+            } catch (e) { console.error("Error stopping screen track:", e) }
+            screenVideoTrackRef.current = null
         }
 
         // Restore original mic track if it was replaced
