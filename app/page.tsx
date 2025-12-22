@@ -125,16 +125,23 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
-            <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[1.1] text-white">
-              Sua voz, em qualquer<br />
+            <motion.h1 variants={itemVariants} className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-[1.1] text-white">
+              Sua reunião multilíngue com<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600">
-                idioma, em tempo real.
-              </span>
+                interpretação simultânea humana
+              </span><br />
+              em qualquer idioma.
             </motion.h1>
 
-            <motion.p variants={itemVariants} className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed font-light">
-              Elimine barreiras linguísticas com nossa plataforma de interpretação simultânea de latência ultra-baixa. Projetado para conferências globais, reuniões corporativas e cúpulas governamentais.
+            <motion.p variants={itemVariants} className="text-lg md:text-xl text-gray-400 max-w-4xl mx-auto leading-relaxed font-light">
+              Perfeita para eventos multilíngue presenciais, híbridos e totalmente remotos com interpretação simultânea feita por profissionais especializados no seu idioma e ramo de trabalho.
             </motion.p>
+
+            <motion.div variants={itemVariants} className="py-2">
+              <blockquote className="text-xl md:text-2xl font-serif italic text-cyan-200/80 border-l-4 border-cyan-500/50 pl-6 max-w-2xl mx-auto">
+                "A comunicação oral é um fenômeno humano, vai além de palavras."
+              </blockquote>
+            </motion.div>
 
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4 justify-center pt-8">
               <Button
@@ -399,6 +406,47 @@ export default function LandingPage() {
             </p>
           </div>
         </section>
+
+
+        {/* ABOUT INTERPRET BRASIL SECTION */}
+        <section className="py-24 bg-[#020611] border-t border-white/5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-1/2 h-full bg-cyan-900/5 blur-3xl rounded-full" />
+          <div className="container mx-auto px-6 relative z-10">
+            <div className="flex flex-col md:flex-row items-center gap-16">
+              <div className="md:w-1/2">
+                <div className="inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold uppercase tracking-widest mb-6">
+                  Backed by Experience
+                </div>
+                <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 leading-tight">
+                  Uma iniciativa da <span className="text-cyan-400">Interpret Brasil</span>
+                </h2>
+                <p className="text-gray-400 text-lg leading-relaxed mb-8">
+                  A TalkTube é um produto desenvolvido pela <strong>IB - Interpret Brasil</strong>, empresa líder com mais de 20 anos de experiência em tradução e interpretação de eventos globais. Combinamos a expertise humana de intérpretes renomados com tecnologia de ponta para entregar a melhor experiência de comunicação multilíngue.
+                </p>
+                <div className="flex gap-4">
+                  <a
+                    href="https://interpretbrasil.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold transition-all hover:scale-105"
+                  >
+                    Conheça a Interpret Brasil <ArrowRight className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+              <div className="md:w-1/2 relative">
+                <div className="aspect-video bg-gradient-to-br from-gray-800 to-black rounded-2xl border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden">
+                  {/* Ideally an image of Interpret Brasil here, using a placeholder for now or a reliable abstract image */}
+                  <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1577563908411-5077b6dc7624?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-50 hover:scale-105 transition-transform duration-700" />
+                  <div className="relative z-10 bg-black/60 backdrop-blur-sm p-6 rounded-xl border border-white/10 text-center">
+                    <span className="text-2xl font-bold text-white block mb-1">20+ Anos</span>
+                    <span className="text-sm text-gray-400 uppercase tracking-widest">de Excelência</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-white/5 py-12 bg-[#010409]">
@@ -409,6 +457,6 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-    </div>
+    </div >
   )
 }
