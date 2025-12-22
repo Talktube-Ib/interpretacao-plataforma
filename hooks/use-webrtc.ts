@@ -283,14 +283,24 @@ export function useWebRTC(
 
     const mixAudio = async (contentStream: MediaStream) => {
         const contentTrack = contentStream.getAudioTracks()[0]
+
+        // STRICT FALLBACK: If no content audio, return original mic immediately. Do not mix.
+        if (!contentTrack) {
+            console.warn("Sem áudio do sistema detectado. Mantendo microfone original.")
+            return originalMicTrackRef.current
+        }
+
         if (!originalMicTrackRef.current) return contentTrack
 
         try {
-            if (!audioContextRef.current) {
-                audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+            // FORCE RESET: Always create a fresh context to avoid "suspended" or stale states
+            if (audioContextRef.current) {
+                try { await audioContextRef.current.close() } catch (e) { }
+                audioContextRef.current = null
             }
+
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
             const ctx = audioContextRef.current
-            if (ctx.state === 'suspended') await ctx.resume()
 
             const dest = ctx.createMediaStreamDestination()
 
@@ -301,19 +311,17 @@ export function useWebRTC(
             micSource.connect(micGain)
             micGain.connect(dest)
 
-            // Content Source (System Audio)
-            if (contentTrack) {
-                const contentSource = ctx.createMediaStreamSource(new MediaStream([contentTrack]))
-                const contentGain = ctx.createGain()
-                contentGain.gain.value = 1.0 // Balanced
-                contentSource.connect(contentGain)
-                contentGain.connect(dest)
-            }
+            // Content Source
+            const contentSource = ctx.createMediaStreamSource(new MediaStream([contentTrack]))
+            const contentGain = ctx.createGain()
+            contentGain.gain.value = 1.0
+            contentSource.connect(contentGain)
+            contentGain.connect(dest)
 
             return dest.stream.getAudioTracks()[0]
         } catch (e) {
-            console.error("Audio mixing failed:", e)
-            return contentTrack || originalMicTrackRef.current
+            console.error("Audio mixing failed CRITICAL:", e)
+            return originalMicTrackRef.current
         }
     }
 
@@ -327,14 +335,26 @@ export function useWebRTC(
             })
 
             const screenTrack = screenStream.getVideoTracks()[0]
-            const mixedTrack = await mixAudio(screenStream)
-            mixedAudioTrackRef.current = mixedTrack || null
+
+            // Check if user actually shared audio
+            const hasSystemAudio = screenStream.getAudioTracks().length > 0
+            let mixedTrack: MediaStreamTrack | null = null;
+
+            if (hasSystemAudio) {
+                console.log("Áudio do sistema detectado. Iniciando mixagem...")
+                const track = await mixAudio(screenStream)
+                if (track) mixedTrack = track
+            } else {
+                console.log("Nenhum áudio do sistema compartilhado. Usando apenas microfone.")
+            }
+
+            mixedAudioTrackRef.current = mixedTrack
 
             if (localStream) {
                 localStream.addTrack(screenTrack)
 
-                // If we have a mixed track, swap the CURRENT track for the mixed one
-                if (mixedTrack && currentAudioTrackRef.current) {
+                // Only swap if we actually have a NEW mixed track different from the current one
+                if (mixedTrack && currentAudioTrackRef.current && mixedTrack !== currentAudioTrackRef.current) {
                     const toReplace = currentAudioTrackRef.current
                     localStream.removeTrack(toReplace)
                     localStream.addTrack(mixedTrack)
@@ -347,6 +367,9 @@ export function useWebRTC(
                     })
                     currentAudioTrackRef.current = mixedTrack
                 }
+
+                // Note: If no mixed track (fallback), we just keep currentAudioTrackRef (which is the mic)
+                // We do NOT remove it.
 
                 // Add the video track as a second track
                 peersRef.current.forEach(p => {
