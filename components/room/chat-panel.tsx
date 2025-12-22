@@ -61,10 +61,10 @@ export function ChatPanel({
                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">
                                 {msg.sender === userId ? 'Você' : (msg.senderName || (msg.sender.includes('guest-') ? 'Convidado' : msg.sender.split('-')[1] || msg.sender))}
                             </span>
-                            {msg.role === 'admin' && (
+                            {msg.role?.toLowerCase() === 'admin' && (
                                 <span className="text-[8px] bg-red-500/20 text-red-400 px-1 rounded border border-red-500/30 font-bold uppercase">Admin</span>
                             )}
-                            {msg.role === 'interpreter' && (
+                            {msg.role?.toLowerCase() === 'interpreter' && (
                                 <span className="text-[8px] bg-purple-500/20 text-purple-400 px-1 rounded border border-purple-500/30 font-bold uppercase">Intérprete</span>
                             )}
                         </div>

@@ -14,7 +14,8 @@ import { LANGUAGES } from "@/lib/languages"
 export function InterpreterControls({ role, currentLanguage = 'floor', onLanguageChange }: InterpreterControlsProps) {
     const [isOpen, setIsOpen] = React.useState(false)
 
-    if (role !== 'interpreter' && role !== 'admin') return null
+    const r = role.toLowerCase()
+    if (r !== 'interpreter' && r !== 'admin') return null
 
     return (
         <div className="fixed bottom-24 right-6 z-50">

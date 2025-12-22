@@ -64,7 +64,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
             <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 right-3 md:right-6 flex items-center justify-between pointer-events-none">
                 <div className="flex items-center gap-2 md:gap-3 bg-black/40 backdrop-blur-xl px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl border border-white/10">
                     <span className="text-white text-[10px] md:text-sm font-bold tracking-tight">{name}</span>
-                    {(role === 'interpreter' || role === 'admin') && (
+                    {(role?.toLowerCase() === 'interpreter' || role?.toLowerCase() === 'admin') && (
                         <div className="bg-[#06b6d4] h-1 w-1 md:h-1.5 md:w-1.5 rounded-full animate-pulse" />
                     )}
                 </div>

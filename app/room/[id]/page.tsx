@@ -582,7 +582,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
 
             {/* Interpreter Console (Central Cockpit) */}
-            {(currentRole === 'interpreter' || currentRole === 'admin') && (
+            {(currentRole.toLowerCase() === 'interpreter' || currentRole.toLowerCase() === 'admin') && (
                 <InterpreterConsole
                     active={micOn}
                     onToggleActive={handleToggleMic}
