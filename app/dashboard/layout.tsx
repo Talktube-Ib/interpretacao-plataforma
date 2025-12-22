@@ -59,7 +59,7 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="h-full relative bg-background">
+        <div className="h-full relative bg-[#020817] text-white">
             <div className="hidden h-full md:flex md:w-72 md:flex-col md:fixed md:inset-y-0 z-[80]">
                 <Sidebar user={user} userRole={role} userAvatar={avatar} unreadMessagesCount={unreadCount || 0} />
             </div>
