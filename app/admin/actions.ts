@@ -119,12 +119,28 @@ export async function deleteUser(userId: string) {
         const { data: userMeetings } = await supabaseAdmin.from('meetings').select('id').eq('host_id', userId)
         if (userMeetings && userMeetings.length > 0) {
             const meetingIds = userMeetings.map(m => m.id)
+
+            // Delete messages in these meetings (likely constraint meeting_id/room_id)
+            const { error: hostMsgError } = await supabaseAdmin
+                .from('messages')
+                .delete()
+                .in('room_id', meetingIds)
+            if (hostMsgError) console.error('Error cleaning up hosted meeting messages:', hostMsgError)
+
+            // Delete participants
             const { error: hostPartError } = await supabaseAdmin
                 .from('meeting_participants')
                 .delete()
                 .in('meeting_id', meetingIds)
 
             if (hostPartError) console.error('Error cleaning up hosted meeting participants:', hostPartError)
+
+            // Delete interpreter assignments
+            const { error: assignError } = await supabaseAdmin
+                .from('interpreter_assignments')
+                .delete()
+                .in('meeting_id', meetingIds)
+            if (assignError) console.error('Error cleaning up hosted meeting assignments:', assignError)
         }
 
         // 2. Delete meetings where user is host
