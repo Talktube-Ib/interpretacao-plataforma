@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { AlertCircle, Loader2, Globe, Zap } from 'lucide-react'
+import { AlertCircle, Loader2, Zap } from 'lucide-react'
 import { Logo } from '@/components/logo'
 
 export default function LoginPage() {
@@ -96,37 +96,9 @@ export default function LoginPage() {
                         className="w-full bg-[#06b6d4] hover:bg-[#0891b2] text-white font-semibold py-2.5"
                         disabled={loading}
                     >
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Entrar'}
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Entrar na Plataforma'}
                     </Button>
-
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-[#020817] px-2 text-gray-500">ou</span>
-                    </div>
                 </form>
-
-                <div className="grid grid-cols-2 gap-3">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full border-cyan-500/20 hover:bg-cyan-500/10 text-cyan-500 hover:text-cyan-400"
-                        onClick={() => router.push('/interpreter/login')}
-                    >
-                        <Globe className="mr-2 h-4 w-4" />
-                        Sou Intérprete
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full border-white/10 hover:bg-white/5 text-gray-300"
-                        onClick={async () => {
-                            const { startDemoMode } = await import('@/app/actions/demo')
-                            await startDemoMode()
-                        }}
-                    >
-                        <Zap className="mr-2 h-4 w-4" />
-                        Demo
-                    </Button>
-                </div>
 
                 <p className="text-xs text-gray-500 mt-4">
                     Não possui conta? Entre em contato com nosso time comercial.
