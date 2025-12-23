@@ -21,7 +21,8 @@ export function InterpreterConsole({
     onListenToFloor,
     onHandover,
     availableLanguages = LANGUAGES, // System available languages
-    allowedLanguages // Specific allowed languages for this user (if restricted)
+    allowedLanguages, // Specific allowed languages for this user (if restricted)
+    occupiedLanguages
 }: {
     active: boolean,
     onToggleActive: () => void,
