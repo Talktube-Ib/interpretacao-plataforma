@@ -205,7 +205,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     }, [roomId])
 
     // State declarations previously here were moved up to fix 'used before declaration' errors
-    const itemsPerPage = 49
+    // State declarations previously here were moved up to fix 'used before declaration' errors
 
     const {
         localStream,
