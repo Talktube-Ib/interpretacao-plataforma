@@ -85,6 +85,27 @@ export async function deleteUser(userId: string) {
 
         // Manual Cascade Delete - Delete related records first
         // 0. Manual cleanup of potential blockers
+
+        // 0.0 Clean up Storage (Avatars) - Files owned by user prevent auth deletion
+        const { data: userFiles } = await supabaseAdmin.storage.from('avatars').list('', {
+            search: userId // This might effectively filter files starting with userId
+        })
+
+        if (userFiles && userFiles.length > 0) {
+            // Filter strictly to ensure we only get this user's files (files start with userId)
+            const filesToDelete = userFiles
+                .filter(f => f.name.startsWith(userId))
+                .map(f => f.name)
+
+            if (filesToDelete.length > 0) {
+                const { error: storageError } = await supabaseAdmin.storage
+                    .from('avatars')
+                    .remove(filesToDelete)
+
+                if (storageError) console.error('Error deleting user avatars:', storageError)
+            }
+        }
+
         // 0.1 Delete messages (sent by user)
         const { error: msgError } = await supabaseAdmin.from('messages').delete().eq('sender_id', userId)
         if (msgError) console.error('Error deleting messages:', msgError)
