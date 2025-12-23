@@ -132,5 +132,6 @@ export default function LoginPage() {
                     Não possui conta? Entre em contato com nosso time comercial.
                 </p>
             </div>
-            )
+        </div>
+    )
 }
