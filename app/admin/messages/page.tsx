@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Megaphone, Plus, Trash2, Send } from 'lucide-react'
-import { createAnnouncement } from '@/app/admin/actions'
+import { createAnnouncement, deleteAnnouncement } from '@/app/admin/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -25,14 +25,15 @@ export default function AdminMessagesPage() {
         fetchMessages()
     }, [loading])
 
-    async function handleSubmit(formData: FormData) {
+    async function handleDelete(id: string) {
+        if (!confirm('Tem certeza que deseja excluir este aviso?')) return
+
         setLoading(true)
-        const result = await createAnnouncement(formData)
+        const result = await deleteAnnouncement(id)
         if (!result.success) {
             alert(result.error)
         } else {
-            alert('Comunicado enviado com sucesso!')
-            // Ideally reset form here
+            setMessages(prev => prev.filter(m => m.id !== id))
         }
         setLoading(false)
     }
@@ -101,7 +102,13 @@ export default function AdminMessagesPage() {
                                             Enviado em {new Date(msg.created_at).toLocaleDateString()} às {new Date(msg.created_at).toLocaleTimeString()}
                                         </span>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-400 hover:bg-red-500/10">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                        onClick={() => handleDelete(msg.id)} // Added handler
+                                        disabled={loading}
+                                    >
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
