@@ -12,6 +12,27 @@ async function ensureAdminClient() {
     return createAdminClient()
 }
 
+export async function debugAdminConnection() {
+    try {
+        const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (!key) return { success: false, message: 'SUPABASE_SERVICE_ROLE_KEY is undefined' }
+
+        const preview = key.substring(0, 5) + '...' + key.substring(key.length - 5)
+        const isServiceRole = key.startsWith('eyJ') // Simplified JWT check
+
+        if (!isServiceRole) return { success: false, message: `Key format invalid (Starts with ${key.substring(0, 8)}...). Expected JWT (eyJ...).` }
+
+        const admin = await ensureAdminClient()
+        const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 })
+
+        if (error) return { success: false, message: `Client Error: ${error.message}` }
+
+        return { success: true, message: `Connected! Key: ${preview}, Users Found: ${data.users.length}` }
+    } catch (e: any) {
+        return { success: false, message: `Exception: ${e.message}` }
+    }
+}
+
 export async function updateUserRole(userId: string, newRole: string) {
     try {
         const supabase = await createClient()
