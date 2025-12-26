@@ -38,6 +38,8 @@ export default async function DashboardPage() {
             .from('meetings')
             .select('*')
             .or(`host_id.eq.${user.id}`)
+            .neq('title', 'Reunião Instantânea')
+            .neq('status', 'ended')
             .order('start_time', { ascending: true })
         meetings = meetingsData
     }
