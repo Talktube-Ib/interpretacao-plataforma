@@ -21,8 +21,9 @@ import { Label } from "../../../components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { MoreHorizontal, Settings2, Languages } from 'lucide-react'
 import React, { useState } from 'react'
-import { updateUserRole, updateUserStatus, updateUserLimits, updateProfileLanguages, deleteUser } from '../actions'
+import { updateUserRole, updateUserStatus, updateUserLimits, updateProfileLanguages, deleteUser, adminUpdateUserPassword } from '../actions'
 import { LANGUAGES } from '@/lib/languages'
+import { KeyRound } from 'lucide-react'
 
 interface Profile {
     id: string;
@@ -42,6 +43,9 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
     const status = profile.status || 'active'
     const [openLimits, setOpenLimits] = useState(false)
     const [openLang, setOpenLang] = useState(false)
+    const [openPassword, setOpenPassword] = useState(false)
+    const [newPassword, setNewPassword] = useState('')
+
     const [limits, setLimits] = useState({
         max_meetings: profile.limits?.max_meetings || 5,
         max_participants: profile.limits?.max_participants || 50,
@@ -61,7 +65,7 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
                 if ('message' in result) {
                     alert(`Sucesso: ${(result as any).message}`)
                 } else if (successMsg) {
-                    // alert(successMsg) // Optional
+                    alert(successMsg)
                 }
             }
         } catch (err) {
@@ -75,6 +79,22 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
             setOpenLimits(false)
         } else {
             alert(`Erro ao salvar limites: ${result.error}`)
+        }
+    }
+
+    const handleSavePassword = async () => {
+        if (!newPassword || newPassword.length < 6) {
+            alert('A senha deve ter pelo menos 6 caracteres.')
+            return
+        }
+
+        const result = await adminUpdateUserPassword(profile.id, newPassword)
+        if (result.success) {
+            setOpenPassword(false)
+            setNewPassword('')
+            alert('Senha alterada com sucesso!')
+        } else {
+            alert(`Erro ao alterar senha: ${result.error}`)
         }
     }
 
@@ -109,6 +129,36 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
 
     return (
         <div className="flex items-center gap-2">
+            {/* Password Reset Modal */}
+            <Dialog open={openPassword} onOpenChange={setOpenPassword}>
+                <DialogContent className="bg-[#0f172a] border-white/10 text-white">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5 text-[#06b6d4]" />
+                            Alterar Senha de {profile.full_name || 'Usuário'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="newPassword" className="text-right">Nova Senha</Label>
+                            <Input
+                                id="newPassword"
+                                type="text"
+                                placeholder="Mínimo 6 caracteres"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                className="col-span-3 bg-white/5 border-white/10"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={handleSavePassword} className="bg-[#06b6d4] hover:bg-[#0891b2]">
+                            Salvar Nova Senha
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Limits Modal */}
             <Dialog open={openLimits} onOpenChange={setOpenLimits}>
                 <DialogContent className="bg-[#0f172a] border-white/10 text-white">
@@ -217,6 +267,13 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
                         className="hover:bg-white/5 focus:bg-white/5 cursor-pointer"
                     >
                         Copiar ID
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onClick={() => setOpenPassword(true)}
+                        className="hover:bg-white/5 focus:bg-white/5 cursor-pointer text-cyan-400"
+                    >
+                        <KeyRound className="h-4 w-4 mr-2" />
+                        Alterar Senha
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/10" />
 
