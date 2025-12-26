@@ -172,6 +172,7 @@ export function VideoGrid({
                                             stream={p.stream}
                                             name={p.name || p.userId}
                                             role={p.role}
+                                            micOff={!p.micOn}
                                             volume={calcVolume(p)}
                                             connectionState={p.connectionState}
                                             isSpeaking={activeSpeakerId === p.userId}
@@ -207,7 +208,7 @@ export function VideoGrid({
                                 {p.isLocal ? (
                                     <LocalVideo stream={p.stream} role={p.role} micOff={!p.micOn} cameraOff={!p.cameraOn} name={p.name} isSpeaking={activeSpeakerId === 'local'} />
                                 ) : (
-                                    <RemoteVideo stream={p.stream} name={p.name || p.userId} role={p.role} volume={calcVolume(p)} connectionState={p.connectionState} isSpeaking={activeSpeakerId === p.userId} />
+                                    <RemoteVideo stream={p.stream} name={p.name || p.userId} role={p.role} micOff={!p.micOn} volume={calcVolume(p)} connectionState={p.connectionState} isSpeaking={activeSpeakerId === p.userId} />
                                 )}
                             </motion.div>
                         ))}

@@ -268,11 +268,16 @@ export function useWebRTC(
                 setLocalStream(stream)
                 originalMicTrackRef.current = stream.getAudioTracks()[0]
                 currentAudioTrackRef.current = stream.getAudioTracks()[0]
-                const { data: meeting } = await supabase.from('meetings').select('host_id').eq('id', roomId).single()
                 if (meeting?.host_id && mounted) {
                     setHostId(meeting.host_id)
                     metadataRef.current.isHost = meeting.host_id === userId
                 }
+
+                // Ensure metadata is up-to-date with latest props before joining
+                metadataRef.current.name = userName
+                metadataRef.current.role = userRole
+                metadataRef.current.micOn = initialConfig.micOn !== false
+                metadataRef.current.cameraOn = initialConfig.cameraOn !== false
 
                 // ONLY JOIN CHANNEL IF isJoined IS TRUE (Lobby fix v11.0)
                 if (mounted && isJoined) joinChannel(stream)
