@@ -658,7 +658,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             {/* Interpreter Console (Unified Strip) */}
             {/* Interpreter Console (Central Cockpit) */}
             {/* Interpreter Console (Central Cockpit) */}
-            {console.log('Render: currentRole', currentRole, 'Should show console?', (currentRole.toLowerCase().includes('interpreter') || currentRole.toLowerCase().includes('admin')))}
+            {(() => { console.log('Render: currentRole', currentRole, 'Should show console?', (currentRole.toLowerCase().includes('interpreter') || currentRole.toLowerCase().includes('admin'))); return null; })()}
             {(currentRole.toLowerCase().includes('interpreter') || currentRole.toLowerCase().includes('admin')) && (
                 <>
                     <InterpreterSetupModal
