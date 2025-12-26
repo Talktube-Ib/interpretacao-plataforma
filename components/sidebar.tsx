@@ -66,6 +66,11 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
 
     const adminRoutes = [
         {
+            label: 'Visão Geral',
+            icon: Activity,
+            href: '/admin',
+        },
+        {
             label: t('sidebar.users'),
             icon: Users,
             href: '/admin/users',
