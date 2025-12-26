@@ -77,15 +77,20 @@ export async function updateUserStatus(userId: string, status: 'active' | 'suspe
 
         const supabaseAdmin = await ensureAdminClient()
 
-        const { error } = await supabaseAdmin
+        const { data, error } = await supabaseAdmin
             .from('profiles')
             .update({ status })
             .eq('id', userId)
+            .select()
 
         if (error) {
             console.error('Error updating user status:', error)
             return { success: false, error: error.message }
         }
+
+        const updatedCount = data?.length || 0
+        const newStatus = data?.[0]?.status
+
 
         const actionMap: Record<string, 'USER_UNBAN' | 'USER_SUSPEND' | 'USER_BAN'> = {
             'active': 'USER_UNBAN',

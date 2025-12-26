@@ -56,8 +56,13 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
             const result = await actionFn()
             if (!result.success) {
                 alert(`Erro: ${result.error}`)
-            } else if (successMsg) {
-                // Optional success feedback
+            } else {
+                // Show server message if available (for debugging), or fall back to client successMsg
+                if ('message' in result) {
+                    alert(`Sucesso: ${(result as any).message}`)
+                } else if (successMsg) {
+                    // alert(successMsg) // Optional
+                }
             }
         } catch (err) {
             alert('Erro inesperado ao executar ação.')
