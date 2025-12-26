@@ -465,10 +465,22 @@ export async function createAnnouncement(formData: FormData) {
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
         if (profile?.role !== 'admin') return { success: false, error: 'Unauthorized' }
 
-        const title = formData.get('title') as string
+        const rawTitle = formData.get('title') as string
         const content = formData.get('content') as string
+        const type = formData.get('type') as string
 
-        if (!title || !content) return { success: false, error: 'Campos obrigatórios' }
+        if (!rawTitle || !content) return { success: false, error: 'Campos obrigatórios' }
+
+        let emoji = ''
+        switch (type) {
+            case 'update': emoji = '🚀 '; break;
+            case 'maintenance': emoji = '🔧 '; break;
+            case 'alert': emoji = '⚠️ '; break;
+            case 'info': emoji = 'ℹ️ '; break;
+            default: emoji = '';
+        }
+
+        const title = `${emoji}${rawTitle}`
 
         const supabaseAdmin = await ensureAdminClient()
         const { error } = await supabaseAdmin
