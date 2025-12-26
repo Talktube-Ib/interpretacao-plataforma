@@ -106,7 +106,7 @@ export async function updateUserStatus(userId: string, status: 'active' | 'suspe
         })
 
         revalidatePath('/admin/users')
-        return { success: true }
+        return { success: true, message: `Status atualizado de ${oldProfile?.status} para ${newStatus}. Linhas afetadas: ${updatedCount}` }
     } catch (err: any) {
         return { success: false, error: err.message }
     }
