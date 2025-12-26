@@ -1,15 +1,16 @@
 'use client'
 
-import { updateProfile } from '@/app/dashboard/settings/actions'
+import { updateProfile, updatePassword } from '@/app/dashboard/settings/actions'
 import AvatarUpload from '@/components/avatar-upload'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Briefcase, Building, FileText, Languages, Shield, User } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { Briefcase, Building, FileText, Languages, Shield, User, Lock, Key } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface SettingsFormProps {
     user: any
@@ -18,7 +19,14 @@ interface SettingsFormProps {
 
 export default function SettingsForm({ user, profile }: SettingsFormProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const [loading, setLoading] = useState(false)
+    const [activeTab, setActiveTab] = useState('profile')
+
+    useEffect(() => {
+        const tab = searchParams.get('tab')
+        if (tab) setActiveTab(tab)
+    }, [searchParams])
 
     async function handleSubmit(formData: FormData) {
         setLoading(true)
@@ -36,9 +44,39 @@ export default function SettingsForm({ user, profile }: SettingsFormProps) {
         }
     }
 
+    async function handlePasswordSubmit(formData: FormData) {
+        setLoading(true)
+        try {
+            const result = await updatePassword(formData)
+            if (result && !result.success) {
+                alert(`Erro ao alterar senha: ${result.error}`)
+            } else {
+                alert('Senha alterada com sucesso!')
+                // Clear inputs manually if needed, or rely on form reset
+                const form = document.getElementById('password-form') as HTMLFormElement
+                if (form) form.reset()
+            }
+        } catch (err) {
+            alert('Erro inesperado ao alterar senha.')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+            <TabsList className="bg-muted p-1 rounded-xl">
+                <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <User className="w-4 h-4 mr-2" />
+                    Perfil Público
+                </TabsTrigger>
+                <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Segurança & Senha
+                </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Card className="bg-card border-border text-card-foreground overflow-hidden rounded-[2rem] shadow-xl">
                     <CardHeader className="bg-accent/5 border-b border-border pb-8">
                         <div className="flex items-center gap-4">
@@ -124,8 +162,6 @@ export default function SettingsForm({ user, profile }: SettingsFormProps) {
                                     placeholder="Conte um pouco sobre sua trajetória profissional..."
                                 />
                             </div>
-
-
                         </CardContent>
                         <CardFooter className="bg-accent/5 border-t border-border p-8">
                             <Button
@@ -138,30 +174,87 @@ export default function SettingsForm({ user, profile }: SettingsFormProps) {
                         </CardFooter>
                     </form>
                 </Card>
+            </TabsContent>
+
+            <TabsContent value="security" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Card className="bg-card border-border text-card-foreground overflow-hidden rounded-[2rem] shadow-xl">
+                    <CardHeader className="bg-accent/5 border-b border-border pb-8">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-orange-500/10 rounded-2xl">
+                                <Lock className="h-6 w-6 text-orange-500" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-2xl font-black">Alterar Senha</CardTitle>
+                                <CardDescription className="text-muted-foreground">Gerencie o acesso à sua conta.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <form action={handlePasswordSubmit} id="password-form">
+                        <CardContent className="space-y-6 pt-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nova Senha</Label>
+                                    <div className="relative">
+                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="password"
+                                            name="password"
+                                            type="password"
+                                            required
+                                            className="bg-background border-border text-foreground h-12 rounded-xl pl-10"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="confirmPassword" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirmar Senha</Label>
+                                    <div className="relative">
+                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            id="confirmPassword"
+                                            name="confirmPassword"
+                                            type="password"
+                                            required
+                                            className="bg-background border-border text-foreground h-12 rounded-xl pl-10"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="bg-accent/5 border-t border-border p-8">
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="bg-orange-500 hover:bg-orange-600 w-full h-14 rounded-2xl font-black text-lg transition-transform active:scale-95 shadow-lg shadow-orange-500/20 border-0"
+                            >
+                                {loading ? 'Processando...' : 'Alterar Senha'}
+                            </Button>
+                        </CardFooter>
+                    </form>
+                </Card>
 
                 <Card className="bg-destructive/5 border-destructive/20 text-card-foreground rounded-[2rem] overflow-hidden">
                     <CardHeader>
                         <CardTitle className="text-destructive text-xl font-black flex items-center gap-2">
                             <Shield className="h-5 w-5" />
-                            Zona de Segurança
+                            Zona de Perigo
                         </CardTitle>
-                        <CardDescription className="text-destructive/60">Gerenciamento crítico de conta.</CardDescription>
+                        <CardDescription className="text-destructive/60">Ações irreversíveis.</CardDescription>
                     </CardHeader>
                     <CardContent className="pb-8">
                         <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-destructive/5 rounded-2xl border border-destructive/10">
-                            <p className="text-sm text-muted-foreground font-medium">Todos os seus dados serão apagados permanentemente.</p>
+                            <div>
+                                <h4 className="font-bold text-destructive">Excluir Conta</h4>
+                                <p className="text-sm text-muted-foreground font-medium">Todos os seus dados serão apagados permanentemente.</p>
+                            </div>
                             <Button variant="destructive" disabled className="opacity-50 h-10 px-8 rounded-xl font-bold">
                                 Excluir Conta
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-
-            {/* Sidebar Content */}
-            <div className="space-y-6">
-                {/* Global Connectivity Card - Placeholder for future features */}
-            </div>
-        </div>
+            </TabsContent>
+        </Tabs>
     )
 }

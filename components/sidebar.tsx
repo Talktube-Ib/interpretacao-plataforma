@@ -56,6 +56,12 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
             icon: Settings,
             href: '/dashboard/settings',
         },
+        // Added Security Link as requested
+        {
+            label: 'Segurança',
+            icon: Shield,
+            href: '/dashboard/settings?tab=security',
+        },
     ]
 
     const adminRoutes = [
@@ -106,7 +112,7 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
                         </h3>
                         <div className="space-y-1">
                             {routes.map((route) => {
-                                const isActive = pathname === route.href
+                                const isActive = pathname === route.href || (route.href.includes('?tab=') && pathname === route.href.split('?')[0] && window?.location?.search?.includes(route.href.split('?')[1]))
                                 return (
                                     <Link
                                         key={route.href}
@@ -180,7 +186,7 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
                             {userName || user.email?.split('@')[0]}
                         </span>
                         <span className="text-[10px] text-muted-foreground dark:text-blue-300/80 font-bold uppercase tracking-wider">
-                            {userRole === 'admin' ? t('common.role_admin') : t('common.role_user')}
+                            {userRole === 'admin' ? t('common.role_admin') : (userRole === 'interpreter' ? 'INTÉRPRETE' : t('common.role_user'))}
                         </span>
                     </div>
                 </div>

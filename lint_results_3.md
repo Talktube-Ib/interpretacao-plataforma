@@ -1,0 +1,372 @@
+
+> interpretation-platform@0.1.0 lint
+> eslint
+
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\actions\meeting.ts
+  4:10  warning  'redirect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\actions.ts
+   33:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   69:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  117:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  170:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  263:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  396:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\charts\growth-chart.tsx
+  8:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\charts\security-log-widget.tsx
+  11:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\meetings\kill-all-button.tsx
+  5:10  warning  'Trash2' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\messages\page.tsx
+   9:21  warning  'Plus' is defined but never used          @typescript-eslint/no-unused-vars
+  16:46  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\page.tsx
+    3:17  warning  'Video' is defined but never used                     @typescript-eslint/no-unused-vars
+    3:41  warning  'TrendingUp' is defined but never used                @typescript-eslint/no-unused-vars
+   22:11  warning  'utilizationRate' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  176:56  error    Unexpected any. Specify a different type              @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\reports\page.tsx
+  3:21  warning  'Download' is defined but never used  @typescript-eslint/no-unused-vars
+  4:10  warning  'Button' is defined but never used    @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\settings\page.tsx
+  3:10  warning  'Badge' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\users\create-user-dialog.tsx
+  22:29  warning  'Key' is defined but never used           @typescript-eslint/no-unused-vars
+  97:62  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\admin\users\user-actions-client.tsx
+  62:18  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\auth\signout\route.ts
+  6:28  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\agenda\page.tsx
+  12:29  warning  'error' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\dashboard-client.tsx
+  14:11  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  16:15  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\messages\page.tsx
+   5:52  warning  'CardDescription' is defined but never used  @typescript-eslint/no-unused-vars
+  11:46  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\page.tsx
+  12:19  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-explicit-any
+  19:85  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\page.tsx:19:85
+  17 |         meetings = [
+  18 |             { id: 'demo-meeting-1', title: 'Reunião de Exemplo 01', start_time: new Date().toISOString(), host_id: 'demo' },
+> 19 |             { id: 'demo-meeting-2', title: 'Pauta Trimestral', start_time: new Date(Date.now() + 86400000).toISOString(), host_id: 'demo' }
+     |                                                                                     ^^^^^^^^^^ Cannot call impure function
+  20 |         ]
+  21 |     } else {
+  22 |         const supabase = await createClient()  react-hooks/purity
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\settings\actions.ts
+  47:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\dashboard\users\actions.ts
+  32:13  warning  'data' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\login\page.tsx
+  9:8  warning  'Link' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\page.tsx
+    9:3   warning  'CheckCircle2' is defined but never used                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   11:3   warning  'ShieldCheck' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   12:3   warning  'Zap' is defined but never used                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+   14:3   warning  'Headphones' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   35:9   warning  'router' is assigned a value but never used                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  173:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  174:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  175:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  176:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  177:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  180:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  181:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  182:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  183:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  184:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  280:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  461:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  480:17  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  480:38  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\room\[id]\page.tsx
+    8:43   warning  'X' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+    8:57   warning  'Settings' is defined but never used                                                                                                   @typescript-eslint/no-unused-vars
+   19:8    warning  'Link' is defined but never used                                                                                                       @typescript-eslint/no-unused-vars
+   25:10   warning  'RemoteVideo' is defined but never used                                                                                                @typescript-eslint/no-unused-vars
+   25:23   warning  'LocalVideo' is defined but never used                                                                                                 @typescript-eslint/no-unused-vars
+   27:10   warning  'DebugLogs' is defined but never used                                                                                                  @typescript-eslint/no-unused-vars
+   29:10   warning  'InterpreterControls' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+   48:13   warning  'role' is assigned a value but never used                                                                                              @typescript-eslint/no-unused-vars
+   55:12   warning  'isLoaded' is assigned a value but never used                                                                                          @typescript-eslint/no-unused-vars
+  151:29   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  205:8    warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                   react-hooks/exhaustive-deps
+  219:9    warning  'channel' is assigned a value but never used                                                                                           @typescript-eslint/no-unused-vars
+  227:9    warning  'sharingUserId' is assigned a value but never used                                                                                     @typescript-eslint/no-unused-vars
+  324:8    warning  React Hook useEffect has missing dependencies: 'markAsRead' and 'setIsChatActive'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  342:61   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  342:86   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  343:77   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  343:102  error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  358:76   error    Unexpected any. Specify a different type                                                                                               @typescript-eslint/no-explicit-any
+  365:30   warning  'e' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+  370:8    warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                   react-hooks/exhaustive-deps
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\app\update-password\update-password-form.tsx
+  25:18  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\agenda\agenda-calendar.tsx
+  21:49  warning  'CalendarIcon' is defined but never used          @typescript-eslint/no-unused-vars
+  21:63  warning  'Clock' is defined but never used                 @typescript-eslint/no-unused-vars
+  21:70  warning  'Video' is defined but never used                 @typescript-eslint/no-unused-vars
+  50:19  warning  'newSelected' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\avatar-upload.tsx
+  58:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\create-meeting-modal.tsx
+  4:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\dashboard\instant-meeting-button.tsx
+  19:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\dashboard\meeting-card.tsx
+  6:17  warning  'Mic' is defined but never used     @typescript-eslint/no-unused-vars
+  6:29  warning  'Share2' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\demo-banner.tsx
+  3:25  warning  'Lock' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\floating-whatsapp.tsx
+  6:10  warning  'Button' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\language-switcher.tsx
+  7:17  warning  'Globe' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\providers\language-provider.tsx
+  25:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\providers\language-provider.tsx:25:13
+  23 |         const saved = localStorage.getItem('app_language') as Locale
+  24 |         if (saved && ['pt', 'en', 'es'].includes(saved)) {
+> 25 |             setLanguageState(saved)
+     |             ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  26 |         }
+  27 |     }, [])
+  28 |  react-hooks/set-state-in-effect
+  38:22  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\AudioSelector.tsx
+  3:10  warning  'cn' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\InterpreterConsole.tsx
+  3:41  warning  'Settings2' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\audio-meter.tsx
+  12:49  warning  'barCount' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  17:13  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\audio-meter.tsx:17:13
+  15 |     useEffect(() => {
+  16 |         if (!stream || stream.getAudioTracks().length === 0) {
+> 17 |             setLevel(0)
+     |             ^^^^^^^^ Avoid calling setState() directly within an effect
+  18 |             return
+  19 |         }
+  20 |  react-hooks/set-state-in-effect
+  27:63  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\chat-panel.tsx
+  17:12  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  76:27  warning  'isSystem' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\interpreter-controls.tsx
+  2:27  warning  'Globe' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\interpreter-setup-modal.tsx
+  29:21  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\interpreter-setup-modal.tsx:29:21
+  27 |     // Reset selection if modal opens/closes
+  28 |     useEffect(() => {
+> 29 |         if (isOpen) setSelected(null)
+     |                     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  30 |     }, [isOpen])
+  31 |
+  32 |     const handleConfirm = () => {  react-hooks/set-state-in-effect
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\participant-list.tsx
+   3:101  warning  'ShieldBan' is defined but never used     @typescript-eslint/no-unused-vars
+  16:11   warning  'Peer' is defined but never used          @typescript-eslint/no-unused-vars
+  35:12   error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\pre-call-lobby.tsx
+   4:10  warning  'motion' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+   5:40  warning  'Settings2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   5:51  warning  'User' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   5:57  warning  'Globe' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+  10:10  warning  'cn' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+  11:10  warning  'AudioMeter' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+  33:13  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\pre-call-lobby.tsx:33:13
+  31 |     useEffect(() => {
+  32 |         if (initialName && initialName !== 'Participante' && chosenName === 'Participante') {
+> 33 |             setChosenName(initialName)
+     |             ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  34 |         }
+  35 |     }, [initialName])
+  36 |  react-hooks/set-state-in-effect
+  35:8   warning  React Hook useEffect has a missing dependency: 'chosenName'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+  84:8   warning  React Hook useEffect has a missing dependency: 'stream'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\settings-dialog.tsx
+  4:41  warning  'Globe' is defined but never used  @typescript-eslint/no-unused-vars
+  4:56  warning  'User' is defined but never used   @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\room\video-grid.tsx
+   5:10  warning  'cn' is defined but never used              @typescript-eslint/no-unused-vars
+   9:12  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  35:5   warning  'onPeerSpeaking' is defined but never used  @typescript-eslint/no-unused-vars
+  51:84  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  68:28  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+  94:39  error    Unexpected any. Specify a different type    @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\settings-form.tsx
+  10:41  warning  'Languages' is defined but never used     @typescript-eslint/no-unused-vars
+  16:11  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:14  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:18  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+  59:18  warning  'err' is defined but never used           @typescript-eslint/no-unused-vars
+  99:52  warning  'url' is defined but never used           @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\ui\textarea.tsx
+  6:18  error  An interface declaring no members is equivalent to its supertype  @typescript-eslint/no-empty-object-type
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\components\webrtc\video-player.tsx
+    1:29   warning  'useState' is defined but never used          @typescript-eslint/no-unused-vars
+    3:18   warning  'VideoOff' is defined but never used          @typescript-eslint/no-unused-vars
+    3:28   warning  'Maximize2' is defined but never used         @typescript-eslint/no-unused-vars
+   20:137  warning  'onSpeakingChange' is defined but never used  @typescript-eslint/no-unused-vars
+  104:38   warning  'name' is defined but never used              @typescript-eslint/no-unused-vars
+  104:93   warning  'onSpeakingChange' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\hooks\use-chat.ts
+   16:64  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+   46:31  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+   57:18  warning  'e' is defined but never used                                                                                @typescript-eslint/no-unused-vars
+   73:27  warning  'error' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+   80:56  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+   96:33  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  110:49  warning  'fromPostgres' is assigned a value but never used                                                            @typescript-eslint/no-unused-vars
+  145:51  error    Unexpected any. Specify a different type                                                                     @typescript-eslint/no-explicit-any
+  172:8   warning  React Hook useEffect has a missing dependency: 'supabase'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\hooks\use-gallery-layout.ts
+  62:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\hooks\use-gallery-layout.ts:62:9
+  60 |
+  61 |     useEffect(() => {
+> 62 |         calculateLayout()
+     |         ^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  63 |         const resizeObserver = new ResizeObserver(() => calculateLayout())
+  64 |         if (containerRef.current) resizeObserver.observe(containerRef.current)
+  65 |         return () => resizeObserver.disconnect()  react-hooks/set-state-in-effect
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\hooks\use-webrtc.ts
+   35:32   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   45:34   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+   72:18   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  208:60   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  246:26   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  271:27   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  284:71   warning  The ref value 'peersRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'peersRef.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+  288:8    warning  React Hook useEffect has missing dependencies: 'initialConfig.audioDeviceId', 'initialConfig.cameraOn', 'initialConfig.micOn', 'initialConfig.videoDeviceId', 'joinChannel', 'supabase', and 'syncToState'. Either include them or remove the dependency array   react-hooks/exhaustive-deps
+  363:60   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  414:36   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  426:8    warning  React Hook useEffect has a missing dependency: 'updateMetadata'. Either include it or remove the dependency array                                                                                                                                                react-hooks/exhaustive-deps
+  442:70   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  446:78   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  480:48   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  531:82   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  541:21   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  574:85   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  576:86   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  585:81   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  599:42   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  599:73   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  599:106  error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  614:100  warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  622:80   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  628:18   warning  'e' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  668:30   warning  'k' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  668:33   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+  668:38   warning  'd' is defined but never used                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  668:41   error    Unexpected any. Specify a different type                                                                                                                                                                                                                         @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\lib\audio-effects.ts
+  7:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\lib\polyfills.ts
+  6:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  7:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  8:16  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  8:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  8:56  error  A `require()` style import is forbidden   @typescript-eslint/no-require-imports
+
+C:\Users\User\.gemini\antigravity\scratch\interpretation-platform\tailwind.config.ts
+  82:15  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+✖ 179 problems (72 errors, 107 warnings)
+

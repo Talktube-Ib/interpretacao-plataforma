@@ -48,3 +48,31 @@ export async function updateProfile(formData: FormData) {
         return { success: false, error: err.message || 'Erro inesperado' }
     }
 }
+
+export async function updatePassword(formData: FormData) {
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) return { success: false, error: 'Unauthorized' }
+
+        const password = formData.get('password') as string
+        const confirmPassword = formData.get('confirmPassword') as string
+
+        if (!password || password.length < 6) {
+            return { success: false, error: 'A senha deve ter pelo menos 6 caracteres.' }
+        }
+
+        if (password !== confirmPassword) {
+            return { success: false, error: 'As senhas não coincidem.' }
+        }
+
+        const { error } = await supabase.auth.updateUser({ password })
+
+        if (error) return { success: false, error: error.message }
+
+        return { success: true }
+    } catch (err: any) {
+        return { success: false, error: err.message || 'Erro inesperado' }
+    }
+}

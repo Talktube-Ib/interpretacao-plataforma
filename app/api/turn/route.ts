@@ -10,7 +10,7 @@ export async function GET() {
 
     // Default to Google's public STUN server (Free, but only works 80% of the time, fails on Corp/4G)
     // Default to a robust list of public STUN servers
-    let iceServers: RTCIceServer[] = [
+    const iceServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },

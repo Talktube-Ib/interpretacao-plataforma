@@ -81,9 +81,10 @@ export default async function AdminUsersPage({
                                 <TableCell>
                                     <Badge variant="outline" className={`
                                         ${profile.role === 'admin' ? 'border-orange-500 text-orange-500 bg-orange-500/10' :
-                                            'border-blue-500 text-blue-500 bg-blue-500/10'}
+                                            (profile.role === 'interpreter' ? 'border-cyan-500 text-cyan-500 bg-cyan-500/10' :
+                                                'border-blue-500 text-blue-500 bg-blue-500/10')}
                                     `}>
-                                        {profile.role === 'admin' ? 'ADMIN' : 'USUÁRIO'}
+                                        {profile.role === 'admin' ? 'ADMIN' : (profile.role === 'interpreter' ? 'INTÉRPRETE' : 'USUÁRIO')}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
