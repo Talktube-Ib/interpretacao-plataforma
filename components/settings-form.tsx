@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Briefcase, Building, FileText, Languages, Shield, User, Lock, Key } from 'lucide-react'
+import { Briefcase, Building, FileText, Languages, Shield, User, Lock, Key, Check } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -64,192 +64,224 @@ export default function SettingsForm({ user, profile }: SettingsFormProps) {
     }
 
     return (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="bg-muted p-1 rounded-xl">
-                <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                    <User className="w-4 h-4 mr-2" />
-                    Perfil Público
-                </TabsTrigger>
-                <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                    <Shield className="w-4 h-4 mr-2" />
-                    Segurança & Senha
-                </TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-10">
+            <div className="flex justify-center md:justify-start">
+                <TabsList className="bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800/50 backdrop-blur-md shadow-2xl">
+                    <TabsTrigger
+                        value="profile"
+                        className="rounded-xl px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg shadow-primary/20 transition-all duration-300 font-bold"
+                    >
+                        <User className="w-4 h-4 mr-2" />
+                        Perfil Público
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="security"
+                        className="rounded-xl px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg shadow-primary/20 transition-all duration-300 font-bold"
+                    >
+                        <Shield className="w-4 h-4 mr-2" />
+                        Segurança & Senha
+                    </TabsTrigger>
+                </TabsList>
+            </div>
 
-            <TabsContent value="profile" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Card className="bg-card border-border text-card-foreground overflow-hidden rounded-[2rem] shadow-xl">
-                    <CardHeader className="bg-accent/5 border-b border-border pb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-[#06b6d4]/10 rounded-2xl">
-                                <User className="h-6 w-6 text-[#06b6d4]" />
+            <TabsContent value="profile" className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                <Card className="bg-slate-900/40 border-slate-800/50 text-card-foreground overflow-hidden rounded-[2.5rem] shadow-2xl backdrop-blur-xl relative group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                    <CardHeader className="bg-slate-950/20 border-b border-slate-800/40 p-10">
+                        <div className="flex items-center gap-6">
+                            <div className="p-4 bg-primary/10 rounded-[1.5rem] ring-1 ring-primary/20 shadow-inner">
+                                <User className="h-8 w-8 text-primary animate-pulse" />
                             </div>
                             <div>
-                                <CardTitle className="text-2xl font-black">Informações do Perfil</CardTitle>
-                                <CardDescription className="text-muted-foreground">Como você é visto na rede.</CardDescription>
+                                <CardTitle className="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">
+                                    Informações do Perfil
+                                </CardTitle>
+                                <CardDescription className="text-slate-400 text-lg mt-1 font-medium italic">
+                                    Sua identidade digital na plataforma.
+                                </CardDescription>
                             </div>
                         </div>
                     </CardHeader>
-                    {/* Native form with client-side interception */}
-                    <form action={handleSubmit}>
-                        <CardContent className="space-y-6 pt-8">
-                            <AvatarUpload
-                                uid={user.id}
-                                url={profile?.avatar_url}
-                                email={user.email!}
-                                onUploadComplete={(url) => {
-                                    router.refresh()
-                                }}
-                            />
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Email Principal</Label>
-                                    <Input
-                                        id="email"
-                                        value={user.email}
-                                        disabled
-                                        className="bg-muted border-border text-muted-foreground h-12 rounded-xl italic"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="fullName" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nome Completo</Label>
-                                    <Input
-                                        id="fullName"
-                                        name="fullName"
-                                        defaultValue={profile?.full_name || ''}
-                                        className="bg-background border-border text-foreground h-12 rounded-xl focus:ring-2 focus:ring-[#06b6d4]/20 focus:border-[#06b6d4] transition-all"
-                                        placeholder="Seu nome"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Briefcase className="h-3 w-3 text-[#06b6d4]" />
-                                        <Label htmlFor="jobTitle" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cargo / Função</Label>
+                    <form action={handleSubmit}>
+                        <CardContent className="p-10 space-y-10">
+                            <div className="flex flex-col items-center md:items-start">
+                                <AvatarUpload
+                                    uid={user.id}
+                                    url={profile?.avatar_url}
+                                    email={user.email!}
+                                    onUploadComplete={(url) => {
+                                        router.refresh()
+                                    }}
+                                />
+                                <p className="text-xs text-slate-500 mt-4 uppercase tracking-[0.2em] font-black opacity-50">Avatar do Sistema</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <div className="group space-y-3">
+                                    <Label htmlFor="email" className="text-xs font-black uppercase tracking-[0.15em] text-slate-500 ml-1 transition-colors group-focus-within:text-primary">Endereço de Email</Label>
+                                    <div className="relative">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500">@</div>
+                                        <Input
+                                            id="email"
+                                            value={user.email}
+                                            disabled
+                                            className="bg-slate-950/30 border-slate-800/50 text-slate-500 h-14 rounded-2xl pl-12 italic cursor-not-allowed opacity-70"
+                                        />
                                     </div>
-                                    <Input
-                                        id="jobTitle"
-                                        name="jobTitle"
-                                        defaultValue={profile?.job_title || ''}
-                                        className="bg-background border-border text-foreground h-12 rounded-xl"
-                                        placeholder="Ex: CEO, Intérprete Sênior"
-                                    />
                                 </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Building className="h-3 w-3 text-[#06b6d4]" />
-                                        <Label htmlFor="company" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Empresa / Agência</Label>
+                                <div className="group space-y-3">
+                                    <Label htmlFor="fullName" className="text-xs font-black uppercase tracking-[0.15em] text-slate-500 ml-1 transition-colors group-focus-within:text-primary">Nome Completo</Label>
+                                    <div className="relative">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                        <Input
+                                            id="fullName"
+                                            name="fullName"
+                                            defaultValue={profile?.full_name || ''}
+                                            className="bg-slate-950/50 border-slate-800/50 text-foreground h-14 rounded-2xl pl-12 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+                                            placeholder="Ex: Carlos Oliveira"
+                                        />
                                     </div>
-                                    <Input
-                                        id="company"
-                                        name="company"
-                                        defaultValue={profile?.company || ''}
-                                        className="bg-background border-border text-foreground h-12 rounded-xl"
-                                        placeholder="Nome da sua organização"
-                                    />
+                                </div>
+                                <div className="group space-y-3">
+                                    <Label htmlFor="jobTitle" className="text-xs font-black uppercase tracking-[0.15em] text-slate-500 ml-1 transition-colors group-focus-within:text-primary">Cargo / Função</Label>
+                                    <div className="relative">
+                                        <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                        <Input
+                                            id=" jobTitle"
+                                            name="jobTitle"
+                                            defaultValue={profile?.job_title || ''}
+                                            className="bg-slate-950/50 border-slate-800/50 text-foreground h-14 rounded-2xl pl-12 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+                                            placeholder="Ex: CEO, Intérprete Sênior"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="group space-y-3">
+                                    <Label htmlFor="company" className="text-xs font-black uppercase tracking-[0.15em] text-slate-500 ml-1 transition-colors group-focus-within:text-primary">Empresa / Instituição</Label>
+                                    <div className="relative">
+                                        <Building className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                        <Input
+                                            id="company"
+                                            name="company"
+                                            defaultValue={profile?.company || ''}
+                                            className="bg-slate-950/50 border-slate-800/50 text-foreground h-14 rounded-2xl pl-12 focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 font-medium"
+                                            placeholder="Nome da sua organização"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <FileText className="h-3 w-3 text-[#06b6d4]" />
-                                    <Label htmlFor="bio" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Biografia Resumida</Label>
+                            <div className="group space-y-3">
+                                <Label htmlFor="bio" className="text-xs font-black uppercase tracking-[0.15em] text-slate-500 ml-1 transition-colors group-focus-within:text-primary">Biografia Profissional</Label>
+                                <div className="relative">
+                                    <FileText className="absolute left-4 top-5 h-4 w-4 text-slate-500 group-focus-within:text-primary transition-colors" />
+                                    <Textarea
+                                        id="bio"
+                                        name="bio"
+                                        defaultValue={profile?.bio || ''}
+                                        className="bg-slate-950/50 border-slate-800/50 text-foreground rounded-[1.5rem] pl-12 pt-4 min-h-[140px] resize-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all duration-300 leading-relaxed font-medium"
+                                        placeholder="Conte um pouco sobre sua trajetória no mundo da interpretação..."
+                                    />
                                 </div>
-                                <Textarea
-                                    id="bio"
-                                    name="bio"
-                                    defaultValue={profile?.bio || ''}
-                                    className="bg-background border-border text-foreground rounded-2xl min-h-[100px] resize-none"
-                                    placeholder="Conte um pouco sobre sua trajetória profissional..."
-                                />
                             </div>
                         </CardContent>
-                        <CardFooter className="bg-accent/5 border-t border-border p-8">
+                        <CardFooter className="bg-slate-950/20 border-t border-slate-800/40 p-10">
                             <Button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-[#06b6d4] hover:bg-[#0891b2] w-full h-14 rounded-2xl font-black text-lg transition-transform active:scale-95 shadow-lg shadow-[#06b6d4]/20 border-0"
+                                className="bg-primary hover:bg-primary/90 w-full h-16 rounded-[1.5rem] font-black text-xl tracking-tight transition-all active:scale-[0.98] shadow-2xl shadow-primary/20 hover:shadow-primary/40 border-0 flex items-center justify-center gap-3"
                             >
-                                {loading ? 'Salvando...' : 'Atualizar Preferências'}
+                                {loading ? 'Sincronizando...' : (
+                                    <>Salvar Preferências <Check className="w-5 h-5" /></>
+                                )}
                             </Button>
                         </CardFooter>
                     </form>
                 </Card>
             </TabsContent>
 
-            <TabsContent value="security" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Card className="bg-card border-border text-card-foreground overflow-hidden rounded-[2rem] shadow-xl">
-                    <CardHeader className="bg-accent/5 border-b border-border pb-8">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-orange-500/10 rounded-2xl">
-                                <Lock className="h-6 w-6 text-orange-500" />
+            <TabsContent value="security" className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                <Card className="bg-slate-900/40 border-slate-800/50 text-card-foreground overflow-hidden rounded-[2.5rem] shadow-2xl backdrop-blur-xl relative group">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <CardHeader className="bg-slate-950/20 border-b border-slate-800/40 p-10">
+                        <div className="flex items-center gap-6">
+                            <div className="p-4 bg-orange-500/10 rounded-[1.5rem] ring-1 ring-orange-500/20 shadow-inner">
+                                <Lock className="h-8 w-8 text-orange-500" />
                             </div>
                             <div>
-                                <CardTitle className="text-2xl font-black">Alterar Senha</CardTitle>
-                                <CardDescription className="text-muted-foreground">Gerencie o acesso à sua conta.</CardDescription>
+                                <CardTitle className="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/60">
+                                    Segurança de Acesso
+                                </CardTitle>
+                                <CardDescription className="text-slate-400 text-lg mt-1 font-medium italic">Proteja sua conta com uma senha forte.</CardDescription>
                             </div>
                         </div>
                     </CardHeader>
                     <form action={handlePasswordSubmit} id="password-form">
-                        <CardContent className="space-y-6 pt-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nova Senha</Label>
+                        <CardContent className="p-10 space-y-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <div className="group space-y-3">
+                                    <Label htmlFor="password" className="text-xs font-black uppercase tracking-[0.15em] text-slate-500 ml-1 transition-colors group-focus-within:text-orange-500">Nova Credencial</Label>
                                     <div className="relative">
-                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-orange-500 transition-colors" />
                                         <Input
                                             id="password"
                                             name="password"
                                             type="password"
                                             required
-                                            className="bg-background border-border text-foreground h-12 rounded-xl pl-10"
-                                            placeholder="••••••••"
+                                            className="bg-slate-950/50 border-slate-800/50 text-foreground h-14 rounded-2xl pl-12 focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all duration-300"
+                                            placeholder="Mínimo 6 caracteres"
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="confirmPassword" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Confirmar Senha</Label>
+                                <div className="group space-y-3">
+                                    <Label htmlFor="confirmPassword" className="text-xs font-black uppercase tracking-[0.15em] text-slate-500 ml-1 transition-colors group-focus-within:text-orange-500">Confirmar Nova Senha</Label>
                                     <div className="relative">
-                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 group-focus-within:text-orange-500 transition-colors" />
                                         <Input
                                             id="confirmPassword"
                                             name="confirmPassword"
                                             type="password"
                                             required
-                                            className="bg-background border-border text-foreground h-12 rounded-xl pl-10"
-                                            placeholder="••••••••"
+                                            className="bg-slate-950/50 border-slate-800/50 text-foreground h-14 rounded-2xl pl-12 focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all duration-300"
+                                            placeholder="Repita a nova senha"
                                         />
                                     </div>
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="bg-accent/5 border-t border-border p-8">
+                        <CardFooter className="bg-slate-950/20 border-t border-slate-800/40 p-10">
                             <Button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-orange-500 hover:bg-orange-600 w-full h-14 rounded-2xl font-black text-lg transition-transform active:scale-95 shadow-lg shadow-orange-500/20 border-0"
+                                className="bg-orange-500 hover:bg-orange-600 w-full h-16 rounded-[1.5rem] font-black text-xl tracking-tight transition-all active:scale-[0.98] shadow-2xl shadow-orange-500/20 hover:shadow-orange-500/40 border-0 flex items-center justify-center gap-3 text-white"
                             >
-                                {loading ? 'Processando...' : 'Alterar Senha'}
+                                {loading ? 'Validando...' : (
+                                    <>Autenticar Mudança <Shield className="w-5 h-5" /></>
+                                )}
                             </Button>
                         </CardFooter>
                     </form>
                 </Card>
 
-                <Card className="bg-destructive/5 border-destructive/20 text-card-foreground rounded-[2rem] overflow-hidden">
-                    <CardHeader>
-                        <CardTitle className="text-destructive text-xl font-black flex items-center gap-2">
-                            <Shield className="h-5 w-5" />
-                            Zona de Perigo
-                        </CardTitle>
-                        <CardDescription className="text-destructive/60">Ações irreversíveis.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pb-8">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 p-6 bg-destructive/5 rounded-2xl border border-destructive/10">
-                            <div>
-                                <h4 className="font-bold text-destructive">Excluir Conta</h4>
-                                <p className="text-sm text-muted-foreground font-medium">Todos os seus dados serão apagados permanentemente.</p>
+                <Card className="bg-red-500/5 border-red-500/20 text-card-foreground rounded-[2.5rem] overflow-hidden shadow-2xl shadow-red-500/5">
+                    <CardHeader className="p-10 pb-6">
+                        <CardTitle className="text-red-500 text-2xl font-black flex items-center gap-3 uppercase tracking-tighter">
+                            <div className="p-2 bg-red-500/10 rounded-lg">
+                                <Shield className="h-6 w-6" />
                             </div>
-                            <Button variant="destructive" disabled className="opacity-50 h-10 px-8 rounded-xl font-bold">
-                                Excluir Conta
+                            Zona Crítica
+                        </CardTitle>
+                        <CardDescription className="text-red-400/60 font-medium italic mt-2">Ações que removem permanentemente o seu acesso.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-10 pt-0">
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 bg-red-500/10 rounded-[1.5rem] border border-red-500/20 group hover:border-red-500/40 transition-all duration-500">
+                            <div className="text-center md:text-left">
+                                <h4 className="font-extrabold text-red-500 text-lg uppercase tracking-tight">Encerrar Conta</h4>
+                                <p className="text-slate-400 font-medium mt-1">Isso apagará seu histórico de reuniões e arquivos.</p>
+                            </div>
+                            <Button variant="destructive" disabled className="opacity-40 h-14 px-10 rounded-xl font-black uppercase tracking-widest text-sm shadow-lg shadow-red-500/20 cursor-not-allowed">
+                                Conta Blindada
                             </Button>
                         </div>
                     </CardContent>
