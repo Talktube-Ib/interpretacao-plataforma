@@ -14,7 +14,8 @@ import {
     BarChart3,
     MessageSquare,
     Megaphone,
-    Activity
+    Activity,
+    HelpCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ModeToggle } from './mode-toggle'
@@ -62,6 +63,12 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
             label: 'Segurança',
             icon: Shield,
             href: '/dashboard/settings?tab=security',
+        },
+        // Added Help Link
+        {
+            label: 'Ajuda',
+            icon: HelpCircle,
+            href: '/dashboard/help',
         },
     ]
 
