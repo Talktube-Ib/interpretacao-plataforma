@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { Calendar, Settings, Share2 } from 'lucide-react'
+import { Calendar, Settings, Share2, Video, Clock, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CreateMeetingModal from '@/components/create-meeting-modal'
 import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-button'
