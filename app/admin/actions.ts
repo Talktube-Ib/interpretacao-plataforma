@@ -14,7 +14,9 @@ export async function updateUserRole(userId: string, newRole: string) {
         // Get previous role for logging
         const { data: oldProfile } = await supabase.from('profiles').select('role').eq('id', userId).single()
 
-        const { error } = await supabase
+        const supabaseAdmin = await createAdminClient()
+
+        const { error } = await supabaseAdmin
             .from('profiles')
             .update({ role: newRole })
             .eq('id', userId)
@@ -139,7 +141,8 @@ export async function deleteUser(userId: string) {
 export async function updateUserLimits(userId: string, limits: Record<string, unknown>) {
     try {
         const supabase = await createClient()
-        const { error } = await supabase
+        const supabaseAdmin = await createAdminClient()
+        const { error } = await supabaseAdmin
             .from('profiles')
             .update({ limits })
             .eq('id', userId)
@@ -168,7 +171,8 @@ export async function updateProfileLanguages(userId: string, languages: string[]
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'Unauthorized' }
 
-        const { error } = await supabase
+        const supabaseAdmin = await createAdminClient()
+        const { error } = await supabaseAdmin
             .from('profiles')
             .update({ languages })
             .eq('id', userId)
@@ -396,7 +400,8 @@ export async function createAnnouncement(formData: FormData) {
 
         if (!title || !content) return { success: false, error: 'Campos obrigatórios' }
 
-        const { error } = await supabase
+        const supabaseAdmin = await createAdminClient()
+        const { error } = await supabaseAdmin
             .from('announcements')
             .insert({
                 title,
