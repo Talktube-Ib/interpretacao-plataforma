@@ -279,12 +279,11 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
 
                     <DropdownMenuLabel>Alterar Cargo</DropdownMenuLabel>
                     <DropdownMenuItem
-                        onClick={() => handleAction(() => updateUserRole(profile.id, 'participant'))}
+                        onClick={() => handleAction(() => updateUserRole(profile.id, 'user'))}
                         className="hover:bg-white/5 focus:bg-white/5 cursor-pointer"
                     >
                         Tornar Usuário Padrão
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
+                    </DropdownMenuItem>                    <DropdownMenuItem
                         onClick={handlePromoteToInterpreter}
                         className="text-blue-400 hover:bg-blue-400/10 focus:bg-blue-400/10 cursor-pointer"
                     >

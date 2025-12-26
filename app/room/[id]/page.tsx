@@ -650,7 +650,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             {/* Interpreter Console (Central Cockpit) */}
             {/* Interpreter Console (Unified Strip) */}
             {/* Interpreter Console (Central Cockpit) */}
-            {(currentRole.toLowerCase().includes('interpreter') || currentRole.toLowerCase().includes('admin') || isHost) && (
+            {(currentRole.toLowerCase().includes('interpreter') || currentRole.toLowerCase().includes('admin')) && (
                 <>
                     <InterpreterSetupModal
                         isOpen={isJoined && currentRole.toLowerCase().includes('interpreter') && assignedLanguages.length === 0 && myBroadcastLang === 'floor'} // Show if interpreter, joined, and hasn't picked non-floor language (unless pre-assigned restricted)
@@ -687,7 +687,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     />
                 </>
             )}
-
             {/* Language Menu (Moved to Root) */}
             <AnimatePresence>
                 {showLangMenu && (
