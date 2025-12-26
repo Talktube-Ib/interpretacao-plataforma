@@ -86,127 +86,135 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     useEffect(() => {
         const initUser = async () => {
-            const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
+            try {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
 
-            if (user) {
-                setUserId(user.id)
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role, full_name, username')
-                    .eq('id', user.id)
-                    .single()
+                if (user) {
+                    setUserId(user.id)
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('role, full_name, username')
+                        .eq('id', user.id)
+                        .single()
 
-                if (profile) {
-                    console.log('Profile fetched:', profile)
-                    setUserName(profile.full_name || profile.username || user.email?.split('@')[0] || t('room.participant_default'))
-                    setCurrentRole(profile.role || 'participant')
-                }
+                    if (profileError) {
+                        console.error('Error fetching profile:', profileError)
+                    }
 
-                // Check Meeting Interpreters (Item 1)
-                const { data: meeting } = await supabase
-                    .from('meetings')
-                    .select('settings, start_time, status, host_id')
-                    .eq('id', roomId)
-                    .single()
+                    if (profile) {
+                        console.log('Profile fetched:', profile)
+                        setUserName(profile.full_name || profile.username || user.email?.split('@')[0] || t('room.participant_default'))
+                        setCurrentRole(profile.role || 'participant')
+                    }
 
-                // Check Expiration (Lazy Check)
-                if (meeting?.status === 'active' && meeting.start_time) {
-                    const startTime = new Date(meeting.start_time).getTime()
-                    const diffMinutes = (Date.now() - startTime) / (1000 * 60)
+                    // Check Meeting Interpreters (Item 1)
+                    const { data: meeting } = await supabase
+                        .from('meetings')
+                        .select('settings, start_time, status, host_id')
+                        .eq('id', roomId)
+                        .single()
 
-                    if (diffMinutes > 120) {
-                        // Expired. Kill it.
-                        const { expired } = await checkAndEndMeeting(roomId)
-                        if (expired) {
-                            // IF HOST, AUTO RESTART
-                            if (meeting.host_id === user.id) {
-                                console.log('Host joined expired meeting. Restarting...')
-                                await restartPersonalMeeting(roomId)
-                                window.location.reload()
+                    // Check Expiration (Lazy Check)
+                    if (meeting?.status === 'active' && meeting.start_time) {
+                        const startTime = new Date(meeting.start_time).getTime()
+                        const diffMinutes = (Date.now() - startTime) / (1000 * 60)
+
+                        if (diffMinutes > 120) {
+                            // Expired. Kill it.
+                            const { expired } = await checkAndEndMeeting(roomId)
+                            if (expired) {
+                                // IF HOST, AUTO RESTART
+                                if (meeting.host_id === user.id) {
+                                    console.log('Host joined expired meeting. Restarting...')
+                                    await restartPersonalMeeting(roomId)
+                                    window.location.reload()
+                                    return
+                                }
+
+                                alert(t('room.meeting_expired_title'))
+                                window.location.href = '/dashboard'
                                 return
                             }
+                        }
+                    } else if (meeting?.status === 'ended') {
+                        // IF HOST, AUTO RESTART
+                        if (meeting.host_id === user.id) {
+                            console.log('Host joined ended meeting. Restarting...')
+                            await restartPersonalMeeting(roomId)
+                            window.location.reload()
+                            return
+                        }
 
-                            alert(t('room.meeting_expired_title'))
-                            window.location.href = '/dashboard'
+                        alert(t('room.meeting_ended_title'))
+                        window.location.href = '/dashboard'
+                        return
+                    }
+
+                    // Check Meeting Interpreters (Item 1)
+                    if (meeting?.settings?.interpreters) {
+                        console.log('Checking interpreters', meeting.settings.interpreters, user.email)
+                        const interpreterConfig = meeting.settings.interpreters.find(
+                            (i: any) => i.email?.toLowerCase() === user.email?.toLowerCase()
+                        )
+
+                        if (interpreterConfig) {
+                            console.log(`User identified as pre-configured interpreter!`, interpreterConfig)
+                            setCurrentRole('interpreter')
+                            // Support single 'lang' or array 'langs'
+                            if (interpreterConfig.lang) {
+                                setAssignedLanguages([interpreterConfig.lang])
+                                // Auto-set the broadcast language
+                                setMyBroadcastLang(interpreterConfig.lang)
+                            } else if (interpreterConfig.langs) {
+                                setAssignedLanguages(interpreterConfig.langs)
+                                setMyBroadcastLang(interpreterConfig.langs[0])
+                            }
+                        } else {
+                            console.log('User NOT found in interpreter list')
+                        }
+                    } else {
+                        console.log('No interpreters configured for this meeting')
+                    }
+
+                    if (meeting?.settings?.active_languages) {
+                        setActiveLanguages(meeting.settings.active_languages)
+                    }
+                } else {
+                    // Guests also need to check expiration? Ideally yes, but server action is somewhat protected.
+                    // Let's do a client check first to fail fast.
+                    const { data: meeting } = await supabase.from('meetings').select('status, start_time, settings').eq('id', roomId).single()
+
+                    if (meeting?.status === 'ended') {
+                        alert(t('room.meeting_ended_title'))
+                        window.location.href = '/dashboard'
+                        return
+                    }
+
+                    if (meeting?.status === 'active' && meeting.start_time) {
+                        const startTime = new Date(meeting.start_time).getTime()
+                        const diffMinutes = (Date.now() - startTime) / (1000 * 60)
+                        if (diffMinutes > 120) {
+                            alert(t('room.meeting_limit_title'))
+                            window.location.href = '/login' // Guests to login
                             return
                         }
                     }
-                } else if (meeting?.status === 'ended') {
-                    // IF HOST, AUTO RESTART
-                    if (meeting.host_id === user.id) {
-                        console.log('Host joined ended meeting. Restarting...')
-                        await restartPersonalMeeting(roomId)
-                        window.location.reload()
-                        return
+
+                    if (meeting?.settings?.active_languages) {
+                        setActiveLanguages(meeting.settings.active_languages)
                     }
 
-                    alert(t('room.meeting_ended_title'))
-                    window.location.href = '/dashboard'
-                    return
+                    const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
+                    setUserId(guestId)
+                    setUserName(t('room.guest_default'))
+                    setCurrentRole('participant')
                 }
-
-                // Check Meeting Interpreters (Item 1)
-                // Check Meeting Interpreters (Item 1)
-                if (meeting?.settings?.interpreters) {
-                    console.log('Checking interpreters', meeting.settings.interpreters, user.email)
-                    const interpreterConfig = meeting.settings.interpreters.find(
-                        (i: any) => i.email?.toLowerCase() === user.email?.toLowerCase()
-                    )
-
-                    if (interpreterConfig) {
-                        console.log(`User identified as pre-configured interpreter!`, interpreterConfig)
-                        setCurrentRole('interpreter')
-                        // Support single 'lang' or array 'langs'
-                        if (interpreterConfig.lang) {
-                            setAssignedLanguages([interpreterConfig.lang])
-                            // Auto-set the broadcast language
-                            setMyBroadcastLang(interpreterConfig.lang)
-                        } else if (interpreterConfig.langs) {
-                            setAssignedLanguages(interpreterConfig.langs)
-                            setMyBroadcastLang(interpreterConfig.langs[0])
-                        }
-                    } else {
-                        console.log('User NOT found in interpreter list')
-                    }
-                } else {
-                    console.log('No interpreters configured for this meeting')
-                }
-
-                if (meeting?.settings?.active_languages) {
-                    setActiveLanguages(meeting.settings.active_languages)
-                }
-            } else {
-                // Guests also need to check expiration? Ideally yes, but server action is somewhat protected.
-                // Let's do a client check first to fail fast.
-                const { data: meeting } = await supabase.from('meetings').select('status, start_time, settings').eq('id', roomId).single()
-
-                if (meeting?.status === 'ended') {
-                    alert(t('room.meeting_ended_title'))
-                    window.location.href = '/dashboard'
-                    return
-                }
-
-                if (meeting?.status === 'active' && meeting.start_time) {
-                    const startTime = new Date(meeting.start_time).getTime()
-                    const diffMinutes = (Date.now() - startTime) / (1000 * 60)
-                    if (diffMinutes > 120) {
-                        alert(t('room.meeting_limit_title'))
-                        window.location.href = '/login' // Guests to login
-                        return
-                    }
-                }
-
-                if (meeting?.settings?.active_languages) {
-                    setActiveLanguages(meeting.settings.active_languages)
-                }
-
-                const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
-                setUserId(guestId)
-                setUserName(t('room.guest_default'))
-                setCurrentRole('participant')
+            } catch (error) {
+                console.error("Critical error in initUser:", error)
+            } finally {
+                setIsLoaded(true)
             }
-            setIsLoaded(true)
         }
         initUser()
     }, [roomId])
@@ -432,6 +440,15 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             setPinnedSpeakerId(id)
             setViewMode('speaker') // Auto switch to speaker mode when pinning
         }
+    }
+
+    if (!isLoaded) {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center bg-[#020817] text-white gap-4">
+                <div className="h-8 w-8 border-4 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
+                <p className="text-zinc-400 text-sm animate-pulse">{t('room.connecting') || 'Carregando...'}</p>
+            </div>
+        )
     }
 
     if (!isJoined) {
