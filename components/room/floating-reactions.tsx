@@ -6,7 +6,6 @@ interface Reaction {
     id: string
     emoji: string
     userId: string
-    timestamp: number
 }
 
 interface FloatingReactionsProps {
