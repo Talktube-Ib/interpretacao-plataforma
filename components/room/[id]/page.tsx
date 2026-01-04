@@ -638,7 +638,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         >
                             <div className="h-full w-full md:w-80">
                                 <ParticipantList
-                                    peers={peers.map(p => ({ ...p, name: p.name || 'Participante' }))}
+                                    peers={peers.map(p => ({
+                                        ...p,
+                                        name: p.name || 'Participante',
+                                        micOn: p.micOn ?? false,
+                                        cameraOn: p.cameraOn ?? false
+                                    }))}
                                     userRole={currentRole}
                                     userCount={userCount}
                                     isHost={isHost}
