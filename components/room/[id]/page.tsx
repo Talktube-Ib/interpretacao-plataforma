@@ -75,7 +75,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         micOn: boolean,
         cameraOn: boolean,
         audioDeviceId: string,
-        videoDeviceId: string
+        videoDeviceId: string,
+        stream?: MediaStream
     } | null>(null)
 
     const [viewMode, setViewMode] = useState<'gallery' | 'speaker'>('gallery')
