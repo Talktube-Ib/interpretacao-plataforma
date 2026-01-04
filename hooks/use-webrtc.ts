@@ -26,7 +26,7 @@ export function useWebRTC(
     roomId: string,
     userId: string,
     userRole: string = 'participant',
-    initialConfig: { micOn?: boolean, cameraOn?: boolean, audioDeviceId?: string, videoDeviceId?: string } = {},
+    initialConfig: { micOn?: boolean, cameraOn?: boolean, audioDeviceId?: string, videoDeviceId?: string, stream?: MediaStream } = {},
     isJoined: boolean = false,
     userName: string = 'Participante'
 ) {
@@ -262,11 +262,17 @@ export function useWebRTC(
                     const data = await res.json()
                     if (data.iceServers) iceServersRef.current = data.iceServers
                 } catch (e) { }
-                const constraints = {
-                    audio: initialConfig.micOn !== false ? { deviceId: initialConfig.audioDeviceId ? { exact: initialConfig.audioDeviceId } : undefined } : true,
-                    video: initialConfig.cameraOn !== false ? { deviceId: initialConfig.videoDeviceId ? { exact: initialConfig.videoDeviceId } : undefined } : true
+                let stream: MediaStream
+                if (initialConfig.stream) {
+                    console.log("Using stream from Lobby...")
+                    stream = initialConfig.stream
+                } else {
+                    const constraints = {
+                        audio: initialConfig.micOn !== false ? { deviceId: initialConfig.audioDeviceId ? { exact: initialConfig.audioDeviceId } : undefined } : true,
+                        video: initialConfig.cameraOn !== false ? { deviceId: initialConfig.videoDeviceId ? { exact: initialConfig.videoDeviceId } : undefined } : true
+                    }
+                    stream = await navigator.mediaDevices.getUserMedia(constraints)
                 }
-                const stream = await navigator.mediaDevices.getUserMedia(constraints)
                 setMediaError(null) // Clear any previous errors
                 activeStream = stream
                 if (!mounted) { stream.getTracks().forEach(t => t.stop()); return }
@@ -595,7 +601,53 @@ export function useWebRTC(
         sharingUserId,
         isAnySharing: !!sharingUserId,
         channel: channelState,
-        switchDevice: async (k: any, d: any) => { },
+        switchDevice: async (kind: 'audio' | 'video', deviceId: string) => {
+            if (!localStream) return
+
+            try {
+                const constraints = kind === 'audio'
+                    ? { audio: { deviceId: { exact: deviceId } } }
+                    : { video: { deviceId: { exact: deviceId } } }
+
+                const newStream = await navigator.mediaDevices.getUserMedia(constraints)
+                const newTrack = kind === 'audio' ? newStream.getAudioTracks()[0] : newStream.getVideoTracks()[0]
+
+                if (kind === 'audio') {
+                    const oldTrack = currentAudioTrackRef.current
+                    if (oldTrack) {
+                        localStream.removeTrack(oldTrack)
+                        oldTrack.stop()
+                    }
+                    localStream.addTrack(newTrack)
+                    originalMicTrackRef.current = newTrack
+                    currentAudioTrackRef.current = newTrack
+
+                    // If sharing screen with audio, we might need to remix (TODO: Handle remixing on device switch)
+                    // For now, just replacing the track in peers
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            p.peer.replaceTrack(oldTrack!, newTrack, localStream)
+                        }
+                    })
+                    updateMetadata({ micOn: true }) // Auto unmute on switch? Or keep state?
+                } else {
+                    const oldTrack = localStream.getVideoTracks()[0] // Assuming one video track
+                    if (oldTrack) {
+                        localStream.removeTrack(oldTrack)
+                        oldTrack.stop()
+                    }
+                    localStream.addTrack(newTrack)
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            p.peer.replaceTrack(oldTrack!, newTrack, localStream)
+                        }
+                    })
+                    updateMetadata({ cameraOn: true })
+                }
+            } catch (err) {
+                console.error("Failed to switch device:", err)
+            }
+        },
         sendEmoji,
         toggleHand,
         updateMetadata,
