@@ -15,6 +15,7 @@ interface PreCallLobbyProps {
         name: string
         audioDeviceId: string
         videoDeviceId: string
+        stream?: MediaStream // NEW: Pass the stream
     }) => void
 }
 
@@ -24,6 +25,7 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
     const [cameraOn, setCameraOn] = useState(true)
     const [stream, setStream] = useState<MediaStream | null>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
+    const isJoiningRef = useRef(false) // Track if we are transitioning
 
     useEffect(() => {
         let localStream: MediaStream | null = null
@@ -48,7 +50,8 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
         initMedia()
 
         return () => {
-            if (localStream) {
+            if (localStream && !isJoiningRef.current) {
+                // Only stop tracks if NOT joining (abandoning lobby)
                 localStream.getTracks().forEach(track => track.stop())
             }
         }
@@ -61,14 +64,23 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
         }
     }, [micOn, cameraOn, stream])
 
+    // NEW: Ensure video element gets the stream when mounted
+    useEffect(() => {
+        if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream
+        }
+    }, [cameraOn, stream])
+
     const handleJoin = () => {
         if (!name.trim()) return
+        isJoiningRef.current = true // Mark as joining to prevent stream cleanup
         onJoin({
             micOn,
             cameraOn,
             name,
             audioDeviceId: 'default',
-            videoDeviceId: 'default'
+            videoDeviceId: 'default',
+            stream: stream || undefined
         })
     }
 
