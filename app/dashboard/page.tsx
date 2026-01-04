@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { DashboardClient } from '@/components/dashboard/dashboard-client'
+import DashboardClient from '@/components/dashboard/dashboard-client'
 import { redirect } from 'next/navigation'
 
 export default async function DashboardPage() {
@@ -16,5 +16,11 @@ export default async function DashboardPage() {
         .eq('id', user.id)
         .single()
 
-    return <DashboardClient user={user} profile={profile} />
+    const { data: meetings } = await supabase
+        .from('meetings')
+        .select('*')
+        .eq('host_id', user.id)
+        .order('start_time', { ascending: true })
+
+    return <DashboardClient user={user} profile={profile} meetings={meetings || []} isDemo={false} />
 }
