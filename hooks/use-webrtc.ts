@@ -254,6 +254,9 @@ export function useWebRTC(
 
         const init = async () => {
             try {
+                // Defer media acquisition until user actually joins (avoids conflict with Lobby preview)
+                if (!isJoined) return
+
                 try {
                     const res = await fetch('/api/turn')
                     const data = await res.json()
