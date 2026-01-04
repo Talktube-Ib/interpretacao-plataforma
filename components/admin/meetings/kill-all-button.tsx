@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react'
-import { killAllActiveMeetings } from '@/app/admin/actions'
+import { killAllActiveMeetings } from '@/components/admin/actions'
 
 export function KillAllButton() {
     const [loading, setLoading] = useState(false)
