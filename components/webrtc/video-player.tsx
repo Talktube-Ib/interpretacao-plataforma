@@ -54,8 +54,8 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     autoPlay
                     playsInline
                     className={cn(
-                        "w-full h-full object-cover",
-                        isPresentation ? "object-contain" : "object-cover"
+                        "w-full h-full object-contain bg-zinc-950", // Changed to contain to show full frame
+                        isPresentation ? "object-contain" : "object-contain"
                     )}
                 />
             )}
@@ -128,7 +128,7 @@ export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, 
                     autoPlay
                     playsInline
                     muted
-                    className="w-full h-full object-cover mirror"
+                    className="w-full h-full object-contain bg-zinc-950 mirror" // Changed to contain
                 />
             )}
 

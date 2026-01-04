@@ -2,7 +2,14 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Mic, MicOff, Headphones, ArrowRightLeft, Globe } from 'lucide-react'
+import { Mic, MicOff, Headphones, ArrowRightLeft, Globe, Check } from 'lucide-react'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { cn } from '@/lib/utils'
 
 interface InterpreterConsoleProps {
@@ -81,30 +88,31 @@ export function InterpreterConsole({
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                     <Mic className="h-3 w-3" /> Outgoing Channel
                 </div>
-                <div className="flex flex-wrap gap-1 bg-zinc-900/50 p-1 rounded-xl border border-white/5">
-                    {languages.map((lang) => {
-                        const isOccupied = occupiedLanguages?.includes(lang.code) && currentLanguage !== lang.code
-                        return (
-                            <Button
-                                key={lang.code}
-                                variant={currentLanguage === lang.code ? "default" : "ghost"}
-                                size="sm"
-                                onClick={() => onLanguageChange(lang.code)}
-                                disabled={isOccupied} // Prevent taking occupied channel? Or just warn?
-                                className={cn(
-                                    "h-8 text-xs font-bold rounded-lg transition-all px-3",
-                                    currentLanguage === lang.code
-                                        ? "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/50"
-                                        : "text-zinc-400 hover:text-white",
-                                    isOccupied && "opacity-50 cursor-not-allowed decoration-slice"
-                                )}
-                                title={isOccupied ? "Channel busy" : lang.name}
-                            >
-                                <span className="mr-1.5">{lang.flag}</span>
-                                {lang.code.toUpperCase()}
-                            </Button>
-                        )
-                    })}
+                <div className="w-[180px]">
+                    <Select value={currentLanguage} onValueChange={onLanguageChange}>
+                        <SelectTrigger className="w-full h-12 bg-zinc-900/50 border-white/10 text-white font-bold rounded-xl focus:ring-purple-500/50">
+                            <SelectValue placeholder="Select Language" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px] bg-zinc-900 border-zinc-800 text-zinc-200">
+                            {languages.map((lang) => {
+                                const isOccupied = occupiedLanguages?.includes(lang.code) && currentLanguage !== lang.code
+                                return (
+                                    <SelectItem
+                                        key={lang.code}
+                                        value={lang.code}
+                                        disabled={isOccupied}
+                                        className="cursor-pointer focus:bg-zinc-800 focus:text-white"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg">{lang.flag}</span>
+                                            <span className="font-medium">{lang.name}</span>
+                                            {isOccupied && <span className="text-xs text-red-400 ml-2">(Busy)</span>}
+                                        </div>
+                                    </SelectItem>
+                                )
+                            })}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
