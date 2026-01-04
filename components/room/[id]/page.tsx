@@ -26,7 +26,7 @@ import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { ChatPanel } from '@/components/room/chat-panel'
 import { DebugLogs } from '@/components/debug-logs' // NEW
 import { ParticipantList } from '@/components/room/participant-list'
-import { InterpreterControls } from '@/components/room/interpreter-controls'
+// InterpreterControls removed
 import { InterpreterConsole } from '@/components/room/InterpreterConsole'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -451,7 +451,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             <PreCallLobby
                 userName={userName}
                 isGuest={isGuest}
-                onJoin={(config) => {
+                onJoin={(config: any) => {
                     setLobbyConfig(config)
                     setMicOn(config.micOn)
                     setCameraOn(config.cameraOn)
@@ -700,7 +700,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                         availableLanguages={availableSystemLanguages}
                         occupiedLanguages={peers.filter(p => p.role?.includes('interpreter') && p.userId !== userId).map(p => p.language).filter(Boolean) as string[]}
-                        onSelect={(lang) => {
+                        onSelect={(lang: any) => {
                             setMyBroadcastLang(lang)
                             // Trigger update metadata immediate
                             updateMetadata({ language: lang })
@@ -712,7 +712,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         active={micOn}
                         onToggleActive={handleToggleMic}
                         currentLanguage={myBroadcastLang}
-                        onLanguageChange={(lang) => {
+                        onLanguageChange={(lang: any) => {
                             setMyBroadcastLang(lang)
                             updateMetadata({ language: lang })
                         }}
