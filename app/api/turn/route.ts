@@ -8,39 +8,46 @@ export async function GET() {
     const turnUsername = process.env.TURN_USERNAME || process.env.NEXT_PUBLIC_TURN_USERNAME
     const turnCredential = process.env.TURN_CREDENTIAL || process.env.NEXT_PUBLIC_TURN_CREDENTIAL
 
-    // Default to Google's public STUN server (Free, but only works 80% of the time, fails on Corp/4G)
-    // Default to a robust list of public STUN servers
+    // Default to a robust list of public STUN servers and Open Relay (Community TURN)
     const iceServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' },
-        { urls: 'stun:stun.framasoft.org:3478' },
-        { urls: 'stun:stun.voip.blackberry.com:3478' },
-        { urls: 'stun:stun.stunprotocol.org:3478' }
+        // Open Relay Project (Free TURN) - Excellent for MVPs
+        {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        }
     ]
 
     // A. Preferred: Automatic Fetch from Metered.ca
     if (meteredApiKey) {
         try {
-            // Using the Global API (or you can verify your specific endpoint in dashboard)
-            // Ideally URL should be in env too, but standard metered global API is common.
-            // Actually, Metered usually gives a unique domain like: https://appname.metered.live/api/v1/turn/credentials?apiKey=...
-            // We will ask user for METERED_DOMAIN_URL to be safe, or just try to generic one if possible?
-            // Metered docs say: GET https://<APP_NAME>.metered.live/api/v1/turn/credentials?apiKey=<API_KEY>
-            // So we need the app name / domain. Let's ask for METERED_API_URL fully.
+            const domain = process.env.METERED_DOMAIN || 'global.metered.live'
+            const url = `https://${domain}/api/v1/turn/credentials?apiKey=${meteredApiKey}`
 
-            // Let's rely on METERED_API_KEY being the full URL or we add METERED_DOMAIN
-            // Simpler: Just ask for the full TURN credentials as before using "Static Credentials" guide?
-            // No, the user wants "Simple". 
-            // The "Expiring Credentials" page they linked actually shows how to generate them.
-            // Let's stick to the StaticEnv approach for now to avoid network latency on every request if not cached. 
-            // BUT, if they are "Mega Leigo", maybe they can't find the static ones.
-
-            // Let's stick to the previous plan but explain it better. 
-            // The previous code is fine. I will just explain to the user.
+            const response = await fetch(url)
+            if (response.ok) {
+                const iceServersFromMetered = await response.json()
+                // Metered returns an array of ICE servers directly or wrapped? 
+                // Usually returns: [ { urls: "...", username: "...", credential: "..." } ]
+                // We verify if it's an array.
+                if (Array.isArray(iceServersFromMetered)) {
+                    return NextResponse.json({ iceServers: iceServersFromMetered })
+                }
+            } else {
+                console.error("Metered API returned error:", response.status, await response.text())
+            }
         } catch (e) {
             console.error("Metered fetch failed", e)
         }

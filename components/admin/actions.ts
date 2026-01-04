@@ -18,9 +18,8 @@ export async function debugAdminConnection() {
         if (!key) return { success: false, message: 'SUPABASE_SERVICE_ROLE_KEY is undefined' }
 
         const preview = key.substring(0, 5) + '...' + key.substring(key.length - 5)
-        const isServiceRole = key.startsWith('eyJ') // Simplified JWT check
-
-        if (!isServiceRole) return { success: false, message: `Key format invalid (Starts with ${key.substring(0, 8)}...). Expected JWT (eyJ...).` }
+        const isServiceRole = key.startsWith('eyJ') || key.startsWith('sb_secret') || key.startsWith('sk_')
+        if (!isServiceRole) return { success: false, message: `Key format invalid (Starts with ${key.substring(0, 8)}...). Expected JWT (eyJ...) or Secret Key (sb_secret...).` }
 
         const admin = await ensureAdminClient()
         const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 })
