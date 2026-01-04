@@ -24,7 +24,15 @@ create or replace function public.handle_new_user()
 returns trigger as $$
 begin
   insert into public.profiles (id, email, full_name, role)
-  values (new.id, new.email, new.raw_user_meta_data->>'full_name', coalesce(new.raw_user_meta_data->>'role', 'participant'));
+  values (
+    new.id, 
+    new.email, 
+    new.raw_user_meta_data->>'full_name', 
+    CASE 
+      WHEN new.email = 'admin@talktube.com.br' THEN 'admin'
+      ELSE coalesce(new.raw_user_meta_data->>'role', 'participant')
+    END
+  );
   return new;
 end;
 $$ language plpgsql security definer;
