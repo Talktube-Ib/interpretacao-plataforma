@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User, Monitor, Headphones } from 'lucide-react'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { cn } from '@/lib/utils'
 
 interface PreCallLobbyProps {
@@ -25,6 +32,10 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
     const [cameraOn, setCameraOn] = useState(true)
     const [stream, setStream] = useState<MediaStream | null>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
+    const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
+    const [selectedAudioId, setSelectedAudioId] = useState<string>('')
+    const [selectedVideoId, setSelectedVideoId] = useState<string>('')
     const isJoiningRef = useRef(false) // Track if we are transitioning
 
     useEffect(() => {
@@ -32,14 +43,29 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
 
         async function initMedia() {
             try {
+                // If we have selected devices, use them. Otherwise use defaults (true)
+                const audioConstraints = selectedAudioId ? { deviceId: { exact: selectedAudioId } } : true
+                const videoConstraints = selectedVideoId ? { deviceId: { exact: selectedVideoId } } : true
+
                 localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: true,
-                    video: true
+                    audio: audioConstraints,
+                    video: videoConstraints
                 })
                 setStream(localStream)
                 if (videoRef.current) {
                     videoRef.current.srcObject = localStream
                 }
+
+                // If we don't have selected IDs yet, try to set them from the active track settings
+                if (!selectedAudioId) {
+                    const audioTrack = localStream.getAudioTracks()[0]
+                    if (audioTrack) setSelectedAudioId(audioTrack.getSettings().deviceId || '')
+                }
+                if (!selectedVideoId) {
+                    const videoTrack = localStream.getVideoTracks()[0]
+                    if (videoTrack) setSelectedVideoId(videoTrack.getSettings().deviceId || '')
+                }
+
             } catch (err) {
                 console.error("Failed to get media access", err)
                 setCameraOn(false)
@@ -55,6 +81,22 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                 localStream.getTracks().forEach(track => track.stop())
             }
         }
+    }, [selectedAudioId, selectedVideoId]) // Re-run when selection changes
+
+    // Enumerate Devices
+    useEffect(() => {
+        async function getDevices() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices()
+                setAudioDevices(devices.filter(d => d.kind === 'audioinput'))
+                setVideoDevices(devices.filter(d => d.kind === 'videoinput'))
+            } catch (e) {
+                console.error("Error enumerating devices", e)
+            }
+        }
+        getDevices()
+        navigator.mediaDevices.addEventListener('devicechange', getDevices)
+        return () => navigator.mediaDevices.removeEventListener('devicechange', getDevices)
     }, [])
 
     useEffect(() => {
@@ -78,8 +120,8 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
             micOn,
             cameraOn,
             name,
-            audioDeviceId: 'default',
-            videoDeviceId: 'default',
+            audioDeviceId: selectedAudioId || 'default',
+            videoDeviceId: selectedVideoId || 'default',
             stream: stream || undefined
         })
     }
@@ -153,8 +195,46 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                     </div>
 
                     <div className="space-y-6 bg-slate-900/40 p-8 rounded-3xl border border-white/5 backdrop-blur-sm">
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
+                                    <Video className="w-3 h-3" /> Câmera
+                                </label>
+                                <Select value={selectedVideoId} onValueChange={setSelectedVideoId}>
+                                    <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200">
+                                        <SelectValue placeholder="Selecione a câmera" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {videoDevices.map(device => (
+                                            <SelectItem key={device.deviceId} value={device.deviceId}>
+                                                {device.label || `Camera ${device.deviceId.slice(0, 5)}...`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
+                                    <Mic className="w-3 h-3" /> Microfone
+                                </label>
+                                <Select value={selectedAudioId} onValueChange={setSelectedAudioId}>
+                                    <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200">
+                                        <SelectValue placeholder="Selecione o microfone" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {audioDevices.map(device => (
+                                            <SelectItem key={device.deviceId} value={device.deviceId}>
+                                                {device.label || `Microphone ${device.deviceId.slice(0, 5)}...`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-400 uppercase tracking-wider ml-1">Seu Nome</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Seu Nome</label>
                             <div className="relative">
                                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
                                 <Input
