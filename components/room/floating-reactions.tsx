@@ -14,17 +14,29 @@ interface FloatingReactionsProps {
 
 export function FloatingReactions({ reactions }: FloatingReactionsProps) {
     return (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-[50]">
+        <div className="absolute bottom-24 left-6 w-24 h-[60vh] pointer-events-none z-[50] flex flex-col justify-end">
             <AnimatePresence>
-                {reactions.map((reaction) => (
+                {reactions.map((reaction, index) => (
                     <motion.div
                         key={reaction.id}
-                        initial={{ opacity: 1, y: '100%', x: Math.random() * 100 - 50 + '%' }}
-                        animate={{ opacity: 0, y: '20%' }}
+                        initial={{ opacity: 0, y: 50, scale: 0.5, x: -20 }}
+                        animate={{
+                            opacity: [0, 1, 1, 0],
+                            y: -200 - (Math.random() * 100),
+                            scale: 1,
+                            x: 0 + (Math.random() * 20)
+                        }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 2, ease: "easeOut" }}
-                        className="absolute bottom-20 left-1/2 text-4xl"
-                        style={{ marginLeft: `${Math.random() * 200 - 100}px` }}
+                        transition={{
+                            duration: 4,
+                            ease: "easeOut",
+                            times: [0, 0.1, 0.8, 1]
+                        }}
+                        className="absolute bottom-0 left-0 text-5xl drop-shadow-lg"
+                        style={{
+                            marginLeft: `${Math.random() * 10}px`,
+                            zIndex: 100 + index
+                        }}
                     >
                         {reaction.emoji}
                     </motion.div>
