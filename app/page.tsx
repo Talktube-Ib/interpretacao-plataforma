@@ -317,7 +317,7 @@ export default function LandingPage() {
                   <span className="text-gray-500 text-sm ml-2">{t('landing.plan_monthly_period')}</span>
                 </div>
                 <p className="text-gray-400 text-sm mb-8 flex-grow">{t('landing.plan_monthly_desc')}</p>
-                <Link href="/login">
+                <Link href={t('landing.plan_monthly_link')}>
                   <Button className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10">
                     {t('landing.button_subscribe')}
                   </Button>
@@ -335,7 +335,7 @@ export default function LandingPage() {
                   <span className="text-gray-500 text-sm ml-2">{t('landing.plan_semiannual_period')}</span>
                 </div>
                 <p className="text-gray-400 text-sm mb-8 flex-grow">{t('landing.plan_semiannual_desc')}</p>
-                <Link href="/login">
+                <Link href={t('landing.plan_semiannual_link')}>
                   <Button className="w-full bg-cyan-500 hover:bg-cyan-400 text-[#020817] font-bold">
                     {t('landing.button_subscribe')}
                   </Button>
@@ -350,7 +350,7 @@ export default function LandingPage() {
                   <span className="text-gray-500 text-sm ml-2">{t('landing.plan_yearly_period')}</span>
                 </div>
                 <p className="text-gray-400 text-sm mb-8 flex-grow">{t('landing.plan_yearly_desc')}</p>
-                <Link href="/login">
+                <Link href={t('landing.plan_yearly_link')}>
                   <Button className="w-full bg-white/5 hover:bg-white/10 text-white border border-white/10">
                     {t('landing.button_subscribe')}
                   </Button>
