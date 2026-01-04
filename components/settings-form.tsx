@@ -1,6 +1,6 @@
 'use client'
 
-import { updateProfile, updatePassword } from '@/app/dashboard/settings/actions'
+import { updateProfile, updatePassword } from '@/components/dashboard/settings/actions'
 import { useLanguage } from '@/components/providers/language-provider'
 import AvatarUpload from '@/components/avatar-upload'
 import { Button } from '@/components/ui/button'
