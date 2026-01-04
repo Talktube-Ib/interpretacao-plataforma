@@ -3,14 +3,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User, Monitor, Headphones } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User, Monitor, Headphones, ChevronDown, Check } from 'lucide-react'
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from '@/lib/utils'
 
 interface PreCallLobbyProps {
@@ -22,7 +23,7 @@ interface PreCallLobbyProps {
         name: string
         audioDeviceId: string
         videoDeviceId: string
-        stream?: MediaStream // NEW: Pass the stream
+        stream?: MediaStream
     }) => void
 }
 
@@ -157,22 +158,81 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
 
                         {/* Overlay Controls */}
                         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
-                            <Button
-                                variant={micOn ? "default" : "destructive"}
-                                size="icon"
-                                className={cn("h-12 w-12 rounded-xl transition-all", micOn ? "bg-white text-black hover:bg-white/90" : "")}
-                                onClick={() => setMicOn(!micOn)}
-                            >
-                                {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-                            </Button>
-                            <Button
-                                variant={cameraOn ? "default" : "destructive"}
-                                size="icon"
-                                className={cn("h-12 w-12 rounded-xl transition-all", cameraOn ? "bg-white text-black hover:bg-white/90" : "")}
-                                onClick={() => setCameraOn(!cameraOn)}
-                            >
-                                {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-                            </Button>
+
+                            {/* Mic Split Button */}
+                            <div className="flex items-center bg-zinc-800/80 rounded-xl overflow-hidden border border-white/10">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                        "h-12 w-12 rounded-none hover:bg-white/10 transition-all",
+                                        micOn ? "text-white" : "text-red-500 bg-red-500/10"
+                                    )}
+                                    onClick={() => setMicOn(!micOn)}
+                                >
+                                    {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+                                </Button>
+                                <div className="w-px h-6 bg-white/10" />
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-12 w-8 px-0 rounded-none hover:bg-white/10 text-zinc-400 hover:text-white">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent side="top" align="center" className="w-64 bg-zinc-900 border-zinc-800 text-zinc-200">
+                                        <DropdownMenuLabel>Microfone</DropdownMenuLabel>
+                                        <DropdownMenuSeparator className="bg-zinc-800" />
+                                        {audioDevices.map(device => (
+                                            <DropdownMenuItem
+                                                key={device.deviceId}
+                                                onClick={() => setSelectedAudioId(device.deviceId)}
+                                                className="cursor-pointer focus:bg-zinc-800 focus:text-white flex justify-between"
+                                            >
+                                                <span className="truncate max-w-[180px]">{device.label || `Mic ${device.deviceId.slice(0, 4)}`}</span>
+                                                {selectedAudioId === device.deviceId && <Check className="h-4 w-4 text-purple-500 ml-2" />}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+
+                            {/* Camera Split Button */}
+                            <div className="flex items-center bg-zinc-800/80 rounded-xl overflow-hidden border border-white/10">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                        "h-12 w-12 rounded-none hover:bg-white/10 transition-all",
+                                        cameraOn ? "text-white" : "text-red-500 bg-red-500/10"
+                                    )}
+                                    onClick={() => setCameraOn(!cameraOn)}
+                                >
+                                    {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+                                </Button>
+                                <div className="w-px h-6 bg-white/10" />
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-12 w-8 px-0 rounded-none hover:bg-white/10 text-zinc-400 hover:text-white">
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent side="top" align="center" className="w-64 bg-zinc-900 border-zinc-800 text-zinc-200">
+                                        <DropdownMenuLabel>Câmera</DropdownMenuLabel>
+                                        <DropdownMenuSeparator className="bg-zinc-800" />
+                                        {videoDevices.map(device => (
+                                            <DropdownMenuItem
+                                                key={device.deviceId}
+                                                onClick={() => setSelectedVideoId(device.deviceId)}
+                                                className="cursor-pointer focus:bg-zinc-800 focus:text-white flex justify-between"
+                                            >
+                                                <span className="truncate max-w-[180px]">{device.label || `Cam ${device.deviceId.slice(0, 4)}`}</span>
+                                                {selectedVideoId === device.deviceId && <Check className="h-4 w-4 text-purple-500 ml-2" />}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+
                         </div>
 
                         {/* Status Badge */}
@@ -195,43 +255,6 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                     </div>
 
                     <div className="space-y-6 bg-slate-900/40 p-8 rounded-3xl border border-white/5 backdrop-blur-sm">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
-                                    <Video className="w-3 h-3" /> Câmera
-                                </label>
-                                <Select value={selectedVideoId} onValueChange={setSelectedVideoId}>
-                                    <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200">
-                                        <SelectValue placeholder="Selecione a câmera" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {videoDevices.map(device => (
-                                            <SelectItem key={device.deviceId} value={device.deviceId}>
-                                                {device.label || `Camera ${device.deviceId.slice(0, 5)}...`}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1 flex items-center gap-2">
-                                    <Mic className="w-3 h-3" /> Microfone
-                                </label>
-                                <Select value={selectedAudioId} onValueChange={setSelectedAudioId}>
-                                    <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200">
-                                        <SelectValue placeholder="Selecione o microfone" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {audioDevices.map(device => (
-                                            <SelectItem key={device.deviceId} value={device.deviceId}>
-                                                {device.label || `Microphone ${device.deviceId.slice(0, 5)}...`}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
 
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Seu Nome</label>
