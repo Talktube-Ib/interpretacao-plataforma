@@ -4,7 +4,7 @@
 import { useState, use, useEffect, useRef, ChangeEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import {
-    Mic, MicOff, Video, VideoOff, PhoneOff,
+    Mic, MicOff, Video, VideoOff, PhoneOff, Check,
     Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2, Hand, Smile, PlayCircle
 } from 'lucide-react'
 import { FloatingReactions } from '@/components/room/floating-reactions'
@@ -790,9 +790,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                     <DropdownMenuItem
                                         key={i}
                                         onClick={() => switchDeviceWebRTC('audio', device.deviceId)}
-                                        className="rounded-xl focus:bg-[#06b6d4]/20 focus:text-[#06b6d4] cursor-pointer text-xs font-medium py-2.5"
+                                        className="rounded-xl focus:bg-[#06b6d4]/20 focus:text-[#06b6d4] cursor-pointer text-xs font-medium py-2.5 flex justify-between"
                                     >
-                                        {device.label || `Microphone ${i + 1}`}
+                                        <span className="truncate max-w-[180px]">{device.label || `Microphone ${i + 1}`}</span>
+                                        {localStream?.getAudioTracks()[0]?.getSettings().deviceId === device.deviceId && (
+                                            <Check className="h-4 w-4 text-[#06b6d4]" />
+                                        )}
                                     </DropdownMenuItem>
                                 ))}
                             </DropdownMenuContent>
@@ -824,9 +827,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                     <DropdownMenuItem
                                         key={i}
                                         onClick={() => switchDeviceWebRTC('video', device.deviceId)}
-                                        className="rounded-xl focus:bg-[#06b6d4]/20 focus:text-[#06b6d4] cursor-pointer text-xs font-medium py-2.5"
+                                        className="rounded-xl focus:bg-[#06b6d4]/20 focus:text-[#06b6d4] cursor-pointer text-xs font-medium py-2.5 flex justify-between"
                                     >
-                                        {device.label || `Camera ${i + 1}`}
+                                        <span className="truncate max-w-[180px]">{device.label || `Camera ${i + 1}`}</span>
+                                        {localStream?.getVideoTracks()[0]?.getSettings().deviceId === device.deviceId && (
+                                            <Check className="h-4 w-4 text-[#06b6d4]" />
+                                        )}
                                     </DropdownMenuItem>
                                 ))}
                             </DropdownMenuContent>
