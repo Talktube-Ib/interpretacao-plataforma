@@ -109,6 +109,14 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* DEBUG OVERLAY (Temporary) */}
+            <div className="absolute top-2 left-2 bg-black/50 text-[10px] text-white p-1 rounded pointer-events-none z-50 font-mono">
+                V:{stream?.getVideoTracks().length || 0} |
+                A:{stream?.getAudioTracks().length || 0} |
+                St:{stream?.active ? 'Act' : 'Inact'} |
+                {connectionState}
+            </div>
         </div>
     )
 }
