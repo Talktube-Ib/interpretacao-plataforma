@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "TalkTube - Video Conferencing Software",
   description: "Reuniões globais sem barreiras de idioma via P2P.",
   icons: {
-    icon: "/logos/favicon_candidate.png",
+    icon: "/logos/talktube_favicon.png",
   },
 };
 
