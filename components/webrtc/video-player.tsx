@@ -20,19 +20,27 @@ interface VideoPlayerProps {
 export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isPaused, setIsPaused] = useState(false)
+    const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
 
     useEffect(() => {
         const videoEl = videoRef.current
         if (videoEl && stream) {
             videoEl.srcObject = stream
-            // Force play attempt
-            const playPromise = videoEl.play()
-            if (playPromise !== undefined) {
-                playPromise.catch(e => {
-                    console.error("AutoPlay Error:", e)
+
+            // Attempt 1: Play with Audio
+            videoEl.play().catch(e => {
+                console.warn("Autoplay with audio failed, trying muted:", e)
+
+                // Attempt 2: Play Muted
+                videoEl.muted = true
+                videoEl.play().then(() => {
+                    setIsMutedAutoplay(true)
+                    setIsPaused(false)
+                }).catch(e2 => {
+                    console.error("Autoplay muted also failed:", e2)
                     setIsPaused(true)
                 })
-            }
+            })
         }
     }, [stream])
 
@@ -46,23 +54,43 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
             const aTrack = stream.getAudioTracks()[0]
             const videoEl = videoRef.current
 
+            // Sync states
+            if (videoEl) {
+                setIsPaused(videoEl.paused)
+                // If we are playing but muted (and shouldn't be), update state
+                if (!videoEl.paused && videoEl.muted && !isMutedAutoplay) {
+                    // logic to detect if we stuck in muted state
+                }
+            }
+
             setDebugInfo(
                 `V:${vTrack ? (vTrack.enabled ? 'En' : 'Dis') + '/' + vTrack.readyState : 'Miss'} | ` +
                 `A:${aTrack ? (aTrack.enabled ? 'En' : 'Dis') + '/' + aTrack.readyState : 'Miss'} | ` +
                 `P:${videoEl?.paused ? 'Yes' : 'No'} | ` +
-                `Vol:${videoEl?.volume.toFixed(1)} | ` +
+                `M:${videoEl?.muted ? 'Yes' : 'No'} | ` +
                 `St:${connectionState}`
             )
         }, 1000)
         return () => clearInterval(interval)
-    }, [stream, connectionState])
+    }, [stream, connectionState, isMutedAutoplay])
 
     const isConnecting = connectionState === 'connecting'
 
+    const handleUnmute = () => {
+        if (videoRef.current) {
+            videoRef.current.muted = false
+            setIsMutedAutoplay(false)
+        }
+    }
+
     const handleManualPlay = () => {
         if (videoRef.current) {
+            videoRef.current.muted = false // Try to unmute on manual interaction
             videoRef.current.play()
-                .then(() => setIsPaused(false))
+                .then(() => {
+                    setIsPaused(false)
+                    setIsMutedAutoplay(false)
+                })
                 .catch(console.error)
         }
     }
@@ -71,6 +99,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         <div className={cn(
             "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500",
             isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)]",
+            (isPaused || isMutedAutoplay) && "ring-4 ring-amber-500" // Visual cue
         )}>
             {cameraOff || !stream ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 backdrop-blur-3xl">
@@ -92,19 +121,36 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                             isPresentation ? "object-contain" : "object-contain"
                         )}
                         onLoadedMetadata={(e) => {
-                            e.currentTarget.play().catch(() => setIsPaused(true))
+                            // Initial play attempt handled by effect, but this is a backup
                         }}
                         onPause={() => setIsPaused(true)}
                         onPlay={() => setIsPaused(false)}
                     />
+
+                    {/* OVERLAYS FOR INTERACTION */}
                     {isPaused && (
-                        <div className="absolute inset-0 flex items-center justify-center z-40 bg-black/40 backdrop-blur-[2px]">
+                        <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/60 backdrop-blur-sm">
                             <button
                                 onClick={handleManualPlay}
-                                className="bg-cyan-500 hover:bg-cyan-400 text-white rounded-full p-4 shadow-2xl transition-transform hover:scale-105 active:scale-95 group/play flex items-center gap-2"
+                                className="bg-red-600 hover:bg-red-500 text-white rounded-full px-8 py-4 shadow-2xl transition-transform hover:scale-105 active:scale-95 group/play flex items-center gap-3 animate-pulse"
                             >
-                                <Maximize2 className="h-6 w-6 ml-1 fill-white" />
-                                <span className="text-sm font-bold">Resume Video</span>
+                                <Maximize2 className="h-8 w-8 ml-1 fill-white" />
+                                <div className="flex flex-col items-start">
+                                    <span className="text-lg font-bold">Resume Video</span>
+                                    <span className="text-xs opacity-90">Click to start playback</span>
+                                </div>
+                            </button>
+                        </div>
+                    )}
+
+                    {!isPaused && isMutedAutoplay && (
+                        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[100]">
+                            <button
+                                onClick={handleUnmute}
+                                className="bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-full px-6 py-2 shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2"
+                            >
+                                <MicOff className="h-4 w-4" />
+                                <span>Click to Unmute</span>
                             </button>
                         </div>
                     )}
@@ -112,7 +158,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
             )}
 
             {/* OVERLAYS */}
-            <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 right-3 md:right-6 flex items-center justify-between pointer-events-none">
+            <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 right-3 md:right-6 flex items-center justify-between pointer-events-none z-10">
                 <div className="flex items-center gap-2 md:gap-3 bg-black/40 backdrop-blur-xl px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl border border-white/10">
                     <span className="text-white text-[10px] md:text-sm font-bold tracking-tight">{name}</span>
                     {(role?.toLowerCase().includes('interpreter') || role?.toLowerCase().includes('admin')) && (
