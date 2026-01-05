@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "TalkTube - Video Conferencing Software",
   description: "Reuniões globais sem barreiras de idioma via P2P.",
+  icons: {
+    icon: "/logos/favicon_candidate.png",
+  },
 };
 
 import { WebRTCPolyfills } from '@/components/webrtc-polyfills'
