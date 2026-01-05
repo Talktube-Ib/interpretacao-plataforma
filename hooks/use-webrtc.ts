@@ -320,369 +320,368 @@ export function useWebRTC(
             syncToState()
             if (channelRef.current) { channelRef.current.unsubscribe(); channelRef.current = null }
         }
-    }
     }, [roomId, userId, isJoined])
 
-// NEW: Sync local tracks to all connected peers whenever localStream changes
-// This handles cases where the user joins first (no permissions) and then allows camera later.
-useEffect(() => {
-    if (!localStream) return
-
-    peersRef.current.forEach(p => {
-        // Only add if not already added (SimplePeer throws if track already exists, so we try/catch)
-        localStream.getTracks().forEach(track => {
-            try {
-                p.peer.addTrack(track, localStream)
-            } catch (e) {
-                // Ignore "Track already exists" errors
-            }
-        })
-    })
-}, [localStream])
-
-const promoteToHost = async (newHostId: string) => {
-    if (hostId !== userId) return
-    try {
-        await supabase.from('meetings').update({ host_id: newHostId }).eq('id', roomId)
-        channelRef.current?.send({ type: 'broadcast', event: 'host-promoted', payload: { newHostId } })
-        setHostId(newHostId)
-    } catch (e) { console.error(e) }
-}
-
-const sendEmoji = (emoji: string) => {
-    channelRef.current?.send({ type: 'broadcast', event: 'reaction', payload: { emoji, sender: userId } })
-    const id = Math.random().toString(36).substr(2, 9)
-    setReactions(prev => [...prev, { id, emoji, userId }])
-    setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 5000)
-}
-
-const toggleHand = () => {
-    const newState = !localHandRaised
-    setLocalHandRaised(newState)
-    updateMetadata({ handRaised: newState })
-}
-
-
-
-// React to identity changes (e.g. Admin name loading late)
-useEffect(() => {
-    if (channelRef.current && isJoined) {
-        updateMetadata({ name: userName, role: userRole })
-    }
-}, [userName, userRole, isJoined])
-
-const mixAudio = async (contentStream: MediaStream) => {
-    const contentTrack = contentStream.getAudioTracks()[0]
-
-    // STRICT FALLBACK: If no content audio, return original mic immediately. Do not mix.
-    if (!contentTrack) {
-        console.warn("Sem áudio do sistema detectado. Mantendo microfone original.")
-        return originalMicTrackRef.current
-    }
-
-    if (!originalMicTrackRef.current) return contentTrack
-
-    try {
-        // FORCE RESET: Always create a fresh context to avoid "suspended" or stale states
-        if (audioContextRef.current) {
-            try { await audioContextRef.current.close() } catch (e) { }
-            audioContextRef.current = null
-        }
-
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
-            latencyHint: 'interactive',
-            sampleRate: 48000
-        })
-        const ctx = audioContextRef.current
-
-        const dest = ctx.createMediaStreamDestination()
-
-        // Mic Source
-        const micSource = ctx.createMediaStreamSource(new MediaStream([originalMicTrackRef.current]))
-        const micGain = ctx.createGain()
-        micGain.gain.value = 1.0
-        micSource.connect(micGain)
-        micGain.connect(dest)
-
-        // Content Source
-        const contentSource = ctx.createMediaStreamSource(new MediaStream([contentTrack]))
-        const contentGain = ctx.createGain()
-        contentGain.gain.value = 1.0
-        contentSource.connect(contentGain)
-        contentGain.connect(dest)
-
-        return dest.stream.getAudioTracks()[0]
-    } catch (e) {
-        console.error("Audio mixing failed CRITICAL:", e)
-        return originalMicTrackRef.current
-    }
-}
-
-const shareScreen = async (onEnd?: () => void) => {
-    if (sharingUserId && sharingUserId !== userId) return
-    try {
-        console.log("Iniciando compartilhamento de tela com áudio (High Fidelity)...")
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { cursor: 'always' } as any,
-            audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false,
-                sampleRate: 48000,
-                channelCount: 2
-            }
-        })
-
-        const screenTrack = screenStream.getVideoTracks()[0]
-        screenVideoTrackRef.current = screenTrack
-
-        // Check if user actually shared audio
-        const hasSystemAudio = screenStream.getAudioTracks().length > 0
-        let mixedTrack: MediaStreamTrack | null = null;
-
-        if (hasSystemAudio) {
-            console.log("Áudio do sistema detectado. Iniciando mixagem...")
-            const track = await mixAudio(screenStream)
-            if (track) mixedTrack = track
-        } else {
-            console.log("Nenhum áudio do sistema compartilhado. Usando apenas microfone.")
-        }
-
-        mixedAudioTrackRef.current = mixedTrack
-
-        if (localStream) {
-            localStream.addTrack(screenTrack)
-
-            // Only swap if we actually have a NEW mixed track different from the current one
-            if (mixedTrack && currentAudioTrackRef.current && mixedTrack !== currentAudioTrackRef.current) {
-                const toReplace = currentAudioTrackRef.current
-                localStream.removeTrack(toReplace)
-                localStream.addTrack(mixedTrack)
-
-                peersRef.current.forEach(p => {
-                    if (!p.isPresentation) {
-                        try { p.peer.replaceTrack(toReplace, mixedTrack, localStream) }
-                        catch (e) { console.error("Falha ao substituir track áudio:", e) }
-                    }
-                })
-                currentAudioTrackRef.current = mixedTrack
-            }
-
-            // Note: If no mixed track (fallback), we just keep currentAudioTrackRef (which is the mic)
-            // We do NOT remove it.
-
-            // Add the video track as a second track
-            peersRef.current.forEach(p => {
-                if (!p.isPresentation) {
-                    try { p.peer.addTrack(screenTrack, localStream) } catch (e) { }
-                }
-            })
-        }
-
-        setSharingUserId(userId)
-        channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
-
-        screenTrack.onended = () => stopScreenShare(onEnd)
-        return screenStream
-    } catch (e: any) {
-        console.error("Screen share failed:", e)
-        onEnd?.()
-    }
-}
-
-const stopScreenShare = (onEnd?: () => void) => {
-    if (!localStream) return
-
-    // FIX: Use the explicit Ref to find the track, do NOT guess based on ID
-    const screenTrack = screenVideoTrackRef.current
-    const mixedTrack = mixedAudioTrackRef.current
-
-    if (screenTrack) {
-        try {
-            screenTrack.stop()
-            localStream.removeTrack(screenTrack)
-        } catch (e) { console.error("Error stopping screen track:", e) }
-        screenVideoTrackRef.current = null
-    }
-
-    // Restore original mic track if it was replaced
-    if (mixedTrack && originalMicTrackRef.current && currentAudioTrackRef.current === mixedTrack) {
-        localStream.removeTrack(mixedTrack)
-        localStream.addTrack(originalMicTrackRef.current)
-        mixedTrack.stop()
-
-        const toRepl = mixedTrack
-        const restore = originalMicTrackRef.current
-
-        peersRef.current.forEach(p => {
-            if (!p.isPresentation) {
-                if (screenTrack) {
-                    try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
-                }
-                try { p.peer.replaceTrack(toRepl, restore, localStream) } catch (e) { }
-            }
-        })
-        currentAudioTrackRef.current = restore
-        mixedAudioTrackRef.current = null
-    } else if (screenTrack) {
-        // If just screen video without mixed audio
-        peersRef.current.forEach(p => {
-            if (!p.isPresentation) {
-                try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
-            }
-        })
-    }
-
-    setSharingUserId(null)
-    channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } })
-    onEnd?.()
-}
-
-const shareVideoFile = async (file: File, onEnd?: () => void) => {
-    if (sharingUserId && sharingUserId !== userId) return
-    try {
-        const video = document.createElement('video'); video.src = URL.createObjectURL(file); video.muted = true; video.playsInline = true; await video.play()
-        const fileStream = (video as any).captureStream ? (video as any).captureStream() : (video as any).mozCaptureStream()
-        const fileTrack = fileStream.getVideoTracks()[0];
-        const mixedTrack = await mixAudio(fileStream)
-        mixedAudioTrackRef.current = mixedTrack || null
-
-        if (localStream && fileTrack) {
-            localStream.addTrack(fileTrack)
-
-            if (mixedTrack && currentAudioTrackRef.current) {
-                const toReplace = currentAudioTrackRef.current
-                localStream.removeTrack(toReplace)
-                localStream.addTrack(mixedTrack)
-
-                peersRef.current.forEach(p => {
-                    if (!p.isPresentation) {
-                        try { p.peer.replaceTrack(toReplace, mixedTrack, localStream) } catch (e) { }
-                    }
-                })
-                currentAudioTrackRef.current = mixedTrack
-            }
-
-            peersRef.current.forEach(p => {
-                if (!p.isPresentation) {
-                    try { p.peer.addTrack(fileTrack, localStream) } catch (e) { }
-                }
-            })
-        }
-        setSharingUserId(userId); channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
-        video.onended = () => stopScreenShare(onEnd)
-    } catch (e) { }
-}
-
-const toggleMic = (enabled: boolean) => {
-    if (originalMicTrackRef.current) originalMicTrackRef.current.enabled = enabled
-    if (mixedAudioTrackRef.current) mixedAudioTrackRef.current.enabled = enabled
-    localStream?.getAudioTracks().forEach(t => t.enabled = enabled)
-    updateMetadata({ micOn: enabled })
-}
-
-const toggleCamera = (enabled: boolean) => {
-    localStream?.getVideoTracks().forEach(t => t.enabled = enabled)
-    updateMetadata({ cameraOn: enabled })
-}
-
-// Admin Actions
-const kickUser = (targetId: string) => {
-    channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'kick', targetId } })
-}
-
-const updateUserRole = (targetId: string, newRole: string) => {
-    channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'set-role', targetId, payload: { role: newRole } } })
-}
-
-const updateUserLanguages = (targetId: string, languages: string[]) => {
-    channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'set-allowed-languages', targetId, payload: { languages } } })
-}
-
-const reconnect = useCallback(() => {
-    console.log("Reiniciando conexão WebRTC...")
-    // Destroy all peers
-    peersRef.current.forEach(p => p.peer.destroy())
-    peersRef.current.clear()
-    syncToState()
-
-    // Re-join channel
-    if (localStream) {
-        joinChannel(localStream)
-    }
-}, [joinChannel, localStream, syncToState])
-
-return {
-    localStream,
-    peers,
-    userCount,
-    toggleMic,
-    toggleCamera,
-    shareScreen,
-    stopScreenShare: () => stopScreenShare(),
-    shareVideoFile,
-    sharingUserId,
-    isAnySharing: !!sharingUserId,
-    channel: channelState,
-    switchDevice: async (kind: 'audio' | 'video', deviceId: string) => {
+    // NEW: Sync local tracks to all connected peers whenever localStream changes
+    // This handles cases where the user joins first (no permissions) and then allows camera later.
+    useEffect(() => {
         if (!localStream) return
 
+        peersRef.current.forEach(p => {
+            // Only add if not already added (SimplePeer throws if track already exists, so we try/catch)
+            localStream.getTracks().forEach(track => {
+                try {
+                    p.peer.addTrack(track, localStream)
+                } catch (e) {
+                    // Ignore "Track already exists" errors
+                }
+            })
+        })
+    }, [localStream])
+
+    const promoteToHost = async (newHostId: string) => {
+        if (hostId !== userId) return
         try {
-            const constraints = kind === 'audio'
-                ? { audio: { deviceId: { exact: deviceId } } }
-                : { video: { deviceId: { exact: deviceId } } }
+            await supabase.from('meetings').update({ host_id: newHostId }).eq('id', roomId)
+            channelRef.current?.send({ type: 'broadcast', event: 'host-promoted', payload: { newHostId } })
+            setHostId(newHostId)
+        } catch (e) { console.error(e) }
+    }
 
-            const newStream = await navigator.mediaDevices.getUserMedia(constraints)
-            const newTrack = kind === 'audio' ? newStream.getAudioTracks()[0] : newStream.getVideoTracks()[0]
+    const sendEmoji = (emoji: string) => {
+        channelRef.current?.send({ type: 'broadcast', event: 'reaction', payload: { emoji, sender: userId } })
+        const id = Math.random().toString(36).substr(2, 9)
+        setReactions(prev => [...prev, { id, emoji, userId }])
+        setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 5000)
+    }
 
-            if (kind === 'audio') {
-                const oldTrack = currentAudioTrackRef.current
-                if (oldTrack) {
-                    localStream.removeTrack(oldTrack)
-                    oldTrack.stop()
-                }
-                localStream.addTrack(newTrack)
-                originalMicTrackRef.current = newTrack
-                currentAudioTrackRef.current = newTrack
+    const toggleHand = () => {
+        const newState = !localHandRaised
+        setLocalHandRaised(newState)
+        updateMetadata({ handRaised: newState })
+    }
 
-                // If sharing screen with audio, we might need to remix (TODO: Handle remixing on device switch)
-                // For now, just replacing the track in peers
-                peersRef.current.forEach(p => {
-                    if (!p.isPresentation) {
-                        p.peer.replaceTrack(oldTrack!, newTrack, localStream)
-                    }
-                })
-                updateMetadata({ micOn: true }) // Auto unmute on switch? Or keep state?
-            } else {
-                const oldTrack = localStream.getVideoTracks()[0] // Assuming one video track
-                if (oldTrack) {
-                    localStream.removeTrack(oldTrack)
-                    oldTrack.stop()
-                }
-                localStream.addTrack(newTrack)
-                peersRef.current.forEach(p => {
-                    if (!p.isPresentation) {
-                        p.peer.replaceTrack(oldTrack!, newTrack, localStream)
-                    }
-                })
-                updateMetadata({ cameraOn: true })
-            }
-        } catch (err) {
-            console.error("Failed to switch device:", err)
+
+
+    // React to identity changes (e.g. Admin name loading late)
+    useEffect(() => {
+        if (channelRef.current && isJoined) {
+            updateMetadata({ name: userName, role: userRole })
         }
-    },
-    sendEmoji,
-    toggleHand,
-    updateMetadata,
-    promoteToHost,
-    kickUser,
-    updateUserRole,
-    updateUserLanguages,
-    mediaError,
-    reactions,
-    localHandRaised,
-    hostId,
-    isHost: hostId === userId,
-    reconnect // NEW
-}
+    }, [userName, userRole, isJoined])
+
+    const mixAudio = async (contentStream: MediaStream) => {
+        const contentTrack = contentStream.getAudioTracks()[0]
+
+        // STRICT FALLBACK: If no content audio, return original mic immediately. Do not mix.
+        if (!contentTrack) {
+            console.warn("Sem áudio do sistema detectado. Mantendo microfone original.")
+            return originalMicTrackRef.current
+        }
+
+        if (!originalMicTrackRef.current) return contentTrack
+
+        try {
+            // FORCE RESET: Always create a fresh context to avoid "suspended" or stale states
+            if (audioContextRef.current) {
+                try { await audioContextRef.current.close() } catch (e) { }
+                audioContextRef.current = null
+            }
+
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({
+                latencyHint: 'interactive',
+                sampleRate: 48000
+            })
+            const ctx = audioContextRef.current
+
+            const dest = ctx.createMediaStreamDestination()
+
+            // Mic Source
+            const micSource = ctx.createMediaStreamSource(new MediaStream([originalMicTrackRef.current]))
+            const micGain = ctx.createGain()
+            micGain.gain.value = 1.0
+            micSource.connect(micGain)
+            micGain.connect(dest)
+
+            // Content Source
+            const contentSource = ctx.createMediaStreamSource(new MediaStream([contentTrack]))
+            const contentGain = ctx.createGain()
+            contentGain.gain.value = 1.0
+            contentSource.connect(contentGain)
+            contentGain.connect(dest)
+
+            return dest.stream.getAudioTracks()[0]
+        } catch (e) {
+            console.error("Audio mixing failed CRITICAL:", e)
+            return originalMicTrackRef.current
+        }
+    }
+
+    const shareScreen = async (onEnd?: () => void) => {
+        if (sharingUserId && sharingUserId !== userId) return
+        try {
+            console.log("Iniciando compartilhamento de tela com áudio (High Fidelity)...")
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: { cursor: 'always' } as any,
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    sampleRate: 48000,
+                    channelCount: 2
+                }
+            })
+
+            const screenTrack = screenStream.getVideoTracks()[0]
+            screenVideoTrackRef.current = screenTrack
+
+            // Check if user actually shared audio
+            const hasSystemAudio = screenStream.getAudioTracks().length > 0
+            let mixedTrack: MediaStreamTrack | null = null;
+
+            if (hasSystemAudio) {
+                console.log("Áudio do sistema detectado. Iniciando mixagem...")
+                const track = await mixAudio(screenStream)
+                if (track) mixedTrack = track
+            } else {
+                console.log("Nenhum áudio do sistema compartilhado. Usando apenas microfone.")
+            }
+
+            mixedAudioTrackRef.current = mixedTrack
+
+            if (localStream) {
+                localStream.addTrack(screenTrack)
+
+                // Only swap if we actually have a NEW mixed track different from the current one
+                if (mixedTrack && currentAudioTrackRef.current && mixedTrack !== currentAudioTrackRef.current) {
+                    const toReplace = currentAudioTrackRef.current
+                    localStream.removeTrack(toReplace)
+                    localStream.addTrack(mixedTrack)
+
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            try { p.peer.replaceTrack(toReplace, mixedTrack, localStream) }
+                            catch (e) { console.error("Falha ao substituir track áudio:", e) }
+                        }
+                    })
+                    currentAudioTrackRef.current = mixedTrack
+                }
+
+                // Note: If no mixed track (fallback), we just keep currentAudioTrackRef (which is the mic)
+                // We do NOT remove it.
+
+                // Add the video track as a second track
+                peersRef.current.forEach(p => {
+                    if (!p.isPresentation) {
+                        try { p.peer.addTrack(screenTrack, localStream) } catch (e) { }
+                    }
+                })
+            }
+
+            setSharingUserId(userId)
+            channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
+
+            screenTrack.onended = () => stopScreenShare(onEnd)
+            return screenStream
+        } catch (e: any) {
+            console.error("Screen share failed:", e)
+            onEnd?.()
+        }
+    }
+
+    const stopScreenShare = (onEnd?: () => void) => {
+        if (!localStream) return
+
+        // FIX: Use the explicit Ref to find the track, do NOT guess based on ID
+        const screenTrack = screenVideoTrackRef.current
+        const mixedTrack = mixedAudioTrackRef.current
+
+        if (screenTrack) {
+            try {
+                screenTrack.stop()
+                localStream.removeTrack(screenTrack)
+            } catch (e) { console.error("Error stopping screen track:", e) }
+            screenVideoTrackRef.current = null
+        }
+
+        // Restore original mic track if it was replaced
+        if (mixedTrack && originalMicTrackRef.current && currentAudioTrackRef.current === mixedTrack) {
+            localStream.removeTrack(mixedTrack)
+            localStream.addTrack(originalMicTrackRef.current)
+            mixedTrack.stop()
+
+            const toRepl = mixedTrack
+            const restore = originalMicTrackRef.current
+
+            peersRef.current.forEach(p => {
+                if (!p.isPresentation) {
+                    if (screenTrack) {
+                        try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
+                    }
+                    try { p.peer.replaceTrack(toRepl, restore, localStream) } catch (e) { }
+                }
+            })
+            currentAudioTrackRef.current = restore
+            mixedAudioTrackRef.current = null
+        } else if (screenTrack) {
+            // If just screen video without mixed audio
+            peersRef.current.forEach(p => {
+                if (!p.isPresentation) {
+                    try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
+                }
+            })
+        }
+
+        setSharingUserId(null)
+        channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } })
+        onEnd?.()
+    }
+
+    const shareVideoFile = async (file: File, onEnd?: () => void) => {
+        if (sharingUserId && sharingUserId !== userId) return
+        try {
+            const video = document.createElement('video'); video.src = URL.createObjectURL(file); video.muted = true; video.playsInline = true; await video.play()
+            const fileStream = (video as any).captureStream ? (video as any).captureStream() : (video as any).mozCaptureStream()
+            const fileTrack = fileStream.getVideoTracks()[0];
+            const mixedTrack = await mixAudio(fileStream)
+            mixedAudioTrackRef.current = mixedTrack || null
+
+            if (localStream && fileTrack) {
+                localStream.addTrack(fileTrack)
+
+                if (mixedTrack && currentAudioTrackRef.current) {
+                    const toReplace = currentAudioTrackRef.current
+                    localStream.removeTrack(toReplace)
+                    localStream.addTrack(mixedTrack)
+
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            try { p.peer.replaceTrack(toReplace, mixedTrack, localStream) } catch (e) { }
+                        }
+                    })
+                    currentAudioTrackRef.current = mixedTrack
+                }
+
+                peersRef.current.forEach(p => {
+                    if (!p.isPresentation) {
+                        try { p.peer.addTrack(fileTrack, localStream) } catch (e) { }
+                    }
+                })
+            }
+            setSharingUserId(userId); channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
+            video.onended = () => stopScreenShare(onEnd)
+        } catch (e) { }
+    }
+
+    const toggleMic = (enabled: boolean) => {
+        if (originalMicTrackRef.current) originalMicTrackRef.current.enabled = enabled
+        if (mixedAudioTrackRef.current) mixedAudioTrackRef.current.enabled = enabled
+        localStream?.getAudioTracks().forEach(t => t.enabled = enabled)
+        updateMetadata({ micOn: enabled })
+    }
+
+    const toggleCamera = (enabled: boolean) => {
+        localStream?.getVideoTracks().forEach(t => t.enabled = enabled)
+        updateMetadata({ cameraOn: enabled })
+    }
+
+    // Admin Actions
+    const kickUser = (targetId: string) => {
+        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'kick', targetId } })
+    }
+
+    const updateUserRole = (targetId: string, newRole: string) => {
+        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'set-role', targetId, payload: { role: newRole } } })
+    }
+
+    const updateUserLanguages = (targetId: string, languages: string[]) => {
+        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'set-allowed-languages', targetId, payload: { languages } } })
+    }
+
+    const reconnect = useCallback(() => {
+        console.log("Reiniciando conexão WebRTC...")
+        // Destroy all peers
+        peersRef.current.forEach(p => p.peer.destroy())
+        peersRef.current.clear()
+        syncToState()
+
+        // Re-join channel
+        if (localStream) {
+            joinChannel(localStream)
+        }
+    }, [joinChannel, localStream, syncToState])
+
+    return {
+        localStream,
+        peers,
+        userCount,
+        toggleMic,
+        toggleCamera,
+        shareScreen,
+        stopScreenShare: () => stopScreenShare(),
+        shareVideoFile,
+        sharingUserId,
+        isAnySharing: !!sharingUserId,
+        channel: channelState,
+        switchDevice: async (kind: 'audio' | 'video', deviceId: string) => {
+            if (!localStream) return
+
+            try {
+                const constraints = kind === 'audio'
+                    ? { audio: { deviceId: { exact: deviceId } } }
+                    : { video: { deviceId: { exact: deviceId } } }
+
+                const newStream = await navigator.mediaDevices.getUserMedia(constraints)
+                const newTrack = kind === 'audio' ? newStream.getAudioTracks()[0] : newStream.getVideoTracks()[0]
+
+                if (kind === 'audio') {
+                    const oldTrack = currentAudioTrackRef.current
+                    if (oldTrack) {
+                        localStream.removeTrack(oldTrack)
+                        oldTrack.stop()
+                    }
+                    localStream.addTrack(newTrack)
+                    originalMicTrackRef.current = newTrack
+                    currentAudioTrackRef.current = newTrack
+
+                    // If sharing screen with audio, we might need to remix (TODO: Handle remixing on device switch)
+                    // For now, just replacing the track in peers
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            p.peer.replaceTrack(oldTrack!, newTrack, localStream)
+                        }
+                    })
+                    updateMetadata({ micOn: true }) // Auto unmute on switch? Or keep state?
+                } else {
+                    const oldTrack = localStream.getVideoTracks()[0] // Assuming one video track
+                    if (oldTrack) {
+                        localStream.removeTrack(oldTrack)
+                        oldTrack.stop()
+                    }
+                    localStream.addTrack(newTrack)
+                    peersRef.current.forEach(p => {
+                        if (!p.isPresentation) {
+                            p.peer.replaceTrack(oldTrack!, newTrack, localStream)
+                        }
+                    })
+                    updateMetadata({ cameraOn: true })
+                }
+            } catch (err) {
+                console.error("Failed to switch device:", err)
+            }
+        },
+        sendEmoji,
+        toggleHand,
+        updateMetadata,
+        promoteToHost,
+        kickUser,
+        updateUserRole,
+        updateUserLanguages,
+        mediaError,
+        reactions,
+        localHandRaised,
+        hostId,
+        isHost: hostId === userId,
+        reconnect // NEW
+    }
 }
