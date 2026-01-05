@@ -44,32 +44,17 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         }
     }, [stream])
 
-    // Debugging states
+    // Debugging states (Simplified for production)
     const [debugInfo, setDebugInfo] = useState<string>("")
 
     useEffect(() => {
         if (!stream) return
         const interval = setInterval(() => {
-            const vTrack = stream.getVideoTracks()[0]
-            const aTrack = stream.getAudioTracks()[0]
             const videoEl = videoRef.current
-
             // Sync states
             if (videoEl) {
                 setIsPaused(videoEl.paused)
-                // If we are playing but muted (and shouldn't be), update state
-                if (!videoEl.paused && videoEl.muted && !isMutedAutoplay) {
-                    // logic to detect if we stuck in muted state
-                }
             }
-
-            setDebugInfo(
-                `V:${vTrack ? (vTrack.enabled ? 'En' : 'Dis') + '/' + vTrack.readyState : 'Miss'} | ` +
-                `A:${aTrack ? (aTrack.enabled ? 'En' : 'Dis') + '/' + aTrack.readyState : 'Miss'} | ` +
-                `P:${videoEl?.paused ? 'Yes' : 'No'} | ` +
-                `M:${videoEl?.muted ? 'Yes' : 'No'} | ` +
-                `St:${connectionState}`
-            )
         }, 1000)
         return () => clearInterval(interval)
     }, [stream, connectionState, isMutedAutoplay])
@@ -128,16 +113,18 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     />
 
                     {/* OVERLAYS FOR INTERACTION */}
+                    {/* OVERLAYS FOR INTERACTION */}
                     {isPaused && (
-                        <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/60 backdrop-blur-sm">
+                        <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/40 backdrop-blur-sm transition-all">
                             <button
                                 onClick={handleManualPlay}
-                                className="bg-red-600 hover:bg-red-500 text-white rounded-full px-8 py-4 shadow-2xl transition-transform hover:scale-105 active:scale-95 group/play flex items-center gap-3 animate-pulse"
+                                className="group/play flex flex-col items-center gap-3 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                             >
-                                <Maximize2 className="h-8 w-8 ml-1 fill-white" />
-                                <div className="flex flex-col items-start">
-                                    <span className="text-lg font-bold">Resume Video</span>
-                                    <span className="text-xs opacity-90">Click to start playback</span>
+                                <div className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover/play:bg-white/20 transition-all shadow-xl">
+                                    <Maximize2 className="h-6 w-6 text-white translate-x-0.5" />
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <span className="text-white font-medium text-sm tracking-wide shadow-black drop-shadow-md">Clique para ativar o vídeo</span>
                                 </div>
                             </button>
                         </div>
@@ -147,10 +134,10 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[100]">
                             <button
                                 onClick={handleUnmute}
-                                className="bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-full px-6 py-2 shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2"
+                                className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white font-medium rounded-full px-6 py-2 shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2 cursor-pointer"
                             >
                                 <MicOff className="h-4 w-4" />
-                                <span>Click to Unmute</span>
+                                <span>Ativar Áudio</span>
                             </button>
                         </div>
                     )}
@@ -207,10 +194,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                 )}
             </AnimatePresence>
 
-            {/* DEBUG OVERLAY (Temporary) */}
-            <div className="absolute top-2 left-2 bg-black/80 text-[10px] text-green-400 p-2 rounded pointer-events-none z-50 font-mono whitespace-pre shadow-xl border border-green-900">
-                {debugInfo}
-            </div>
+            {/* DEBUG OVERLAY REMOVED */}
         </div>
     )
 }
