@@ -110,7 +110,7 @@ export function useWebRTC(
             trickle: true,
             stream: stream || undefined,
             config: { iceServers: iceServersRef.current },
-            sdpTransform: optimizeSdp // Apply Music Mode SDP Hack
+            // sdpTransform: optimizeSdp - REMOVED: Causing issues with video negotiation on some clients
         })
         peer.on('signal', (signal) => {
             channelRef.current?.send({
