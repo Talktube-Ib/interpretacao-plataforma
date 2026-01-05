@@ -19,16 +19,20 @@ interface VideoPlayerProps {
 
 export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
+    const [isPaused, setIsPaused] = useState(false)
 
     useEffect(() => {
         const videoEl = videoRef.current
         if (videoEl && stream) {
             videoEl.srcObject = stream
             // Force play attempt
-            videoEl.play().catch(e => {
-                console.error("AutoPlay Error:", e)
-                // If autoplay fails, we might need UI interaction logic later
-            })
+            const playPromise = videoEl.play()
+            if (playPromise !== undefined) {
+                playPromise.catch(e => {
+                    console.error("AutoPlay Error:", e)
+                    setIsPaused(true)
+                })
+            }
         }
     }, [stream])
 
@@ -55,6 +59,14 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
 
     const isConnecting = connectionState === 'connecting'
 
+    const handleManualPlay = () => {
+        if (videoRef.current) {
+            videoRef.current.play()
+                .then(() => setIsPaused(false))
+                .catch(console.error)
+        }
+    }
+
     return (
         <div className={cn(
             "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500",
@@ -70,18 +82,33 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     <span className="mt-2 md:mt-4 text-zinc-400 font-medium tracking-tight text-xs md:text-base">{name}</span>
                 </div>
             ) : (
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className={cn(
-                        "w-full h-full object-contain bg-zinc-950",
-                        isPresentation ? "object-contain" : "object-contain"
+                <>
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        className={cn(
+                            "w-full h-full object-contain bg-zinc-950",
+                            isPresentation ? "object-contain" : "object-contain"
+                        )}
+                        onLoadedMetadata={(e) => {
+                            e.currentTarget.play().catch(() => setIsPaused(true))
+                        }}
+                        onPause={() => setIsPaused(true)}
+                        onPlay={() => setIsPaused(false)}
+                    />
+                    {isPaused && (
+                        <div className="absolute inset-0 flex items-center justify-center z-40 bg-black/40 backdrop-blur-[2px]">
+                            <button
+                                onClick={handleManualPlay}
+                                className="bg-cyan-500 hover:bg-cyan-400 text-white rounded-full p-4 shadow-2xl transition-transform hover:scale-105 active:scale-95 group/play flex items-center gap-2"
+                            >
+                                <Maximize2 className="h-6 w-6 ml-1 fill-white" />
+                                <span className="text-sm font-bold">Resume Video</span>
+                            </button>
+                        </div>
                     )}
-                    onLoadedMetadata={(e) => {
-                        e.currentTarget.play().catch(console.error)
-                    }}
-                />
+                </>
             )}
 
             {/* OVERLAYS */}
