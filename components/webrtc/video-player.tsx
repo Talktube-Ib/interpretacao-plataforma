@@ -21,16 +21,37 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream
+        const videoEl = videoRef.current
+        if (videoEl && stream) {
+            videoEl.srcObject = stream
+            // Force play attempt
+            videoEl.play().catch(e => {
+                console.error("AutoPlay Error:", e)
+                // If autoplay fails, we might need UI interaction logic later
+            })
         }
     }, [stream])
 
+    // Debugging states
+    const [debugInfo, setDebugInfo] = useState<string>("")
+
     useEffect(() => {
-        if (videoRef.current) {
-            videoRef.current.volume = volume
-        }
-    }, [volume])
+        if (!stream) return
+        const interval = setInterval(() => {
+            const vTrack = stream.getVideoTracks()[0]
+            const aTrack = stream.getAudioTracks()[0]
+            const videoEl = videoRef.current
+
+            setDebugInfo(
+                `V:${vTrack ? (vTrack.enabled ? 'En' : 'Dis') + '/' + vTrack.readyState : 'Miss'} | ` +
+                `A:${aTrack ? (aTrack.enabled ? 'En' : 'Dis') + '/' + aTrack.readyState : 'Miss'} | ` +
+                `P:${videoEl?.paused ? 'Yes' : 'No'} | ` +
+                `Vol:${videoEl?.volume.toFixed(1)} | ` +
+                `St:${connectionState}`
+            )
+        }, 1000)
+        return () => clearInterval(interval)
+    }, [stream, connectionState])
 
     const isConnecting = connectionState === 'connecting'
 
@@ -54,9 +75,12 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     autoPlay
                     playsInline
                     className={cn(
-                        "w-full h-full object-contain bg-zinc-950", // Changed to contain to show full frame
+                        "w-full h-full object-contain bg-zinc-950",
                         isPresentation ? "object-contain" : "object-contain"
                     )}
+                    onLoadedMetadata={(e) => {
+                        e.currentTarget.play().catch(console.error)
+                    }}
                 />
             )}
 
@@ -111,11 +135,8 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
             </AnimatePresence>
 
             {/* DEBUG OVERLAY (Temporary) */}
-            <div className="absolute top-2 left-2 bg-black/50 text-[10px] text-white p-1 rounded pointer-events-none z-50 font-mono">
-                V:{stream?.getVideoTracks().length || 0} |
-                A:{stream?.getAudioTracks().length || 0} |
-                St:{stream?.active ? 'Act' : 'Inact'} |
-                {connectionState}
+            <div className="absolute top-2 left-2 bg-black/80 text-[10px] text-green-400 p-2 rounded pointer-events-none z-50 font-mono whitespace-pre shadow-xl border border-green-900">
+                {debugInfo}
             </div>
         </div>
     )
