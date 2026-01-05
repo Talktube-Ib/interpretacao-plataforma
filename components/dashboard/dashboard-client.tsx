@@ -29,17 +29,15 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
             {/* Minimal Transparent Header */}
             <div className="py-6 px-10 flex border-b border-border/50 bg-background/50 backdrop-blur-md sticky top-0 z-50">
                 <div className="container mx-auto max-w-[1600px] flex justify-between items-center group">
-                    <div className="container mx-auto max-w-[1600px] flex justify-between items-center group">
-                        <h1 className="text-2xl font-black text-foreground tracking-tighter flex items-center gap-3">
-                            <span className="p-2 bg-cyan-600 rounded-xl shadow-lg shadow-cyan-600/20 group-hover:scale-110 transition-transform duration-500 hover:rotate-12">
-                                <Video className="h-5 w-5 text-white" />
-                            </span>
-                            TalkTube
-                            <span className="text-muted-foreground font-medium text-xs tracking-widest uppercase ml-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                                {t('common.video_conf_software')}
-                            </span>
-                        </h1>
-                    </div>
+                    <h1 className="text-2xl font-black text-foreground tracking-tighter flex items-center gap-3">
+                        <span className="p-2 bg-cyan-600 rounded-xl shadow-lg shadow-cyan-600/20 group-hover:scale-110 transition-transform duration-500 hover:rotate-12">
+                            <Video className="h-5 w-5 text-white" />
+                        </span>
+                        TalkTube
+                        <span className="text-muted-foreground font-medium text-xs tracking-widest uppercase ml-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                            {t('common.video_conf_software')}
+                        </span>
+                    </h1>
                 </div>
             </div>
 
