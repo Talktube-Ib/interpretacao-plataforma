@@ -72,12 +72,12 @@ export function VideoGrid({
             return volumeBalance / 100
         }
 
-        // Floor speakers (non-interpreters) -> Low Volume (based on balance)
-        if (!peer.role.includes('interpreter')) {
+        // Floor speakers (non-interpreters OR interpreters explicitly on 'floor') -> Low Volume (based on balance)
+        if (!peer.role.includes('interpreter') || peer.language === 'floor') {
             return (100 - volumeBalance) / 100
         }
 
-        // Other interpreters -> Mute
+        // Other interpreters (on different languages) -> Mute
         return 0
     }
 

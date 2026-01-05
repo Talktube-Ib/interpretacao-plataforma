@@ -94,6 +94,14 @@ export function InterpreterConsole({
                             <SelectValue placeholder="Select Language" />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px] bg-zinc-900 border-zinc-800 text-zinc-200">
+                            {/* Floor Option */}
+                            <SelectItem value="floor" className="cursor-pointer focus:bg-zinc-800 focus:text-white border-b border-white/5 mb-1 pb-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg">🎙️</span>
+                                    <span className="font-medium text-cyan-400">Áudio Original (Todos)</span>
+                                </div>
+                            </SelectItem>
+
                             {languages.map((lang) => {
                                 const isOccupied = occupiedLanguages?.includes(lang.code) && currentLanguage !== lang.code
                                 return (
