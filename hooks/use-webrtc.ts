@@ -91,7 +91,8 @@ export function useWebRTC(
             const now = Date.now()
             let changed = false
             peersRef.current.forEach((p, id) => {
-                if (p.connectionState === 'connecting' && p.lastSignalTime && (now - p.lastSignalTime > 20000)) {
+                // Increased timeout to 45s to handle slower ICE gathering/network
+                if (p.connectionState === 'connecting' && p.lastSignalTime && (now - p.lastSignalTime > 45000)) {
                     p.peer.destroy()
                     peersRef.current.delete(id)
                     changed = true
@@ -102,7 +103,7 @@ export function useWebRTC(
         return () => clearInterval(interval)
     }, [syncToState])
 
-    const createPeer = (targetUserId: string, initiator: boolean, stream: MediaStream | null, targetRole: string, targetName: string = 'Participante') => {
+    const createPeer = useCallback((targetUserId: string, initiator: boolean, stream: MediaStream | null, targetRole: string, targetName: string = 'Participante') => {
         if (peersRef.current.get(targetUserId)) return peersRef.current.get(targetUserId)!.peer
         const peer = new SimplePeer({
             initiator,
@@ -132,14 +133,18 @@ export function useWebRTC(
         peersRef.current.set(targetUserId, { peer, userId: targetUserId, role: targetRole, name: targetName, connectionState: 'connecting', lastSignalTime: Date.now() })
         syncToState()
         return peer
-    }
+    }, [userId, userRole, userName, syncToState, updatePeerData])
 
-    const updateMetadata = (patch: any) => {
-        metadataRef.current = { ...metadataRef.current, ...patch }
+    const updateMetadata = useCallback((patch: any) => {
+        const newState = { ...metadataRef.current, ...patch }
+        // Simple diff check to prevent flood
+        if (JSON.stringify(newState) === JSON.stringify(metadataRef.current)) return
+
+        metadataRef.current = newState
         if (channelRef.current && isJoined) {
             channelRef.current.track(metadataRef.current)
         }
-    }
+    }, [isJoined])
 
     const joinChannel = useCallback((stream: MediaStream | null) => {
         if (channelRef.current) {
