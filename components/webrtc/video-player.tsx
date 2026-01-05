@@ -12,7 +12,7 @@ interface VideoPlayerProps {
     handRaised?: boolean
     isSpeaking?: boolean
     volume?: number
-    connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected'
+    connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected' | 'closed'
     onSpeakingChange?: (isSpeaking: boolean) => void
     isPresentation?: boolean
 }
@@ -94,6 +94,18 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     >
                         <Loader2 className="h-8 w-8 text-[#06b6d4] animate-spin mb-4" />
                         <span className="text-zinc-400 text-sm font-medium">Conectando...</span>
+                    </motion.div>
+                )}
+                {connectionState === 'failed' && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-red-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 rounded-[2.5rem]"
+                    >
+                        <VideoOff className="h-8 w-8 text-red-500 mb-4" />
+                        <span className="text-red-400 text-sm font-medium">Falha na Conexão</span>
+                        <span className="text-red-500/50 text-xs mt-1">Bloqueio de Rede?</span>
                     </motion.div>
                 )}
             </AnimatePresence>
