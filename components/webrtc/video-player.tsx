@@ -103,6 +103,9 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
             const aTrack = stream.getAudioTracks()[0]
 
             if (videoEl) {
+                // FORCE SYNC (Step Id: 668)
+                if (videoEl.paused !== isPaused) setIsPaused(videoEl.paused)
+
                 setDebugInfo(
                     `RES:${videoEl.videoWidth}x${videoEl.videoHeight} | ` +
                     `RS:${videoEl.readyState} | ` +
@@ -113,9 +116,9 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     `At:${aTrack ? aTrack.readyState : 'NO'}`
                 )
             }
-        }, 1000)
+        }, 500)
         return () => clearInterval(interval)
-    }, [stream])
+    }, [stream, isPaused])
 
     const isConnecting = connectionState === 'connecting'
 
