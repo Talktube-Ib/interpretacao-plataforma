@@ -41,14 +41,14 @@ export function VolumeControl({ volume, onVolumeChange }: VolumeControlProps) {
                     className="h-10 w-10 md:h-12 md:w-12 rounded-lg md:rounded-xl group hover:bg-white/10"
                     title="Volume Geral"
                 >
-                    {/* Custom Fishbone Icon */}
-                    <div className="relative flex items-end gap-[2px] h-5 w-5 md:h-6 md:w-6 justify-center">
+                    {/* Custom Fishbone Icon - Minimalist */}
+                    <div className="relative flex items-end gap-[3px] h-5 w-5 md:h-6 md:w-6 justify-center">
                         {volume === 0 && (
-                            <VolumeX className="text-red-500 absolute inset-0 m-auto h-4 w-4" />
+                            <VolumeX className="text-zinc-500 absolute inset-0 m-auto h-4 w-4" />
                         )}
 
                         {volume > 0 && bars.map((bar) => {
-                            const isActive = volume >= (bar * 0.2 - 0.1) // Slight threshold to make feeling responsive
+                            const isActive = volume >= (bar * 0.2 - 0.1)
                             const heightClass = [
                                 "h-[20%]", "h-[40%]", "h-[60%]", "h-[80%]", "h-[100%]"
                             ][bar - 1]
@@ -57,9 +57,9 @@ export function VolumeControl({ volume, onVolumeChange }: VolumeControlProps) {
                                 <div
                                     key={bar}
                                     className={cn(
-                                        "w-[3px] rounded-full transition-all duration-300",
+                                        "w-[2px] rounded-full transition-all duration-300",
                                         heightClass,
-                                        isActive ? "bg-[#06b6d4] shadow-[0_0_8px_#06b6d4]" : "bg-white/20"
+                                        isActive ? "bg-white" : "bg-white/10"
                                     )}
                                 />
                             )

@@ -130,18 +130,21 @@ export function InterpreterConsole({
 
                         <div className="h-8 w-px bg-white/10" />
 
-                        {/* Channel Controls (Compact) */}
-                        <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 px-1">Saída</label>
+                        {/* Unified Minimalist Controls */}
+                        <div className="flex items-center gap-2">
+                            {/* Output Language */}
                             <Select value={currentLanguage} onValueChange={onLanguageChange}>
-                                <SelectTrigger className="w-[140px] h-9 bg-zinc-900/50 border-white/10 text-white font-medium text-xs rounded-lg focus:ring-0 focus:border-white/20">
-                                    <SelectValue placeholder="Idioma" />
+                                <SelectTrigger className="w-[124px] h-9 bg-zinc-900/50 border-white/5 text-white font-medium text-xs rounded-xl focus:ring-0 focus:border-white/20 shadow-inner pl-2.5">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <Mic className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                                        <SelectValue placeholder="Saída" />
+                                    </div>
                                 </SelectTrigger>
                                 <SelectContent className="max-h-[300px] bg-zinc-950 border-white/10 text-zinc-300 z-[60]">
                                     <SelectItem value="floor" className="cursor-pointer focus:bg-zinc-900 focus:text-white text-xs">
                                         <div className="flex items-center gap-2">
                                             <span>🎙️</span>
-                                            <span className="text-cyan-400">Original (Floor)</span>
+                                            <span className="text-cyan-400">Original (Piso)</span>
                                         </div>
                                     </SelectItem>
                                     {languages.map((lang) => {
@@ -163,39 +166,34 @@ export function InterpreterConsole({
                                     })}
                                 </SelectContent>
                             </Select>
+
+                            {/* Handover Action */}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-zinc-500 hover:text-white hover:bg-white/5 rounded-full"
+                                onClick={onHandover}
+                                title="Solicitar Troca (Handover)"
+                            >
+                                <ArrowRightLeft className="h-3.5 w-3.5" />
+                            </Button>
+
+                            {/* Input Toggle */}
+                            <Button
+                                variant="ghost"
+                                className={cn(
+                                    "h-9 px-2.5 gap-2 rounded-xl text-xs font-medium border transition-all",
+                                    isListeningToFloor
+                                        ? "bg-zinc-900/50 text-cyan-400 border-white/5 hover:bg-zinc-800"
+                                        : "bg-zinc-900/50 text-zinc-400 border-white/5 hover:text-white"
+                                )}
+                                onClick={onListenToFloor}
+                                title="Alternar Entrada (Ouvir)"
+                            >
+                                <Headphones className="h-3.5 w-3.5" />
+                                <span className="hidden md:inline">{isListeningToFloor ? "Piso" : "Relé"}</span>
+                            </Button>
                         </div>
-
-                        {/* Input Controls (Compact) */}
-                        <div className="flex flex-col gap-1">
-                            <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 px-1">Entrada</label>
-                            <div className="flex bg-zinc-900/50 rounded-lg p-0.5 border border-white/5">
-                                <button
-                                    onClick={onListenToFloor}
-                                    className={cn(
-                                        "px-3 py-1 text-[10px] font-bold rounded-md transition-all flex items-center gap-1.5",
-                                        isListeningToFloor
-                                            ? "bg-cyan-600/20 text-cyan-400 shadow-sm border border-cyan-500/20"
-                                            : "text-zinc-500 hover:text-zinc-300"
-                                    )}
-                                >
-                                    <Headphones className="h-3 w-3" />
-                                    Original
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="h-8 w-px bg-white/10" />
-
-                        {/* Actions */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl"
-                            onClick={onHandover}
-                            title="Solicitar Troca (Handover)"
-                        >
-                            <ArrowRightLeft className="h-4 w-4" />
-                        </Button>
 
                     </motion.div>
                 )}
