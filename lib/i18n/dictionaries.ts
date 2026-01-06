@@ -366,6 +366,10 @@ export const dictionaries = {
             share_description: "Share this link so others can join meeting",
             invite_people: "Invite People",
         },
+        notifications: {
+            invite_title: 'Meeting Invitation',
+            invite_msg_prefix: 'You have been invited to interpret in the meeting'
+        },
         dashboard: {
             personal_room_title: "Your Personal Room",
             personal_room_desc: "This is your always-on public meeting room. Anyone with the link can join.",
