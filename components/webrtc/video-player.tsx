@@ -21,6 +21,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
+    const [isBuffering, setIsBuffering] = useState(false)
 
     useEffect(() => {
         const videoEl = videoRef.current
@@ -47,14 +48,49 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
     // Sync Volume
     useEffect(() => {
         if (videoRef.current) {
-            // Ensure volume is between 0 and 1
             const vol = Math.max(0, Math.min(1, volume))
             videoRef.current.volume = vol
-            // Optional: Set muted if volume is 0 to save processing
             if (vol === 0) videoRef.current.muted = true
             else if (!isMutedAutoplay) videoRef.current.muted = false
         }
     }, [volume, isMutedAutoplay])
+
+    // Monitor Playback Health
+    useEffect(() => {
+        const videoEl = videoRef.current
+        if (!videoEl || !stream) return
+
+        const handleWaiting = () => setIsBuffering(true)
+        const handlePlaying = () => {
+            setIsBuffering(false)
+            setIsPaused(false)
+        }
+        const handlePause = () => !isBuffering && setIsPaused(true)
+        const handleError = (e: any) => {
+            console.error("Video Error:", e)
+            // Try to recover
+            setTimeout(() => {
+                if (videoEl) {
+                    videoEl.load()
+                    videoEl.play().catch(console.error)
+                }
+            }, 1000)
+        }
+
+        videoEl.addEventListener('waiting', handleWaiting)
+        videoEl.addEventListener('stalled', handleWaiting)
+        videoEl.addEventListener('playing', handlePlaying)
+        videoEl.addEventListener('pause', handlePause)
+        videoEl.addEventListener('error', handleError)
+
+        return () => {
+            videoEl.removeEventListener('waiting', handleWaiting)
+            videoEl.removeEventListener('stalled', handleWaiting)
+            videoEl.removeEventListener('playing', handlePlaying)
+            videoEl.removeEventListener('pause', handlePause)
+            videoEl.removeEventListener('error', handleError)
+        }
+    }, [stream, isBuffering])
 
     // Debugging states (Simplified for production)
     const [debugInfo, setDebugInfo] = useState<string>("")
