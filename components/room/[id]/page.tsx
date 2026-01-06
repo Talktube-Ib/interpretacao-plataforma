@@ -478,7 +478,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         <Logo />
                     </div>
                     <div className="h-4 w-px bg-border/50" />
-                    <div className="flex flex-col md:flex-row md:items-center">
+                    <div className="flex flex-col md:flex-row md:items-center whitespace-nowrap">
                         <span className="font-semibold text-xs md:text-sm opacity-80 md:hidden">ID: {roomId.slice(0, 8)}...</span>
                         <span className="font-semibold text-sm opacity-80 hidden md:inline">ID: {roomId}</span>
                     </div>
@@ -507,19 +507,23 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         <Settings className="h-3 w-3 text-red-400" />
                     </Button>
 
-                    <div className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${userCount > 1 ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'}`}>
+                    <div className={cn(
+                        "px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1",
+                        userCount > 1 ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'
+                    )}>
                         <Users className="h-3 w-3" />
-                        {userCount} {t('room.online')}
+                        <span>{userCount}</span>
+                        <span className="hidden xs:inline ml-1">{t('room.online')}</span>
                     </div>
                 </div>
 
-                {/* View Mode Controls - Zoom style */}
-                <div className="bg-card/40 backdrop-blur-md p-0.5 md:p-1 rounded-xl md:rounded-2xl border border-border pointer-events-auto shadow-xl flex gap-1 md:gap-2">
+                {/* View Mode Controls - Zoom style - Hidden on mobile to prevent overflow */}
+                <div className="hidden md:flex bg-card/40 backdrop-blur-md p-0.5 md:p-1 rounded-xl md:rounded-2xl border border-border pointer-events-auto shadow-xl gap-1 md:gap-2">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="flex items-center gap-1.5 md:gap-2 px-2 md:px-4 h-8 md:h-10 font-bold text-[10px] md:text-sm rounded-lg md:rounded-xl hover:bg-white/10">
                                 <Maximize2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                <span className="hidden xs:inline">{t('room.view_mode')}</span>
+                                <span className="hidden lg:inline">{t('room.view_mode')}</span>
                                 <ChevronUp className="h-3 w-3 opacity-50 rotate-180" />
                             </Button>
                         </DropdownMenuTrigger>
