@@ -472,13 +472,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     return (
         <div className="h-screen bg-[#020817] flex flex-col relative overflow-hidden text-foreground transition-colors duration-500">
             {/* Top Bar - Auto Hides */}
-            <div className={`absolute top-0 left-0 right-0 p-4 z-[40] flex justify-between items-center transition-all duration-500 ${showUI ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10 pointer-events-none'}`}>
-                <div className="bg-card/40 backdrop-blur-md px-4 py-2 rounded-full pointer-events-auto border border-border flex items-center gap-4 shadow-xl">
+            <div className={`absolute top-0 left-0 right-0 p-2 md:p-4 z-[40] flex justify-between items-center transition-all duration-500 ${showUI ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-10 pointer-events-none'}`}>
+                <div className="bg-card/40 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full pointer-events-auto border border-border flex items-center gap-2 md:gap-4 shadow-xl max-w-[85vw] overflow-hidden">
                     <div className="scale-75 origin-left -ml-2">
                         <Logo />
                     </div>
                     <div className="h-4 w-px bg-border/50" />
-                    <span className="font-semibold text-sm opacity-80">ID: {roomId}</span>
+                    <div className="flex flex-col md:flex-row md:items-center">
+                        <span className="font-semibold text-xs md:text-sm opacity-80 md:hidden">ID: {roomId.slice(0, 8)}...</span>
+                        <span className="font-semibold text-sm opacity-80 hidden md:inline">ID: {roomId}</span>
+                    </div>
 
                     <ShareMeetingDialog
                         roomId={roomId}
