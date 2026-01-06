@@ -5,7 +5,8 @@ import { useState, use, useEffect, useRef, ChangeEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff, Check,
-    Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2, Hand, Smile, PlayCircle
+    Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2, Hand, Smile, PlayCircle,
+    MoreHorizontal, Volume2,
 } from 'lucide-react'
 import { FloatingReactions } from '@/components/room/floating-reactions'
 import {
@@ -70,6 +71,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([])
     const [activeLanguages, setActiveLanguages] = useState<string[]>([]) // Dynamic languages from DB
     const [assignedLanguages, setAssignedLanguages] = useState<string[]>([]) // For restricted interpreters
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
 
     // Layout and Join States
     const [isJoined, setIsJoined] = useState(false)
@@ -771,8 +773,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             </AnimatePresence>
 
             {/* Bottom Control Bar */}
-            <div className="h-20 md:h-28 bg-card/85 backdrop-blur-3xl border-t border-border flex items-center justify-between md:justify-center gap-4 relative z-[50] px-4 overflow-x-auto no-scrollbar pb-safe transition-all">
-                <div className="flex items-center gap-2 md:gap-4 shrink-0">
+            <div className="h-20 md:h-28 bg-card/85 backdrop-blur-3xl border-t border-border flex items-center justify-evenly md:justify-center gap-2 md:gap-4 relative z-[50] px-2 md:px-10 pb-safe transition-all w-full">
+                <div className="flex items-center gap-2 md:gap-4 shrink-0 justify-center w-full md:w-auto">
                     {/* Mic Control */}
                     <div className="flex items-center gap-0.5 bg-background/50 backdrop-blur rounded-2xl p-1 border border-border/50 shadow-sm group hover:border-[#06b6d4]/50 transition-colors">
                         <Button
@@ -847,7 +849,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         </DropdownMenu>
                     </div>
 
-                    {/* Sharing Dropdown */}
+                    {/* Sharing Dropdown - Desktop Only */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
@@ -855,7 +857,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                 size="icon"
                                 disabled={isAnySharing && !isSharing}
                                 className={cn(
-                                    "h-10 w-10 md:h-12 md:w-12 rounded-lg md:rounded-xl shadow-sm transition-all active:scale-95 border-0",
+                                    "hidden md:flex h-10 w-10 md:h-12 md:w-12 rounded-lg md:rounded-xl shadow-sm transition-all active:scale-95 border-0",
                                     isSharing ? "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20 animate-pulse" : "bg-background/50 text-foreground hover:bg-accent/40 backdrop-blur",
                                     isAnySharing && !isSharing && "opacity-50 cursor-not-allowed grayscale"
                                 )}
@@ -883,8 +885,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Volume Control */}
-                    <div className="flex items-center gap-0.5 bg-background/50 backdrop-blur rounded-2xl p-1 border border-border/50 shadow-sm group hover:border-[#06b6d4]/50 transition-colors">
+                    {/* Volume Control - Desktop Only */}
+                    <div className="hidden md:flex items-center gap-0.5 bg-background/50 backdrop-blur rounded-2xl p-1 border border-border/50 shadow-sm group hover:border-[#06b6d4]/50 transition-colors">
                         <VolumeControl volume={masterVolume} onVolumeChange={setMasterVolume} />
                     </div>
 
@@ -904,6 +906,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         currentVideoId={localStorage.getItem('preferredVideoDevice') || undefined}
                         localStream={localStream}
                         onSwitch={switchDeviceWebRTC}
+                        open={isSettingsOpen}
+                        onOpenChange={setIsSettingsOpen}
                     />
 
                     <div className="w-px h-10 bg-border/50 hidden md:block" />
@@ -922,13 +926,13 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         <Hand className={cn("h-5 w-5 md:h-6 md:w-6", localHandRaised && "animate-bounce")} />
                     </Button>
 
-                    {/* Reactions Menu */}
+                    {/* Reactions Menu - Desktop Only */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="secondary"
                                 size="icon"
-                                className="h-14 w-14 rounded-2xl shadow-xl bg-accent/50 text-foreground hover:bg-accent border-0"
+                                className="hidden md:flex h-14 w-14 rounded-2xl shadow-xl bg-accent/50 text-foreground hover:bg-accent border-0"
                                 title={t('room.send_reaction')}
                             >
                                 <Smile className="h-6 w-6" />
@@ -945,6 +949,54 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                     {emoji}
                                 </Button>
                             ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Mobile "More" Menu - Groups secondary actions */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="secondary"
+                                size="icon"
+                                className="md:hidden h-12 w-12 rounded-xl bg-accent/50 text-foreground hover:bg-accent border-0"
+                            >
+                                <MoreHorizontal className="h-6 w-6" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent side="top" align="end" className="w-64 mb-4 rounded-2xl bg-black/90 backdrop-blur-3xl border-white/10 p-2 shadow-2xl">
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 font-bold">Opções</DropdownMenuLabel>
+
+                            <DropdownMenuItem onClick={() => setMasterVolume(masterVolume === 0 ? 1 : 0)} className="rounded-xl py-3 flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-xs font-medium"><Volume2 className="h-4 w-4" /> Volume (Mute/Unmute)</span>
+                                {masterVolume > 0 && <Check className="h-3 w-3 text-[#06b6d4]" />}
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem onClick={handleToggleShare} className="rounded-xl py-3 flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-xs font-medium"><Monitor className="h-4 w-4" /> {isSharing ? "Parar Compartilhamento" : "Compartilhar Tela"}</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator className="bg-white/10 my-1" />
+
+                            <div className="p-2">
+                                <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 font-bold">Reações</p>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {['❤️', '👏', '🎉', '😂', '👍', '🔥'].map((emoji) => (
+                                        <button
+                                            key={emoji}
+                                            className="h-8 w-8 text-lg flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                                            onClick={() => sendEmoji(emoji)}
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <DropdownMenuSeparator className="bg-white/10 my-1" />
+
+                            <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="rounded-xl py-3 flex items-center justify-between">
+                                <span className="flex items-center gap-2 text-xs font-medium"><Settings className="h-4 w-4" /> Configurações</span>
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div >
