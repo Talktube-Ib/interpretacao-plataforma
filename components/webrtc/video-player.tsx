@@ -23,10 +23,17 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
     const [isBuffering, setIsBuffering] = useState(false)
 
+    // Watchdog State
+    const stuckFrameCountRef = useRef(0)
+    const lastTimeRef = useRef(0)
+
     useEffect(() => {
         const videoEl = videoRef.current
         if (videoEl && stream) {
             videoEl.srcObject = stream
+
+            // Critical: Ensure playsInline is set
+            videoEl.playsInline = true
 
             // Attempt 1: Play with Audio
             videoEl.play().catch(e => {
@@ -55,7 +62,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         }
     }, [volume, isMutedAutoplay])
 
-    // Monitor Playback Health
+    // Monitor Playback Health & Watchdog
     useEffect(() => {
         const videoEl = videoRef.current
         if (!videoEl || !stream) return
@@ -83,12 +90,48 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         videoEl.addEventListener('pause', handlePause)
         videoEl.addEventListener('error', handleError)
 
+        // WATCHDOG: Check for frozen video or 0x0 resolution
+        const watchdogInterval = setInterval(() => {
+            if (!videoEl || !stream) return
+
+            const vTrack = stream.getVideoTracks()[0]
+            if (!vTrack || vTrack.readyState !== 'live') return
+
+            const hasZeroRes = videoEl.videoWidth === 0 || videoEl.videoHeight === 0
+            const isStuck = videoEl.currentTime > 0 && videoEl.currentTime === lastTimeRef.current && !videoEl.paused
+
+            if (hasZeroRes || isStuck) {
+                stuckFrameCountRef.current++
+                console.log(`Video Watchdog: Suspicious state (${stuckFrameCountRef.current}/10) - Res: ${videoEl.videoWidth}x${videoEl.videoHeight}, Time: ${videoEl.currentTime}`)
+            } else {
+                stuckFrameCountRef.current = 0
+            }
+
+            lastTimeRef.current = videoEl.currentTime
+
+            // Trigger Recovery if stuck for ~5 seconds
+            if (stuckFrameCountRef.current > 10) {
+                console.warn("Video Watchdog: TRIGGERING RECOVERY")
+                stuckFrameCountRef.current = 0
+
+                // Force Reset
+                const currentStream = videoEl.srcObject
+                videoEl.srcObject = null
+                setTimeout(() => {
+                    videoEl.srcObject = currentStream
+                    videoEl.play().catch(e => console.error("Watchdog recovery play failed:", e))
+                }, 100)
+            }
+
+        }, 500)
+
         return () => {
             videoEl.removeEventListener('waiting', handleWaiting)
             videoEl.removeEventListener('stalled', handleWaiting)
             videoEl.removeEventListener('playing', handlePlaying)
             videoEl.removeEventListener('pause', handlePause)
             videoEl.removeEventListener('error', handleError)
+            clearInterval(watchdogInterval)
         }
     }, [stream, isBuffering])
 
@@ -113,6 +156,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     `P:${videoEl.paused ? 'YES' : 'NO'} | ` +
                     `M:${videoEl.muted ? 'YES' : 'NO'} | ` +
                     `Vt:${vTrack ? vTrack.readyState : 'NO'} | ` +
+                    `TrM:${vTrack ? (vTrack.muted ? 'YES' : 'NO') : 'N/A'} | ` + // Track Muted Check
                     `At:${aTrack ? aTrack.readyState : 'NO'}`
                 )
             }
