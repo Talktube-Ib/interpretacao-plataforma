@@ -125,15 +125,15 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
                                         key={route.href}
                                         href={route.href}
                                         className={cn(
-                                            'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-2xl transition-all relative',
+                                            'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-xl transition-all relative',
                                             isActive
-                                                ? 'bg-primary/10 text-primary dark:bg-white/10 dark:text-white shadow-lg backdrop-blur-sm'
-                                                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:text-blue-100/60 dark:hover:text-white dark:hover:bg-white/5'
+                                                ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_-12px_rgba(6,182,212,0.5)] border border-cyan-500/10'
+                                                : 'text-muted-foreground hover:bg-white/5 hover:text-white border border-transparent'
                                         )}
                                     >
                                         <div className="flex items-center flex-1">
-                                            <route.icon className={cn('h-5 w-5 mr-3', isActive ? 'text-primary dark:text-[#22d3ee]' : 'text-muted-foreground group-hover:text-foreground dark:text-blue-300/50 dark:group-hover:text-white')} />
-                                            <span className="flex-1">{route.label}</span>
+                                            <route.icon className={cn('h-4 w-4 mr-3 transition-colors', isActive ? 'text-cyan-400' : 'text-zinc-500 group-hover:text-white')} />
+                                            <span className={cn("flex-1 tracking-wide", isActive ? "font-bold" : "font-medium")}>{route.label}</span>
                                             {/* Badge */}
                                             {/* Force strict number check to avoid '0' rendering */}
                                             {typeof route.badge === 'number' && route.badge > 0 && (
@@ -161,15 +161,17 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
                                             key={route.href}
                                             href={route.href}
                                             className={cn(
-                                                'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-2xl transition-all relative',
+                                                'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-xl transition-all relative',
                                                 isActive
-                                                    ? 'bg-primary/10 text-primary dark:bg-white/10 dark:text-white shadow-lg backdrop-blur-sm'
-                                                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground dark:text-blue-100/60 dark:hover:text-white dark:hover:bg-white/5'
+                                                    ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_-12px_rgba(6,182,212,0.5)] border border-cyan-500/10'
+                                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white border border-transparent'
                                             )}
                                         >
                                             <div className="flex items-center flex-1">
-                                                <route.icon className={cn('h-5 w-5 mr-3', isActive ? 'text-primary dark:text-amber-400' : 'text-muted-foreground group-hover:text-foreground dark:text-blue-300/50 dark:group-hover:text-white')} />
-                                                {route.label}
+                                                <route.icon className={cn('h-4 w-4 mr-3 transition-colors', isActive ? 'text-cyan-400' : 'text-zinc-500 group-hover:text-white')} />
+                                                <span className={cn("tracking-wide", isActive ? "font-bold" : "font-medium")}>
+                                                    {route.label}
+                                                </span>
                                             </div>
                                         </Link>
                                     )
