@@ -74,40 +74,40 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
 
             {isOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md transition-all duration-300">
-                    <div className="bg-card border border-border w-full max-w-md rounded-[2rem] p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#06b6d4]/20 rounded-full blur-2xl" />
+                    <div className="bg-card border border-border w-full max-w-md rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto no-scrollbar">
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-[#06b6d4]/20 rounded-full blur-2xl pointer-events-none" />
 
                         <button
                             onClick={() => setIsOpen(false)}
-                            className="absolute top-6 right-6 text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-accent/50 rounded-full"
+                            className="absolute top-4 right-4 md:top-6 md:right-6 text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-accent/50 rounded-full z-10"
                         >
                             <X className="h-5 w-5" />
                         </button>
 
-                        <div className="mb-8">
-                            <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">{t('create_meeting.modal_title')}</h2>
-                            <p className="text-muted-foreground text-sm mt-1">{t('create_meeting.modal_desc')}</p>
+                        <div className="mb-6 md:mb-8">
+                            <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tighter uppercase">{t('create_meeting.modal_title')}</h2>
+                            <p className="text-muted-foreground text-xs md:text-sm mt-1">{t('create_meeting.modal_desc')}</p>
                         </div>
 
-                        <form onSubmit={handleCreate} className="space-y-6">
+                        <form onSubmit={handleCreate} className="space-y-4 md:space-y-6">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#06b6d4]">{t('create_meeting.label_title')}</Label>
                                 <Input
                                     required
                                     placeholder={t('create_meeting.placeholder_title')}
-                                    className="bg-accent/30 border-border text-foreground h-12 rounded-xl focus-visible:ring-[#06b6d4]"
+                                    className="bg-accent/30 border-border text-foreground h-10 md:h-12 rounded-xl focus-visible:ring-[#06b6d4]"
                                     value={title}
                                     onChange={e => setTitle(e.target.value)}
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3 md:gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('create_meeting.label_date')}</Label>
                                     <Input
                                         type="date"
                                         required
-                                        className="bg-accent/30 border-border text-foreground h-12 rounded-xl focus-visible:ring-[#06b6d4]"
+                                        className="bg-accent/30 border-border text-foreground h-10 md:h-12 rounded-xl focus-visible:ring-[#06b6d4]"
                                         value={date}
                                         onChange={e => setDate(e.target.value)}
                                     />
@@ -117,7 +117,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                                     <Input
                                         type="time"
                                         required
-                                        className="bg-accent/30 border-border text-foreground h-12 rounded-xl focus-visible:ring-[#06b6d4]"
+                                        className="bg-accent/30 border-border text-foreground h-10 md:h-12 rounded-xl focus-visible:ring-[#06b6d4]"
                                         value={time}
                                         onChange={e => setTime(e.target.value)}
                                     />
@@ -127,7 +127,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                             <div className="space-y-4 pt-4 border-t border-border/50">
                                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#06b6d4]">{t('create_meeting.label_interpreters')}</Label>
                                 {interpreters.map((interpreter, index) => (
-                                    <div key={index} className="space-y-3 p-4 bg-accent/20 rounded-2xl border border-border/50 relative">
+                                    <div key={index} className="space-y-3 p-3 md:p-4 bg-accent/20 rounded-2xl border border-border/50 relative">
                                         <button
                                             type="button"
                                             onClick={() => setInterpreters(prev => prev.filter((_, i) => i !== index))}
@@ -156,7 +156,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                                                 setInterpreters(newInt)
                                             }}
                                         />
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 flex-wrap">
                                             {['pt', 'en', 'es', 'fr'].map(lang => (
                                                 <button
                                                     key={lang}
@@ -196,8 +196,8 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                                 </Button>
                             </div>
 
-                            <div className="pt-6 flex flex-col gap-3">
-                                <Button type="submit" className="w-full bg-[#06b6d4] hover:bg-[#0891b2] text-white h-14 rounded-2xl font-black text-lg shadow-lg shadow-[#06b6d4]/20 border-0" disabled={loading}>
+                            <div className="pt-4 md:pt-6 flex flex-col gap-3">
+                                <Button type="submit" className="w-full bg-[#06b6d4] hover:bg-[#0891b2] text-white h-12 md:h-14 rounded-2xl font-black text-lg shadow-lg shadow-[#06b6d4]/20 border-0" disabled={loading}>
                                     {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : t('create_meeting.submit_btn')}
                                 </Button>
                                 <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground font-bold rounded-xl h-12">
