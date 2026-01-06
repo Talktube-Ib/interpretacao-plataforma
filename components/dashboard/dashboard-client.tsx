@@ -10,6 +10,7 @@ import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-but
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 import { DemoBanner } from '@/components/demo-banner'
 import { useLanguage } from '@/components/providers/language-provider'
+import { NotificationsDropdown } from '@/components/notifications-dropdown'
 
 interface DashboardClientProps {
     user: any
@@ -38,6 +39,11 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
                             {t('common.video_conf_software')}
                         </span>
                     </h1>
+
+                    {/* Notifications & User Menu Placeholder */}
+                    <div className="flex items-center gap-4">
+                        <NotificationsDropdown userId={user.id} />
+                    </div>
                 </div>
             </div>
 

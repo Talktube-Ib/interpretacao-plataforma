@@ -33,6 +33,10 @@ export const dictionaries = {
             share_description: "Compartilhe este link para que outros possam entrar na reunião",
             invite_people: "Convidar Pessoas",
         },
+        notifications: {
+            invite_title: 'Convite para Reunião',
+            invite_msg_prefix: 'Você foi convidado para interpretar na reunião'
+        },
         dashboard: {
             personal_room_title: "Sua Sala Pessoal",
             personal_room_desc: "Esta é sua sala de reunião pública sempre ativa. Qualquer pessoa com o link pode entrar.",

@@ -43,7 +43,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
         // Combine date and time
         const startDateTime = new Date(`${date}T${time}:00`).toISOString()
 
-        const { error } = await supabase
+        const { data: meetingData, error } = await supabase
             .from('meetings')
             .insert({
                 host_id: userId,
@@ -51,18 +51,46 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                 start_time: startDateTime,
                 status: 'scheduled',
                 allowed_languages: Array.from(new Set(['pt', 'en', ...interpreters.flatMap(i => i.languages)])),
-                settings: { interpreters } // Assuming settings or interpreters column exists
+                settings: { interpreters }
             })
+            .select() // Select to get the meeting ID
 
-        setLoading(false)
-        if (error) {
-            alert(t('create_meeting.error') + error.message)
-        } else {
+        if (!error && meetingData && meetingData[0]) {
+            const meetingId = meetingData[0].id
+
+            // Send Notifications
+            for (const interpreter of interpreters) {
+                if (interpreter.email) {
+                    // 1. Find user by email
+                    const { data: userData } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .eq('email', interpreter.email)
+                        .single()
+
+                    // 2. If user exists, create notification
+                    if (userData) {
+                        await supabase
+                            .from('notifications')
+                            .insert({
+                                user_id: userData.id,
+                                title: t('notifications.invite_title') || 'Convite para Reunião',
+                                message: `${t('notifications.invite_msg_prefix') || 'Você foi convidado para interpretar na reunião'}: ${title}`,
+                                link: `/room/${meetingId}`
+                            })
+                    }
+                }
+            }
+
+            setLoading(false)
             setIsOpen(false)
             setTitle('')
             if (!preselectedDate) setDate('')
             setTime('')
             router.refresh()
+        } else {
+            setLoading(false)
+            alert(t('create_meeting.error') + (error?.message || 'Unknown error'))
         }
     }
 
