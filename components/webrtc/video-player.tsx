@@ -92,20 +92,30 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         }
     }, [stream, isBuffering])
 
-    // Debugging states (Simplified for production)
+    // Debugging states (RESTORED FOR DIAGNOSIS)
     const [debugInfo, setDebugInfo] = useState<string>("")
 
     useEffect(() => {
         if (!stream) return
         const interval = setInterval(() => {
             const videoEl = videoRef.current
-            // Sync states
+            const vTrack = stream.getVideoTracks()[0]
+            const aTrack = stream.getAudioTracks()[0]
+
             if (videoEl) {
-                setIsPaused(videoEl.paused)
+                setDebugInfo(
+                    `RES:${videoEl.videoWidth}x${videoEl.videoHeight} | ` +
+                    `RS:${videoEl.readyState} | ` +
+                    `Net:${videoEl.networkState} | ` +
+                    `P:${videoEl.paused ? 'YES' : 'NO'} | ` +
+                    `M:${videoEl.muted ? 'YES' : 'NO'} | ` +
+                    `Vt:${vTrack ? vTrack.readyState : 'NO'} | ` +
+                    `At:${aTrack ? aTrack.readyState : 'NO'}`
+                )
             }
         }, 1000)
         return () => clearInterval(interval)
-    }, [stream, connectionState, isMutedAutoplay])
+    }, [stream])
 
     const isConnecting = connectionState === 'connecting'
 
