@@ -159,6 +159,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         ref={videoRef}
                         autoPlay
                         playsInline
+                        controls // TEMPORARY DIAGNOSIS
                         className={cn(
                             "w-full h-full object-contain bg-zinc-950",
                             isPresentation ? "object-contain" : "object-contain"
@@ -169,6 +170,11 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         onPause={() => setIsPaused(true)}
                         onPlay={() => setIsPaused(false)}
                     />
+
+                    {/* DEBUG OVERLAY */}
+                    <div className="absolute top-2 left-2 bg-black/80 text-[10px] text-green-400 p-2 rounded pointer-events-none z-[200] font-mono whitespace-pre shadow-xl border border-green-900 select-all pointer-events-auto">
+                        {debugInfo}
+                    </div>
 
                     {/* OVERLAYS FOR INTERACTION */}
                     {(isPaused || isMutedAutoplay) && (
