@@ -26,8 +26,8 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
         <div className="min-h-screen bg-background text-foreground selection:bg-cyan-500/30 overflow-x-hidden">
             {isDemo && <DemoBanner />}
 
-            {/* Minimal Transparent Header */}
-            <div className="py-4 md:py-6 px-4 md:px-10 flex border-b border-border/50 bg-background/50 backdrop-blur-md sticky top-0 z-50">
+            {/* Minimal Transparent Header - Hidden on mobile as Layout provides global nav */}
+            <div className="hidden md:flex py-4 md:py-6 px-4 md:px-10 border-b border-border/50 bg-background/50 backdrop-blur-md sticky top-0 z-50">
                 <div className="container mx-auto max-w-[1600px] flex justify-between items-center group">
                     <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tighter flex items-center gap-2 md:gap-3">
                         <span className="p-1.5 md:p-2 bg-cyan-600 rounded-xl shadow-lg shadow-cyan-600/20 group-hover:scale-110 transition-transform duration-500 hover:rotate-12">
