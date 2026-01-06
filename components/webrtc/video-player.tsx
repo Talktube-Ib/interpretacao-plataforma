@@ -135,35 +135,6 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         }
     }, [stream, isBuffering])
 
-    // Debugging states (RESTORED FOR DIAGNOSIS)
-    const [debugInfo, setDebugInfo] = useState<string>("")
-
-    useEffect(() => {
-        if (!stream) return
-        const interval = setInterval(() => {
-            const videoEl = videoRef.current
-            const vTrack = stream.getVideoTracks()[0]
-            const aTrack = stream.getAudioTracks()[0]
-
-            if (videoEl) {
-                // FORCE SYNC (Step Id: 668)
-                if (videoEl.paused !== isPaused) setIsPaused(videoEl.paused)
-
-                setDebugInfo(
-                    `RES:${videoEl.videoWidth}x${videoEl.videoHeight} | ` +
-                    `RS:${videoEl.readyState} | ` +
-                    `Net:${videoEl.networkState} | ` +
-                    `P:${videoEl.paused ? 'YES' : 'NO'} | ` +
-                    `M:${videoEl.muted ? 'YES' : 'NO'} | ` +
-                    `Vt:${vTrack ? vTrack.readyState : 'NO'} | ` +
-                    `TrM:${vTrack ? (vTrack.muted ? 'YES' : 'NO') : 'N/A'} | ` + // Track Muted Check
-                    `At:${aTrack ? aTrack.readyState : 'NO'}`
-                )
-            }
-        }, 500)
-        return () => clearInterval(interval)
-    }, [stream, isPaused])
-
     const isConnecting = connectionState === 'connecting'
 
     const handleUnmute = () => {
@@ -206,7 +177,6 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         ref={videoRef}
                         autoPlay
                         playsInline
-                        controls // TEMPORARY DIAGNOSIS
                         className={cn(
                             "w-full h-full object-contain bg-zinc-950",
                             isPresentation ? "object-contain" : "object-contain"
@@ -217,11 +187,6 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         onPause={() => setIsPaused(true)}
                         onPlay={() => setIsPaused(false)}
                     />
-
-                    {/* DEBUG OVERLAY */}
-                    <div className="absolute top-2 left-2 bg-black/80 text-[10px] text-green-400 p-2 rounded pointer-events-none z-[200] font-mono whitespace-pre shadow-xl border border-green-900 select-all pointer-events-auto">
-                        {debugInfo}
-                    </div>
 
                     {/* OVERLAYS FOR INTERACTION */}
                     {(isPaused || isMutedAutoplay) && (
