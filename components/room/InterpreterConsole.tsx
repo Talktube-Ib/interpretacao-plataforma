@@ -50,7 +50,7 @@ export function InterpreterConsole({
     const currentLangFlag = languages.find(l => l.code === currentLanguage)?.flag || "🌐"
 
     return (
-        <div className="fixed bottom-24 md:bottom-28 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center">
+        <div className="fixed bottom-[6.5rem] md:bottom-32 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center w-full max-w-[90vw] md:max-w-fit px-4 md:px-0">
 
             <AnimatePresence mode="wait">
                 {isMinimized ? (

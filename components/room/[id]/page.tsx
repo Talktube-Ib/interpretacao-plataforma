@@ -771,7 +771,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             </AnimatePresence>
 
             {/* Bottom Control Bar */}
-            <div className="h-24 md:h-28 bg-card/60 backdrop-blur-3xl border-t border-border flex items-center justify-start md:justify-center gap-4 md:gap-6 relative z-[50] px-4 md:px-10 overflow-x-auto no-scrollbar pb-safe">
+            <div className="h-20 md:h-28 bg-card/85 backdrop-blur-3xl border-t border-border flex items-center justify-between md:justify-center gap-4 relative z-[50] px-4 overflow-x-auto no-scrollbar pb-safe transition-all">
                 <div className="flex items-center gap-2 md:gap-4 shrink-0">
                     {/* Mic Control */}
                     <div className="flex items-center gap-0.5 bg-background/50 backdrop-blur rounded-2xl p-1 border border-border/50 shadow-sm group hover:border-[#06b6d4]/50 transition-colors">
