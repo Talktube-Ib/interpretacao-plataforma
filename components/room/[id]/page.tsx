@@ -41,6 +41,7 @@ import { PreCallLobby } from '@/components/room/pre-call-lobby'
 import { SettingsDialog } from '@/components/room/settings-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
 import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal'
+import { VolumeControl } from '@/components/room/volume-control'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -60,6 +61,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [selectedLang, setSelectedLang] = useState('original')
     const [volumeBalance, setVolumeBalance] = useState(20)
     const [myBroadcastLang, setMyBroadcastLang] = useState('floor')
+    const [masterVolume, setMasterVolume] = useState(1) // 0 to 1
     const [showLangMenu, setShowLangMenu] = useState(false)
     const [attentionToast, setAttentionToast] = useState<{ id: string, name: string } | null>(null)
     const [activeSidebar, setActiveSidebar] = useState<'chat' | 'participants' | null>(null)
@@ -577,6 +579,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         selectedLang={selectedLang}
                         volumeBalance={volumeBalance}
                         handRaised={localHandRaised}
+                        masterVolume={masterVolume}
                     />
 
                     {/* Pagination Controls */}
@@ -844,6 +847,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         </DropdownMenu>
                     </div>
 
+                    {/* Sharing Dropdown */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
@@ -851,16 +855,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                 size="icon"
                                 disabled={isAnySharing && !isSharing}
                                 className={cn(
-                                    "h-12 w-12 md:h-14 md:w-14 rounded-lg md:rounded-2xl shadow-xl transition-all active:scale-95 border-0",
-                                    isSharing ? "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20 animate-pulse" : "bg-accent/50 text-foreground hover:bg-accent",
+                                    "h-10 w-10 md:h-12 md:w-12 rounded-lg md:rounded-xl shadow-sm transition-all active:scale-95 border-0",
+                                    isSharing ? "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20 animate-pulse" : "bg-background/50 text-foreground hover:bg-accent/40 backdrop-blur",
                                     isAnySharing && !isSharing && "opacity-50 cursor-not-allowed grayscale"
                                 )}
                                 title={isAnySharing && !isSharing ? t('room.room_busy') : t('room.share')}
                             >
-                                <Monitor className="h-5 w-5 md:h-6 md:w-6" />
+                                <Monitor className="h-4 w-4 md:h-5 md:w-5" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent side="top" align="center" className="w-56 mb-4 rounded-2xl bg-card/80 backdrop-blur-xl border-border p-2 shadow-2xl">
+                        <DropdownMenuContent side="top" align="center" className="w-56 mb-4 rounded-2xl bg-black/90 backdrop-blur-3xl border-white/10 p-2 shadow-2xl">
                             <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 font-bold">{t('room.share_options')}</DropdownMenuLabel>
                             <DropdownMenuItem
                                 onClick={handleToggleShare}
@@ -878,6 +882,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {/* Volume Control */}
+                    <div className="flex items-center gap-0.5 bg-background/50 backdrop-blur rounded-2xl p-1 border border-border/50 shadow-sm group hover:border-[#06b6d4]/50 transition-colors">
+                        <VolumeControl volume={masterVolume} onVolumeChange={setMasterVolume} />
+                    </div>
+
 
                     <input
                         type="file"
@@ -937,7 +947,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             ))}
                         </DropdownMenuContent>
                     </DropdownMenu>
-                </div>
+                </div >
 
                 <div className="w-px h-10 bg-border/50 hidden md:block" />
 
@@ -985,45 +995,49 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                {selectedLang !== 'original' && (
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="fixed bottom-32 right-10 bg-card/80 backdrop-blur-3xl p-8 rounded-[3rem] border border-border w-64 shadow-2xl z-[50]"
-                    >
-                        <div className="flex justify-between text-[10px] uppercase font-black tracking-[0.2em] text-[#06b6d4] mb-4">
-                            <span>{t('room.floor')}</span>
-                            <span>{t('room.interpreter')}</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={volumeBalance}
-                            onChange={(e) => setVolumeBalance(Number(e.target.value))}
-                            className="w-full h-2 bg-accent/30 rounded-full appearance-none cursor-pointer accent-[#06b6d4]"
-                        />
-                        <div className="text-center text-[10px] text-muted-foreground mt-4 font-black tracking-widest uppercase">
-                            {t('room.audio_mix')}: {100 - volumeBalance}% / {volumeBalance}%
-                        </div>
-                    </motion.div>
-                )}
+                {
+                    selectedLang !== 'original' && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="fixed bottom-32 right-10 bg-card/80 backdrop-blur-3xl p-8 rounded-[3rem] border border-border w-64 shadow-2xl z-[50]"
+                        >
+                            <div className="flex justify-between text-[10px] uppercase font-black tracking-[0.2em] text-[#06b6d4] mb-4">
+                                <span>{t('room.floor')}</span>
+                                <span>{t('room.interpreter')}</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={volumeBalance}
+                                onChange={(e) => setVolumeBalance(Number(e.target.value))}
+                                className="w-full h-2 bg-accent/30 rounded-full appearance-none cursor-pointer accent-[#06b6d4]"
+                            />
+                            <div className="text-center text-[10px] text-muted-foreground mt-4 font-black tracking-widest uppercase">
+                                {t('room.audio_mix')}: {100 - volumeBalance}% / {volumeBalance}%
+                            </div>
+                        </motion.div>
+                    )
+                }
 
                 <div className="w-px h-10 bg-border/50 hidden md:block" />
 
-                {currentRole === 'interpreter' && (
-                    <Button
-                        variant="default"
-                        className="h-14 px-8 rounded-2xl font-black border-2 transition-all active:scale-95 bg-purple-600 hover:bg-purple-700 border-purple-500 shadow-[0_0_30px_rgba(147,51,234,0.4)] text-white"
-                        onClick={() => {
-                            // Already an interpreter, but maybe the button toggles the broadcast lang or panel
-                            // For now keep it as is or change to toggle controls
-                        }}
-                    >
-                        <Mic className="h-5 w-5 mr-3" />
-                        {t('room.mode_interpreter')}
-                    </Button>
-                )}
+                {
+                    currentRole === 'interpreter' && (
+                        <Button
+                            variant="default"
+                            className="h-14 px-8 rounded-2xl font-black border-2 transition-all active:scale-95 bg-purple-600 hover:bg-purple-700 border-purple-500 shadow-[0_0_30px_rgba(147,51,234,0.4)] text-white"
+                            onClick={() => {
+                                // Already an interpreter, but maybe the button toggles the broadcast lang or panel
+                                // For now keep it as is or change to toggle controls
+                            }}
+                        >
+                            <Mic className="h-5 w-5 mr-3" />
+                            {t('room.mode_interpreter')}
+                        </Button>
+                    )
+                }
 
                 <div className="flex bg-accent/20 rounded-2xl p-1.5 border border-border">
                     <Button
@@ -1091,10 +1105,10 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 >
                     <PhoneOff className="h-5 w-5 mr-3" /> {t('room.leave')}
                 </Button>
-            </div>
+            </div >
 
             {/* Floating Reactions Overlay */}
-            <FloatingReactions reactions={reactions} />
-        </div>
+            < FloatingReactions reactions={reactions} />
+        </div >
     )
 }

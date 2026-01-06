@@ -20,6 +20,7 @@ interface VideoGridProps {
     selectedLang: string
     volumeBalance?: number // 0-100 (0 = floor, 100 = interpreter)
     handRaised: boolean
+    masterVolume?: number // 0-1 (Global Volume Control)
 }
 
 export function VideoGrid({
@@ -36,7 +37,8 @@ export function VideoGrid({
     localUserName,
     selectedLang,
     volumeBalance = 0,
-    handRaised
+    handRaised,
+    masterVolume = 1
 }: VideoGridProps) {
 
     // Determine the "featured" speaker for Speaker Mode
@@ -62,23 +64,29 @@ export function VideoGrid({
 
     // Determine audio volume based on language selection and balance
     const getPeerVolume = (peer: any) => {
+        let vol = 1;
+
         // Implementation logic for volume scaling
         // If listening to Original (Floor), everyone is 1.0 (unless muted locally? logic is in VideoPlayer)
-        if (selectedLang === 'original') return 1
-
+        if (selectedLang === 'original') {
+            vol = 1
+        }
         // If listening to Interpretation
         // Interpreter for selected language -> High Volume (based on balance)
-        if (peer.language === selectedLang) {
-            return volumeBalance / 100
+        else if (peer.language === selectedLang) {
+            vol = volumeBalance / 100
         }
-
         // Floor speakers (non-interpreters OR interpreters explicitly on 'floor') -> Low Volume (based on balance)
-        if (!peer.role.includes('interpreter') || peer.language === 'floor') {
-            return (100 - volumeBalance) / 100
+        else if (!peer.role.includes('interpreter') || peer.language === 'floor') {
+            vol = (100 - volumeBalance) / 100
+        }
+        // Other interpreters (on different languages) -> Mute
+        else {
+            vol = 0
         }
 
-        // Other interpreters (on different languages) -> Mute
-        return 0
+        // Apply Master Volume
+        return vol * masterVolume
     }
 
     return (
@@ -194,3 +202,5 @@ export function VideoGrid({
         </div>
     )
 }
+
+
