@@ -181,9 +181,31 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         <div className="absolute inset-0 flex items-center justify-center z-[50] pointer-events-none">
                             {/* Buffering/Stalled Indicator */}
                             {(isBuffering && !isPaused) && (
-                                <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2">
-                                    <Loader2 className="h-4 w-4 text-white animate-spin" />
-                                    <span className="text-white text-xs font-bold">Carregando vídeo...</span>
+                                <div className="flex flex-col items-center gap-2">
+                                    <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2">
+                                        <Loader2 className="h-4 w-4 text-white animate-spin" />
+                                        <span className="text-white text-xs font-bold">Carregando vídeo...</span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            // Force re-attach
+                                            if (videoRef.current && stream) {
+                                                const s = stream
+                                                videoRef.current.srcObject = null
+                                                setTimeout(() => {
+                                                    if (videoRef.current) {
+                                                        videoRef.current.srcObject = s
+                                                        videoRef.current.play().catch(console.error)
+                                                        setIsBuffering(false)
+                                                    }
+                                                }, 200)
+                                            }
+                                        }}
+                                        className="bg-red-500/80 hover:bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full pointer-events-auto transition-colors"
+                                    >
+                                        Forçar Recarregamento
+                                    </button>
                                 </div>
                             )}
                         </div>
