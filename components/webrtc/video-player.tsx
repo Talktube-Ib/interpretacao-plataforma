@@ -177,6 +177,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         ref={videoRef}
                         autoPlay
                         playsInline
+                        controls={false}
                         className={cn(
                             "w-full h-full object-contain bg-zinc-950",
                             isPresentation ? "object-contain" : "object-contain"
@@ -335,6 +336,7 @@ export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, 
                     autoPlay
                     playsInline
                     muted
+                    controls={false}
                     className="w-full h-full object-contain bg-zinc-950 mirror" // Changed to contain
                 />
             )}
