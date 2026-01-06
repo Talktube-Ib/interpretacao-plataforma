@@ -700,6 +700,10 @@ export const dictionaries = {
             share_description: "Comparte este enlace para que otros puedan unirse a la reunión",
             invite_people: "Invitar Personas",
         },
+        notifications: {
+            invite_title: 'Invitación a la Reunión',
+            invite_msg_prefix: 'Has sido invitado a interpretar en la reunión'
+        },
         dashboard: {
             personal_room_title: "Tu Sala Personal",
             personal_room_desc: "Esta es tu sala de reuniones pública siempre activa. Cualquiera con el enlace puede unirse.",
