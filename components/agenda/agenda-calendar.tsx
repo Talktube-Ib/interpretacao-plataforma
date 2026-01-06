@@ -155,9 +155,10 @@ export function AgendaCalendar({ meetings, userId }: AgendaCalendarProps) {
                 </div>
 
                 {/* Calendar Grid */}
+                {/* Calendar Grid */}
                 <div className={cn(
-                    "grid grid-cols-7 flex-1 overflow-y-auto no-scrollbar bg-slate-950/10",
-                    viewMode === 'month' ? "auto-rows-[minmax(120px,1fr)]" : "auto-rows-[1fr]"
+                    "grid grid-cols-7 flex-1 overflow-y-auto w-full",
+                    viewMode === 'month' ? "auto-rows-[minmax(100px,1fr)]" : "auto-rows-[1fr]"
                 )}>
                     {days.map((day, i) => {
                         const isToday = isSameDay(day, new Date())
@@ -170,44 +171,61 @@ export function AgendaCalendar({ meetings, userId }: AgendaCalendarProps) {
                                 key={i}
                                 onClick={() => setSelectedDate(day)}
                                 className={cn(
-                                    "border-b border-r border-slate-800/30 p-4 flex flex-col cursor-pointer transition-all duration-300 relative group",
-                                    !isCurrentMonth && viewMode === 'month' ? "bg-slate-950/40 opacity-30" : "bg-transparent",
-                                    isSelected ? "bg-cyan-500/5 shadow-inner" : "hover:bg-white/5"
+                                    "border-b border-r border-slate-800/30 p-2 sm:p-3 flex flex-col items-start justify-start cursor-pointer transition-all duration-200 relative group min-h-[100px]",
+                                    !isCurrentMonth && viewMode === 'month' ? "bg-slate-950/60 opacity-40 grayscale" : "bg-transparent",
+                                    isSelected ? "bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.05)]" : "hover:bg-white/[0.02]"
                                 )}
                             >
-                                <div className="flex justify-between items-start">
+                                {/* Day Number */}
+                                <div className="w-full flex justify-between items-start mb-2">
                                     <span className={cn(
-                                        "h-8 w-8 flex items-center justify-center rounded-xl text-sm font-black transition-all duration-300",
-                                        isToday ? "bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 scale-110" : "text-slate-400 group-hover:text-foreground",
-                                        isSelected && !isToday ? "ring-2 ring-cyan-500/30 text-cyan-500" : ""
+                                        "h-7 w-7 flex items-center justify-center rounded-full text-xs font-semibold transition-all duration-300",
+                                        isToday
+                                            ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/30 scale-105"
+                                            : isSelected
+                                                ? "text-cyan-400 font-bold bg-cyan-950/30"
+                                                : "text-slate-400 group-hover:text-slate-200"
                                     )}>
                                         {format(day, 'd')}
                                     </span>
-                                    {dayMeetings.length > 0 && (
-                                        <div className="flex items-center gap-1.5 px-2 py-1 bg-cyan-500/10 rounded-full">
-                                            <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                                            <span className="text-[9px] font-black text-cyan-500 uppercase tracking-tighter">{dayMeetings.length} ev</span>
-                                        </div>
-                                    )}
                                 </div>
 
-                                <div className="flex-1 mt-4 space-y-1.5">
-                                    {dayMeetings.slice(0, 2).map(m => (
-                                        <div key={m.id} className="text-[10px] font-bold bg-slate-900/60 border border-slate-800/50 text-slate-300 px-2 py-1.5 rounded-xl truncate hover:border-cyan-500/30 transition-colors">
-                                            <span className="text-cyan-500 mr-1.5">{format(new Date(m.start_time), 'HH:mm')}</span>
-                                            {m.title}
+                                {/* Events List (Desktop/Tablet) */}
+                                <div className="w-full flex flex-col gap-1">
+                                    {dayMeetings.slice(0, 3).map(m => (
+                                        <div
+                                            key={m.id}
+                                            className="hidden sm:flex items-center gap-1.5 px-1.5 py-1 rounded-[4px] bg-cyan-500/10 border-l-2 border-cyan-500 hover:bg-cyan-500/20 transition-colors w-full overflow-hidden"
+                                        >
+                                            <div className="w-1 h-1 rounded-full bg-cyan-400 shrink-0" />
+                                            <span className="text-[9px] font-medium text-cyan-100 truncate w-full leading-none">
+                                                {m.title}
+                                            </span>
                                         </div>
                                     ))}
-                                    {dayMeetings.length > 2 && (
-                                        <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest pl-2">
-                                            + {dayMeetings.length - 2} mais
+
+                                    {/* Mobile Dot Indicator */}
+                                    <div className="flex sm:hidden gap-1 flex-wrap content-start pl-1">
+                                        {dayMeetings.slice(0, 4).map(m => (
+                                            <div key={m.id} className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                                        ))}
+                                        {dayMeetings.length > 4 && (
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                                        )}
+                                    </div>
+
+                                    {/* More Indicator */}
+                                    {dayMeetings.length > 3 && (
+                                        <div className="hidden sm:block text-[9px] font-medium text-slate-500 pl-1">
+                                            +{dayMeetings.length - 3} mais
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
-                                    <Plus className="h-4 w-4 text-cyan-500/50" />
-                                </div>
+                                {/* Selection Indicator Line */}
+                                {isSelected && (
+                                    <div className="absolute top-0 left-0 h-full w-[2px] bg-cyan-500" />
+                                )}
                             </div>
                         )
                     })}
