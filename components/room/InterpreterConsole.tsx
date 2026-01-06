@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Mic, MicOff, Headphones, ArrowRightLeft, Globe, Check } from 'lucide-react'
+import { Mic, MicOff, Headphones, ArrowRightLeft, ChevronDown, ChevronUp } from 'lucide-react'
 import {
     Select,
     SelectContent,
@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { cn } from '@/lib/utils'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface InterpreterConsoleProps {
     active: boolean
@@ -38,118 +39,167 @@ export function InterpreterConsole({
     occupiedLanguages
 }: InterpreterConsoleProps) {
 
+    const [isMinimized, setIsMinimized] = useState(false)
+
     // Filter languages if restricted
     const languages = allowedLanguages
         ? availableLanguages.filter(l => allowedLanguages.includes(l.code))
         : availableLanguages
 
+    const currentLangName = languages.find(l => l.code === currentLanguage)?.name || "Selecionar"
+    const currentLangFlag = languages.find(l => l.code === currentLanguage)?.flag || "🌐"
+
     return (
-        <div className="fixed bottom-24 md:bottom-28 left-1/2 -translate-x-1/2 bg-black/90 backdrop-blur-xl border border-purple-500/50 p-4 rounded-3xl shadow-[0_0_50px_rgba(147,51,234,0.3)] z-[50] flex flex-col md:flex-row items-center gap-6 w-[90%] md:w-auto max-w-4xl animate-in slide-in-from-bottom-10 fade-in duration-500">
+        <div className="fixed bottom-24 md:bottom-28 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center">
 
-            {/* Status Indicactor */}
-            <div className="flex items-center gap-3 border-r border-white/10 pr-6 mr-2">
-                <div className={cn(
-                    "h-3 w-3 rounded-full animate-pulse",
-                    active ? "bg-red-500 shadow-[0_0_10px_red]" : "bg-zinc-600"
-                )} />
-                <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Status</span>
-                    <span className={cn("text-sm font-bold", active ? "text-red-400" : "text-zinc-400")}>
-                        {active ? "ON AIR" : "MUTED"}
-                    </span>
-                </div>
-            </div>
-
-            {/* Input Channel (Listening) */}
-            <div className="flex flex-col gap-1.5 min-w-[140px]">
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                    <Headphones className="h-3 w-3" /> Incoming
-                </div>
-                <div className="flex gap-1 bg-zinc-900/50 p-1 rounded-xl border border-white/5">
-                    <Button
-                        variant={isListeningToFloor ? "default" : "ghost"}
-                        size="sm"
-                        onClick={onListenToFloor}
-                        className={cn(
-                            "flex-1 h-8 text-xs font-bold rounded-lg transition-all",
-                            isListeningToFloor ? "bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg" : "text-zinc-400 hover:text-white"
-                        )}
+            <AnimatePresence mode="wait">
+                {isMinimized ? (
+                    // --- MINIMIZED VIEW ---
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                        className="flex items-center gap-3 bg-black/80 backdrop-blur-xl border border-white/10 p-2 pl-4 rounded-full shadow-2xl cursor-pointer hover:bg-black/90 transition-colors group"
+                        onClick={() => setIsMinimized(false)}
                     >
-                        Floor
-                    </Button>
-                    {/* Relay options could go here */}
-                </div>
-            </div>
+                        {/* Status Dot */}
+                        <div className={cn(
+                            "h-2.5 w-2.5 rounded-full animate-pulse",
+                            active ? "bg-red-500 shadow-[0_0_8px_red]" : "bg-zinc-600"
+                        )} />
 
-            <ArrowRightLeft className="hidden md:block text-zinc-600 h-5 w-5" />
+                        <div className="flex flex-col leading-none">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">
+                                {active ? "ON AIR" : "MUTED"}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-xs">{currentLangFlag}</span>
+                                <span className={cn("text-xs font-bold", active ? "text-white" : "text-zinc-400")}>
+                                    {currentLangName}
+                                </span>
+                            </div>
+                        </div>
 
-            {/* Output Channel (Speaking) */}
-            <div className="flex flex-col gap-1.5 min-w-[200px]">
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                    <Mic className="h-3 w-3" /> Outgoing Channel
-                </div>
-                <div className="w-[180px]">
-                    <Select value={currentLanguage} onValueChange={onLanguageChange}>
-                        <SelectTrigger className="w-full h-12 bg-zinc-900/50 border-white/10 text-white font-bold rounded-xl focus:ring-purple-500/50">
-                            <SelectValue placeholder="Select Language" />
-                        </SelectTrigger>
-                        <SelectContent className="max-h-[300px] bg-zinc-900 border-zinc-800 text-zinc-200">
-                            {/* Floor Option */}
-                            <SelectItem value="floor" className="cursor-pointer focus:bg-zinc-800 focus:text-white border-b border-white/5 mb-1 pb-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-lg">🎙️</span>
-                                    <span className="font-medium text-cyan-400">Áudio Original (Todos)</span>
-                                </div>
-                            </SelectItem>
+                        <div className="h-8 w-px bg-white/10 mx-1" />
 
-                            {languages.map((lang) => {
-                                const isOccupied = occupiedLanguages?.includes(lang.code) && currentLanguage !== lang.code
-                                return (
-                                    <SelectItem
-                                        key={lang.code}
-                                        value={lang.code}
-                                        disabled={isOccupied}
-                                        className="cursor-pointer focus:bg-zinc-800 focus:text-white"
-                                    >
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full hover:bg-white/10 text-zinc-400"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                setIsMinimized(false)
+                            }}
+                        >
+                            <ChevronUp className="h-4 w-4" />
+                        </Button>
+                    </motion.div>
+                ) : (
+                    // --- EXPANDED VIEW (Minimalist) ---
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        className="bg-black/90 backdrop-blur-2xl border border-white/10 p-3 rounded-[2rem] shadow-2xl flex items-center gap-3 md:gap-4 relative group"
+                    >
+                        {/* Toggle Minimize (Absolute Top Right for Cleaner Look) */}
+                        <button
+                            onClick={() => setIsMinimized(true)}
+                            className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black/80 border border-white/10 rounded-t-lg px-3 py-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-white flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
+                        >
+                            <ChevronDown className="h-3 w-3" />
+                            Minimizar
+                        </button>
+
+                        {/* Status & Mic Toggle */}
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant={active ? "destructive" : "secondary"}
+                                size="icon"
+                                className={cn(
+                                    "h-12 w-12 rounded-2xl shadow-lg transition-all active:scale-95 border",
+                                    active
+                                        ? "bg-red-500 border-red-400 shadow-red-900/40 animate-pulse"
+                                        : "bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-400 hover:text-white"
+                                )}
+                                onClick={onToggleActive}
+                            >
+                                {active ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+                            </Button>
+                        </div>
+
+                        <div className="h-8 w-px bg-white/10" />
+
+                        {/* Channel Controls (Compact) */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 px-1">Saída</label>
+                            <Select value={currentLanguage} onValueChange={onLanguageChange}>
+                                <SelectTrigger className="w-[140px] h-9 bg-zinc-900/50 border-white/10 text-white font-medium text-xs rounded-lg focus:ring-0 focus:border-white/20">
+                                    <SelectValue placeholder="Idioma" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-[300px] bg-zinc-950 border-white/10 text-zinc-300 z-[60]">
+                                    <SelectItem value="floor" className="cursor-pointer focus:bg-zinc-900 focus:text-white text-xs">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-lg">{lang.flag}</span>
-                                            <span className="font-medium">{lang.name}</span>
-                                            {isOccupied && <span className="text-xs text-red-400 ml-2">(Busy)</span>}
+                                            <span>🎙️</span>
+                                            <span className="text-cyan-400">Original (Floor)</span>
                                         </div>
                                     </SelectItem>
-                                )
-                            })}
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
+                                    {languages.map((lang) => {
+                                        const isOccupied = occupiedLanguages?.includes(lang.code) && currentLanguage !== lang.code
+                                        return (
+                                            <SelectItem
+                                                key={lang.code}
+                                                value={lang.code}
+                                                disabled={isOccupied}
+                                                className="cursor-pointer focus:bg-zinc-900 focus:text-white text-xs"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span>{lang.flag}</span>
+                                                    <span>{lang.name}</span>
+                                                    {isOccupied && <span className="text-[10px] text-red-500 ml-1">(Ocupado)</span>}
+                                                </div>
+                                            </SelectItem>
+                                        )
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-            <div className="w-px h-10 bg-white/10 hidden md:block mx-2" />
+                        {/* Input Controls (Compact) */}
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 px-1">Entrada</label>
+                            <div className="flex bg-zinc-900/50 rounded-lg p-0.5 border border-white/5">
+                                <button
+                                    onClick={onListenToFloor}
+                                    className={cn(
+                                        "px-3 py-1 text-[10px] font-bold rounded-md transition-all flex items-center gap-1.5",
+                                        isListeningToFloor
+                                            ? "bg-cyan-600/20 text-cyan-400 shadow-sm border border-cyan-500/20"
+                                            : "text-zinc-500 hover:text-zinc-300"
+                                    )}
+                                >
+                                    <Headphones className="h-3 w-3" />
+                                    Original
+                                </button>
+                            </div>
+                        </div>
 
-            {/* Controls */}
-            <div className="flex items-center gap-3">
-                <Button
-                    variant={active ? "destructive" : "secondary"}
-                    size="icon"
-                    className={cn(
-                        "h-14 w-14 rounded-2xl shadow-xl transition-all active:scale-95 border-2",
-                        active ? "bg-red-500 border-red-400 shadow-red-900/40 animate-pulse" : "bg-zinc-800 border-zinc-700 hover:bg-zinc-700"
-                    )}
-                    onClick={onToggleActive}
-                >
-                    {active ? <Mic className="h-6 w-6 text-white" /> : <MicOff className="h-6 w-6 text-zinc-400" />}
-                </Button>
+                        <div className="h-8 w-px bg-white/10" />
 
-                <Button
-                    variant="outline"
-                    className="h-14 border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700 hover:text-white rounded-2xl font-bold gap-2 px-6"
-                    onClick={onHandover}
-                >
-                    <ArrowRightLeft className="h-4 w-4" />
-                    Handover
-                </Button>
-            </div>
+                        {/* Actions */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl"
+                            onClick={onHandover}
+                            title="Solicitar Troca (Handover)"
+                        >
+                            <ArrowRightLeft className="h-4 w-4" />
+                        </Button>
 
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
