@@ -125,12 +125,23 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     />
 
                     {/* OVERLAYS FOR INTERACTION */}
-                    {/* OVERLAYS FOR INTERACTION */}
+                    {(isPaused || isMutedAutoplay) && (
+                        <div className="absolute inset-0 flex items-center justify-center z-[50] pointer-events-none">
+                            {/* Buffering/Stalled Indicator */}
+                            {(isBuffering && !isPaused) && (
+                                <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 text-white animate-spin" />
+                                    <span className="text-white text-xs font-bold">Carregando vídeo...</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {isPaused && (
                         <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/40 backdrop-blur-sm transition-all">
                             <button
                                 onClick={handleManualPlay}
-                                className="group/play flex flex-col items-center gap-3 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                                className="group/play flex flex-col items-center gap-3 transition-transform hover:scale-105 active:scale-95 cursor-pointer pointer-events-auto"
                             >
                                 <div className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover/play:bg-white/20 transition-all shadow-xl">
                                     <Maximize2 className="h-6 w-6 text-white translate-x-0.5" />
@@ -143,7 +154,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                     )}
 
                     {!isPaused && isMutedAutoplay && (
-                        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[100]">
+                        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto">
                             <button
                                 onClick={handleUnmute}
                                 className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white font-medium rounded-full px-6 py-2 shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2 cursor-pointer"
