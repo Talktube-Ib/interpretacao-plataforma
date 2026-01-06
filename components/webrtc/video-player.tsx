@@ -44,6 +44,18 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         }
     }, [stream])
 
+    // Sync Volume
+    useEffect(() => {
+        if (videoRef.current) {
+            // Ensure volume is between 0 and 1
+            const vol = Math.max(0, Math.min(1, volume))
+            videoRef.current.volume = vol
+            // Optional: Set muted if volume is 0 to save processing
+            if (vol === 0) videoRef.current.muted = true
+            else if (!isMutedAutoplay) videoRef.current.muted = false
+        }
+    }, [volume, isMutedAutoplay])
+
     // Debugging states (Simplified for production)
     const [debugInfo, setDebugInfo] = useState<string>("")
 
