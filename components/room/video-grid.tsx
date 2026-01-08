@@ -156,9 +156,12 @@ export function VideoGrid({
                 <div className={cn(
                     "grid gap-2 md:gap-4 w-full h-full auto-rows-fr transition-all",
                     // Custom Responsive Grid Logic
+                    // Custom Responsive Grid Logic
                     totalItems <= 1 ? "grid-cols-1" :
-                        totalItems === 2 ? "grid-cols-1 sm:grid-cols-2" : // Stack on very small screens
-                            "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                        totalItems === 2 ? "grid-cols-1 sm:grid-cols-2" :
+                            totalItems === 3 ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3" :
+                                totalItems === 4 ? "grid-cols-2 md:grid-cols-2" :
+                                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
                 )}>
                     {/* Local Video - Always first? Or last? Let's put first for now */}
                     <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative">
