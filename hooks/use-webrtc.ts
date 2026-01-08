@@ -207,12 +207,19 @@ export function useWebRTC(
                     else if (action === 'set-allowed-languages') {
                         window.dispatchEvent(new CustomEvent('admin-update-languages', { detail: payload.languages }))
                     }
+// ... (existing code)
                     else if (action === 'kick') {
                         alert('Você foi removido da reunião pelo administrador.')
                         window.location.href = '/dashboard'
                     }
+                    else if (action === 'mute-user') {
+                        toggleMic(false)
+                        // Trigger visual feedback (maybe a custom event or relying on metadata update)
+                         window.dispatchEvent(new CustomEvent('admin-mute'))
+                    }
                 }
             })
+
             .on('presence', { event: 'sync' }, () => {
                 const state = newChannel.presenceState(); const users = Object.keys(state); setUserCount(users.length)
                 let changed = false
@@ -598,6 +605,11 @@ export function useWebRTC(
         channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'set-allowed-languages', targetId, payload: { languages } } })
     }
 
+    const muteUser = (targetId: string) => {
+        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'mute-user', targetId } })
+    }
+
+
     const reconnect = useCallback(() => {
         console.log("Reiniciando conexão WebRTC...")
         // Destroy all peers
@@ -677,7 +689,9 @@ export function useWebRTC(
         kickUser,
         updateUserRole,
         updateUserLanguages,
+        muteUser, // NEW
         mediaError,
+
         reactions,
         localHandRaised,
         hostId,

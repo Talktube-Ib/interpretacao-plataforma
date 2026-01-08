@@ -245,9 +245,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         promoteToHost,
         kickUser,
         updateUserRole,
+
         updateUserLanguages,
+        muteUser,
         reconnect // NEW
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName)
+
 
     const isGuest = userId.startsWith('guest-')
 
@@ -358,8 +361,19 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         return () => window.removeEventListener('admin-update-languages' as any, handleLangUpdate as any)
     }, [myBroadcastLang])
 
+    // Listen for Admin Mute
+    useEffect(() => {
+        const handleMute = () => {
+            // Optional: Show Toast
+            alert('O anfitrião desativou seu microfone.')
+        }
+        window.addEventListener('admin-mute', handleMute)
+        return () => window.removeEventListener('admin-mute', handleMute)
+    }, [])
+
     useEffect(() => {
         peers.forEach(p => {
+
             const wasRaised = prevPeersHandRef.current[p.userId]
             if (p.handRaised && !wasRaised) {
                 // NEW HAND RAISED
@@ -675,9 +689,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                     onKick={kickUser}
                                     onUpdateRole={updateUserRole}
                                     onUpdateLanguages={updateUserLanguages}
+                                    onMute={muteUser}
+
                                     onClose={() => setActiveSidebar(null)}
                                 />
                             </div>
+
                         </motion.div>
                     )}
                 </AnimatePresence>

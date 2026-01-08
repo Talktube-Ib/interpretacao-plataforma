@@ -33,9 +33,12 @@ interface ParticipantListProps {
     onPromote?: (userId: string) => void
     onKick?: (userId: string) => void
     onUpdateRole?: (userId: string, role: string) => void
+
     onUpdateLanguages?: (userId: string, languages: string[]) => void
+    onMute?: (userId: string) => void
     onClose: () => void
 }
+
 
 export function ParticipantList({
     peers,
@@ -46,8 +49,11 @@ export function ParticipantList({
     onPromote,
     onKick,
     onUpdateRole,
+
+    onMute,
     onClose
 }: ParticipantListProps) {
+
 
     // Sort: Host first, then interpreters, then participants. Alphabetical within groups.
     const sortedPeers = [...peers].sort((a, b) => {
@@ -155,6 +161,16 @@ export function ParticipantList({
                                             )}
 
                                             <DropdownMenuSeparator className="bg-slate-800" />
+
+                                            {onMute && peer.micOn && (
+                                                <DropdownMenuItem onClick={() => onMute(peer.userId)} className="cursor-pointer hover:bg-slate-800 text-red-400">
+                                                    <Mic className="h-4 w-4 mr-2" />
+                                                    Mutar Usuário
+                                                </DropdownMenuItem>
+                                            )}
+
+                                            <DropdownMenuSeparator className="bg-slate-800" />
+
 
                                             {onKick && (
                                                 <DropdownMenuItem onClick={() => onKick(peer.userId)} className="text-red-400 cursor-pointer hover:bg-red-900/20 focus:text-red-400">
