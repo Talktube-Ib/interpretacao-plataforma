@@ -522,7 +522,11 @@ export function useWebRTC(
             setSharingUserId(userId)
             channelRef.current?.send({ type: 'broadcast', event: 'share-started', payload: { sender: userId } })
 
-            screenTrack.onended = () => stopScreenShare(onEnd)
+            // Listen for browser "Stop Sharing" button
+            screenTrack.onended = () => {
+                console.log("Browser Stop Sharing detected")
+                stopScreenShare(onEnd)
+            }
             return screenStream
         } catch (e: any) {
             console.error("Screen share failed:", e)
