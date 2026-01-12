@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MicOff, VideoOff, Maximize2, Loader2, User, Hand } from 'lucide-react'
+import { MicOff, VideoOff, Maximize2, Loader2, User, Hand, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface VideoPlayerProps {
@@ -297,9 +297,13 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         exit={{ opacity: 0 }}
                         className="absolute inset-0 bg-red-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 rounded-[2.5rem]"
                     >
-                        <VideoOff className="h-8 w-8 text-red-500 mb-4" />
-                        <span className="text-red-400 text-sm font-medium">Falha na Conexão</span>
-                        <span className="text-red-500/50 text-xs mt-1">Bloqueio de Rede?</span>
+                        <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+                            <WifiOff className="h-6 w-6 text-red-500" />
+                        </div>
+                        <span className="text-red-200 text-sm font-medium text-center px-4">
+                            Falha na Conexão P2P<br />
+                            <span className="text-red-500/50 text-xs mt-1 block">Verifique o Firewall/Rede</span>
+                        </span>
                     </motion.div>
                 )}
             </AnimatePresence>
