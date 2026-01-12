@@ -331,8 +331,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // Auto-switch to Speaker Mode when a presentation is detected
     useEffect(() => {
-        const hasPresentation = peers.some(p => p.role === 'presentation')
+        // Check for role 'presentation' OR if any peer has a screen stream (Virtual Peer logic in use-webrtc might attach screenStream to peer object)
+        const hasPresentation = peers.some(p => p.role === 'presentation' || p.screenStream)
+
         if (hasPresentation || isSharing) {
+            console.log("Auto-switching to Speaker Mode (Presentation Detected)")
             setViewMode('speaker')
         }
     }, [peers, isSharing])
