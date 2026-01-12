@@ -329,16 +329,33 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         }
     }, [activeSidebar, lastInteraction])
 
+    // Sync local sharing state with WebRTC track status (handles browser "Stop Sharing" button)
+    useEffect(() => {
+        if (sharingUserId === userId) {
+            setIsSharing(true)
+        } else {
+            setIsSharing(false)
+        }
+    }, [sharingUserId, userId])
+
     // Auto-switch to Speaker Mode when a presentation is detected
     useEffect(() => {
-        // Check for role 'presentation' OR if any peer has a screen stream (Virtual Peer logic in use-webrtc might attach screenStream to peer object)
+        // Check for role 'presentation' OR if any peer has a screen stream
         const hasPresentation = peers.some(p => p.role === 'presentation' || p.screenStream)
 
         if (hasPresentation || isSharing) {
-            console.log("Auto-switching to Speaker Mode (Presentation Detected)")
-            setViewMode('speaker')
+            if (viewMode !== 'speaker') {
+                console.log("Auto-switching to Speaker Mode (Presentation Detected)")
+                setViewMode('speaker')
+            }
+        } else {
+            // Revert Auto-Switch
+            if (viewMode === 'speaker' && !pinnedSpeakerId) {
+                console.log("Auto-switching to Gallery Mode (No Presentation)")
+                setViewMode('gallery')
+            }
         }
-    }, [peers, isSharing])
+    }, [peers, isSharing, viewMode, pinnedSpeakerId])
 
     // Sync active language to metadata when interpreter
     useEffect(() => {
