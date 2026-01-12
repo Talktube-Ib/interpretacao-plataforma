@@ -45,7 +45,14 @@ export function useWebRTC(
     })
     const [userCount, setUserCount] = useState(0)
     const [mediaError, setMediaError] = useState<string | null>(null)
-    const iceServersRef = useRef<any[]>([{ urls: 'stun:stun.l.google.com:19302' }])
+    const iceServersRef = useRef<any[]>([
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+    ])
     const [channelState, setChannelState] = useState<RealtimeChannel | null>(null)
 
     const [localHandRaised, setLocalHandRaised] = useState(false)
@@ -135,10 +142,10 @@ export function useWebRTC(
 
                 // Heuristic: If we already have a stream, this is likely screen share.
                 // OR check if remoteStream has video track and we already have a video track.
-                
+
                 // Better approach: Check if this stream id is different?
                 // Usually `addStream` creates a new stream ID on the receiving end? No, it limits sending stream.
-                
+
                 // Let's assume the second stream received is screen share.
                 if (prev?.stream && prev.stream.id !== remoteStream.id) {
                     console.log(`Received second stream for ${targetUserId}, treating as Screen Share`)
@@ -236,7 +243,7 @@ export function useWebRTC(
                     else if (action === 'set-allowed-languages') {
                         window.dispatchEvent(new CustomEvent('admin-update-languages', { detail: payload.languages }))
                     }
-// ... (existing code)
+                    // ... (existing code)
                     else if (action === 'kick') {
                         alert('Você foi removido da reunião pelo administrador.')
                         window.location.href = '/dashboard'
@@ -244,7 +251,7 @@ export function useWebRTC(
                     else if (action === 'mute-user') {
                         toggleMic(false)
                         // Trigger visual feedback (maybe a custom event or relying on metadata update)
-                         window.dispatchEvent(new CustomEvent('admin-mute'))
+                        window.dispatchEvent(new CustomEvent('admin-mute'))
                     }
                     else if (action === 'block-audio') {
                         updateMetadata({ audioBlocked: true })
@@ -502,9 +509,9 @@ export function useWebRTC(
                 // NEW METHOD: Add separate stream
                 peersRef.current.forEach(p => {
                     if (!p.isPresentation) {
-                        try { 
+                        try {
                             console.log(`Adding Screen Share Stream to Peer ${p.userId}`)
-                            p.peer.addStream(screenStream) 
+                            p.peer.addStream(screenStream)
                         } catch (e) {
                             console.error("Failed to add screen stream to peer:", e)
                         }
@@ -528,7 +535,7 @@ export function useWebRTC(
 
         // FIX: Remove Stream
         const screenTrack = screenVideoTrackRef.current
-        
+
         if (screenTrack) {
             screenTrack.stop()
             screenVideoTrackRef.current = null
@@ -541,7 +548,7 @@ export function useWebRTC(
             // Wait, we returned 'screenStream' from shareScreen, but we need to keep a ref to it to remove it.
             // Let's rely on track ending sending a 'removestream' or 'removetrack'?
             // SimplePeer documentation: peer.removeStream(stream)
-            
+
             // FIXME: We need to store the activeScreenStreamRef
         })
 
