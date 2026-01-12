@@ -43,6 +43,7 @@ import { SettingsDialog } from '@/components/room/settings-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
 import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal'
 import { VolumeControl } from '@/components/room/volume-control'
+import { UpsellModal } from '@/components/marketing/upsell-modal' // NEW IMPORT
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -55,6 +56,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [userName, setUserName] = useState(t('room.participant_default'))
     const [currentRole, setCurrentRole] = useState<string>('participant')
     const [isLoaded, setIsLoaded] = useState(false)
+
+    const [isLoaded, setIsLoaded] = useState(false)
+    const [showUpsell, setShowUpsell] = useState(false) // NEW STATE
 
     // State declarations moved for hoisting
     const [micOn, setMicOn] = useState(true)
