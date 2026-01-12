@@ -210,13 +210,23 @@ export function useWebRTC(
             .on('broadcast', { event: 'share-ended' }, (event) => {
                 const { sender } = event.payload
                 peersRef.current.delete(`${sender}-presentation`)
+
                 const actualPeer = peersRef.current.get(sender)
-                if (actualPeer && actualPeer.stream) {
-                    const vTracks = actualPeer.stream.getVideoTracks()
-                    if (vTracks.length > 1) {
-                        const newStream = new MediaStream([vTracks[0]])
-                        actualPeer.stream.getAudioTracks().forEach(t => newStream.addTrack(t))
-                        actualPeer.stream = newStream
+                if (actualPeer) {
+                    // CRITICAL FIX: Explicitly remove reference to screenStream so UI knows it's gone
+                    if (actualPeer.screenStream) {
+                        actualPeer.screenStream.getTracks().forEach(t => t.stop()) // Stop remote tracks just in case
+                        actualPeer.screenStream = undefined
+                    }
+
+                    // Restore mixed/main stream if needed (existing logic for tracks)
+                    if (actualPeer.stream) {
+                        const vTracks = actualPeer.stream.getVideoTracks()
+                        if (vTracks.length > 1) {
+                            const newStream = new MediaStream([vTracks[0]])
+                            actualPeer.stream.getAudioTracks().forEach(t => newStream.addTrack(t))
+                            actualPeer.stream = newStream
+                        }
                     }
                 }
                 setSharingUserId(null); syncToState()
