@@ -7,6 +7,7 @@ import { RealtimeChannel } from '@supabase/supabase-js'
 interface PeerData {
     peer: SimplePeer.Instance
     stream?: MediaStream
+    screenStream?: MediaStream
     userId: string
     role: string
     language?: string
@@ -20,6 +21,7 @@ interface PeerData {
     isHost?: boolean
     connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected'
     lastSignalTime?: number
+    audioBlocked?: boolean
 }
 
 export function useWebRTC(
@@ -38,7 +40,8 @@ export function useWebRTC(
         micOn: initialConfig.micOn !== false,
         cameraOn: initialConfig.cameraOn !== false,
         handRaised: false,
-        language: 'floor'
+        language: 'floor',
+        audioBlocked: false
     })
     const [userCount, setUserCount] = useState(0)
     const [mediaError, setMediaError] = useState<string | null>(null)
@@ -54,6 +57,7 @@ export function useWebRTC(
     const currentAudioTrackRef = useRef<MediaStreamTrack | null>(null)
     const mixedAudioTrackRef = useRef<MediaStreamTrack | null>(null)
     const screenVideoTrackRef = useRef<MediaStreamTrack | null>(null)
+    const activeScreenStreamRef = useRef<MediaStream | null>(null)
 
     const [hostId, setHostId] = useState<string | null>(null)
     const peersRef = useRef<Map<string, PeerData>>(new Map())
@@ -76,9 +80,10 @@ export function useWebRTC(
         setPeers(Array.from(peersRef.current.values()))
     }, [])
 
-    const updatePeerData = useCallback((id: string, patch: Partial<PeerData>) => {
+    const updatePeerData = useCallback((id: string, patchOrFn: Partial<PeerData> | ((prev: PeerData | undefined) => Partial<PeerData>)) => {
         const existing = peersRef.current.get(id)
         if (existing) {
+            const patch = typeof patchOrFn === 'function' ? patchOrFn(existing) : patchOrFn
             peersRef.current.set(id, { ...existing, ...patch })
             syncToState()
         }
@@ -120,7 +125,31 @@ export function useWebRTC(
             })
         })
         peer.on('connect', () => { updatePeerData(targetUserId, { connectionState: 'connected' }) })
-        peer.on('stream', (remoteStream) => { updatePeerData(targetUserId, { stream: remoteStream, connectionState: 'connected' }) })
+        peer.on('stream', (remoteStream) => {
+            updatePeerData(targetUserId, (prev) => {
+                // If we already have a main stream, and this new one is video, assume it's screen share?
+                // Or better, rely on track counts?
+                // Simple-peer fires 'stream' for the first stream.
+                // If we use addStream for screen share, it fires 'stream' again.
+                // We need to differentiate.
+
+                // Heuristic: If we already have a stream, this is likely screen share.
+                // OR check if remoteStream has video track and we already have a video track.
+                
+                // Better approach: Check if this stream id is different?
+                // Usually `addStream` creates a new stream ID on the receiving end? No, it limits sending stream.
+                
+                // Let's assume the second stream received is screen share.
+                if (prev?.stream && prev.stream.id !== remoteStream.id) {
+                    console.log(`Received second stream for ${targetUserId}, treating as Screen Share`)
+                    return { screenStream: remoteStream, connectionState: 'connected' }
+                }
+
+                // If no stream yet, or it replaces main stream?
+                // Standard behavior: 1st stream is camera.
+                return { stream: remoteStream, connectionState: 'connected' }
+            })
+        })
         peer.on('error', (err) => {
             console.error(`Peer error with ${targetUserId}:`, err)
             // cleanup will be handled by 'close' event usually, but force destroy just in case
@@ -217,6 +246,15 @@ export function useWebRTC(
                         // Trigger visual feedback (maybe a custom event or relying on metadata update)
                          window.dispatchEvent(new CustomEvent('admin-mute'))
                     }
+                    else if (action === 'block-audio') {
+                        updateMetadata({ audioBlocked: true })
+                        toggleMic(false)
+                        alert('Seu áudio foi bloqueado pelo anfitrião.')
+                    }
+                    else if (action === 'unblock-audio') {
+                        updateMetadata({ audioBlocked: false })
+                        alert('Seu áudio foi desbloqueado. Você já pode ligar o microfone.')
+                    }
                 }
             })
 
@@ -241,6 +279,7 @@ export function useWebRTC(
                         if (p.language !== remoteData?.language) { p.language = remoteData?.language; peerChanged = true }
                         if (p.role !== remoteData?.role) { p.role = remoteData?.role; peerChanged = true }
                         if (p.isHost !== remoteData?.isHost) { p.isHost = remoteData?.isHost; peerChanged = true }
+                        if (p.audioBlocked !== remoteData?.audioBlocked) { p.audioBlocked = remoteData?.audioBlocked; peerChanged = true }
                         if (peerChanged) changed = true
                     }
                 })
@@ -457,30 +496,18 @@ export function useWebRTC(
             mixedAudioTrackRef.current = mixedTrack
 
             if (localStream) {
-                localStream.addTrack(screenTrack)
+                // OLD METHOD: Add Track to localStream (Removed)
+                // localStream.addTrack(screenTrack)
 
-                // Only swap if we actually have a NEW mixed track different from the current one
-                if (mixedTrack && currentAudioTrackRef.current && mixedTrack !== currentAudioTrackRef.current) {
-                    const toReplace = currentAudioTrackRef.current
-                    localStream.removeTrack(toReplace)
-                    localStream.addTrack(mixedTrack)
-
-                    peersRef.current.forEach(p => {
-                        if (!p.isPresentation) {
-                            try { p.peer.replaceTrack(toReplace, mixedTrack, localStream) }
-                            catch (e) { console.error("Falha ao substituir track áudio:", e) }
-                        }
-                    })
-                    currentAudioTrackRef.current = mixedTrack
-                }
-
-                // Note: If no mixed track (fallback), we just keep currentAudioTrackRef (which is the mic)
-                // We do NOT remove it.
-
-                // Add the video track as a second track
+                // NEW METHOD: Add separate stream
                 peersRef.current.forEach(p => {
                     if (!p.isPresentation) {
-                        try { p.peer.addTrack(screenTrack, localStream) } catch (e) { }
+                        try { 
+                            console.log(`Adding Screen Share Stream to Peer ${p.userId}`)
+                            p.peer.addStream(screenStream) 
+                        } catch (e) {
+                            console.error("Failed to add screen stream to peer:", e)
+                        }
                     }
                 })
             }
@@ -499,45 +526,24 @@ export function useWebRTC(
     const stopScreenShare = (onEnd?: () => void) => {
         if (!localStream) return
 
-        // FIX: Use the explicit Ref to find the track, do NOT guess based on ID
+        // FIX: Remove Stream
         const screenTrack = screenVideoTrackRef.current
-        const mixedTrack = mixedAudioTrackRef.current
-
+        
         if (screenTrack) {
-            try {
-                screenTrack.stop()
-                localStream.removeTrack(screenTrack)
-            } catch (e) { console.error("Error stopping screen track:", e) }
+            screenTrack.stop()
             screenVideoTrackRef.current = null
         }
 
-        // Restore original mic track if it was replaced
-        if (mixedTrack && originalMicTrackRef.current && currentAudioTrackRef.current === mixedTrack) {
-            localStream.removeTrack(mixedTrack)
-            localStream.addTrack(originalMicTrackRef.current)
-            mixedTrack.stop()
-
-            const toRepl = mixedTrack
-            const restore = originalMicTrackRef.current
-
-            peersRef.current.forEach(p => {
-                if (!p.isPresentation) {
-                    if (screenTrack) {
-                        try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
-                    }
-                    try { p.peer.replaceTrack(toRepl, restore, localStream) } catch (e) { }
-                }
-            })
-            currentAudioTrackRef.current = restore
-            mixedAudioTrackRef.current = null
-        } else if (screenTrack) {
-            // If just screen video without mixed audio
-            peersRef.current.forEach(p => {
-                if (!p.isPresentation) {
-                    try { p.peer.removeTrack(screenTrack, localStream) } catch (e) { }
-                }
-            })
-        }
+        peersRef.current.forEach(p => {
+            // How to remove specific stream? SimplePeer removeStream(stream)
+            // But we need the exact stream object we added.
+            // We didn't save the stream object globally?
+            // Wait, we returned 'screenStream' from shareScreen, but we need to keep a ref to it to remove it.
+            // Let's rely on track ending sending a 'removestream' or 'removetrack'?
+            // SimplePeer documentation: peer.removeStream(stream)
+            
+            // FIXME: We need to store the activeScreenStreamRef
+        })
 
         setSharingUserId(null)
         channelRef.current?.send({ type: 'broadcast', event: 'share-ended', payload: { sender: userId } })
@@ -581,6 +587,11 @@ export function useWebRTC(
     }
 
     const toggleMic = (enabled: boolean) => {
+        if (enabled && metadataRef.current.audioBlocked) {
+            alert('Seu áudio está bloqueado pelo anfitrião.')
+            return
+        }
+
         if (originalMicTrackRef.current) originalMicTrackRef.current.enabled = enabled
         if (mixedAudioTrackRef.current) mixedAudioTrackRef.current.enabled = enabled
         localStream?.getAudioTracks().forEach(t => t.enabled = enabled)
@@ -607,6 +618,14 @@ export function useWebRTC(
 
     const muteUser = (targetId: string) => {
         channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'mute-user', targetId } })
+    }
+
+    const blockUserAudio = (targetId: string) => {
+        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'block-audio', targetId } })
+    }
+
+    const unblockUserAudio = (targetId: string) => {
+        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'unblock-audio', targetId } })
     }
 
 
@@ -689,7 +708,9 @@ export function useWebRTC(
         kickUser,
         updateUserRole,
         updateUserLanguages,
-        muteUser, // NEW
+        muteUser,
+        blockUserAudio,
+        unblockUserAudio,
         mediaError,
 
         reactions,

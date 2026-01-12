@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X, User, Shield, Video, Mic, MoreVertical, Wifi } from 'lucide-react'
+import { X, User, Shield, Video, Mic, MoreVertical, Wifi, Volume2 } from 'lucide-react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,6 +22,7 @@ interface Peer {
     handRaised?: boolean
     language?: string // Broadcast language
     isHost?: boolean
+    audioBlocked?: boolean
 }
 
 interface ParticipantListProps {
@@ -36,6 +37,12 @@ interface ParticipantListProps {
 
     onUpdateLanguages?: (userId: string, languages: string[]) => void
     onMute?: (userId: string) => void
+    onBlockAudio?: (userId: string) => void
+    onUnblockAudio?: (userId: string) => void
+
+    localMutedPeers?: Set<string>
+    onToggleLocalMute?: (userId: string) => void
+
     onClose: () => void
 }
 
@@ -51,6 +58,10 @@ export function ParticipantList({
     onUpdateRole,
 
     onMute,
+    onBlockAudio,
+    onUnblockAudio,
+    localMutedPeers,
+    onToggleLocalMute,
     onClose
 }: ParticipantListProps) {
 
@@ -118,7 +129,9 @@ export function ParticipantList({
                                             {/* Status Icons */}
                                             <div className="flex items-center gap-1 opacity-50">
                                                 {!peer.micOn && <Mic className="h-3 w-3 text-red-400" />}
+                                                {peer.audioBlocked && <Mic className="h-3 w-3 text-red-600 animate-pulse" />}
                                                 {!peer.cameraOn && <Video className="h-3 w-3 text-red-400" />}
+                                                {localMutedPeers?.has(peer.userId) && <Volume2 className="h-3 w-3 text-amber-500" />}
                                             </div>
                                         </div>
                                         <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
@@ -127,8 +140,8 @@ export function ParticipantList({
                                     </div>
                                 </div>
 
-                                {/* Actions Menu - Only for Host */}
-                                {isHost && peer.userId !== hostId && (
+                                {/* Actions Menu */}
+                                {((isHost && peer.userId !== hostId) || onToggleLocalMute) && (
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -139,43 +152,86 @@ export function ParticipantList({
                                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                                             <DropdownMenuSeparator className="bg-slate-800" />
 
-                                            {onPromote && (
-                                                <DropdownMenuItem onClick={() => onPromote(peer.userId)} className="cursor-pointer hover:bg-slate-800">
-                                                    <Shield className="h-4 w-4 mr-2 text-yellow-500" />
-                                                    Promover a Host
+                                            {/* Local Mute (For everyone) */}
+                                            {onToggleLocalMute && peer.userId !== hostId && ( // Can't local mute host? Maybe yes? Let's allow.
+                                                <DropdownMenuItem onClick={() => onToggleLocalMute(peer.userId)} className="cursor-pointer hover:bg-slate-800">
+                                                    {localMutedPeers?.has(peer.userId) ? (
+                                                        <>
+                                                            <Volume2 className="h-4 w-4 mr-2" />
+                                                            Ouvir (Para mim)
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Volume2 className="h-4 w-4 mr-2 text-zinc-400" />
+                                                            Mutar (Para mim)
+                                                        </>
+                                                    )}
                                                 </DropdownMenuItem>
                                             )}
 
-                                            {onUpdateRole && !isInterpreter && (
-                                                <DropdownMenuItem onClick={() => onUpdateRole(peer.userId, 'interpreter')} className="cursor-pointer hover:bg-slate-800">
-                                                    <Wifi className="h-4 w-4 mr-2 text-purple-500" />
-                                                    Tornar Intérprete
-                                                </DropdownMenuItem>
-                                            )}
+                                            {isHost && peer.userId !== hostId && (
+                                                <>
+                                                    <DropdownMenuSeparator className="bg-slate-800" />
 
-                                            {onUpdateRole && isInterpreter && (
-                                                <DropdownMenuItem onClick={() => onUpdateRole(peer.userId, 'participant')} className="cursor-pointer hover:bg-slate-800">
-                                                    <User className="h-4 w-4 mr-2 text-blue-500" />
-                                                    Remover Intérprete
-                                                </DropdownMenuItem>
-                                            )}
+                                                    {onPromote && (
+                                                        <DropdownMenuItem onClick={() => onPromote(peer.userId)} className="cursor-pointer hover:bg-slate-800">
+                                                            <Shield className="h-4 w-4 mr-2 text-yellow-500" />
+                                                            Promover a Host
+                                                        </DropdownMenuItem>
+                                                    )}
 
-                                            <DropdownMenuSeparator className="bg-slate-800" />
+                                                    {onUpdateRole && !isInterpreter && (
+                                                        <DropdownMenuItem onClick={() => onUpdateRole(peer.userId, 'interpreter')} className="cursor-pointer hover:bg-slate-800">
+                                                            <Wifi className="h-4 w-4 mr-2 text-purple-500" />
+                                                            Tornar Intérprete
+                                                        </DropdownMenuItem>
+                                                    )}
 
-                                            {onMute && peer.micOn && (
-                                                <DropdownMenuItem onClick={() => onMute(peer.userId)} className="cursor-pointer hover:bg-slate-800 text-red-400">
-                                                    <Mic className="h-4 w-4 mr-2" />
-                                                    Mutar Usuário
-                                                </DropdownMenuItem>
-                                            )}
+                                                    {onUpdateRole && isInterpreter && (
+                                                        <DropdownMenuItem onClick={() => onUpdateRole(peer.userId, 'participant')} className="cursor-pointer hover:bg-slate-800">
+                                                            <User className="h-4 w-4 mr-2 text-blue-500" />
+                                                            Remover Intérprete
+                                                        </DropdownMenuItem>
+                                                    )}
 
-                                            <DropdownMenuSeparator className="bg-slate-800" />
+                                                    <DropdownMenuSeparator className="bg-slate-800" />
+
+                                                    {onMute && peer.micOn && (
+                                                        <DropdownMenuItem onClick={() => onMute(peer.userId)} className="cursor-pointer hover:bg-slate-800 text-red-400">
+                                                            <Mic className="h-4 w-4 mr-2" />
+                                                            Desativar Microfone
+                                                        </DropdownMenuItem>
+                                                    )}
+
+                                                    {onBlockAudio && onUnblockAudio && (
+                                                        <DropdownMenuItem
+                                                            onClick={() => peer.audioBlocked ? onUnblockAudio(peer.userId) : onBlockAudio(peer.userId)}
+                                                            className="cursor-pointer hover:bg-slate-800 text-amber-500"
+                                                        >
+                                                            {peer.audioBlocked ? (
+                                                                <>
+                                                                    <Mic className="h-4 w-4 mr-2" />
+                                                                    Desbloquear Áudio
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Mic className="h-4 w-4 mr-2" />
+                                                                    Bloquear Áudio
+                                                                </>
+                                                            )}
+                                                        </DropdownMenuItem>
+                                                    )}
+
+                                                    <DropdownMenuSeparator className="bg-slate-800" />
 
 
-                                            {onKick && (
-                                                <DropdownMenuItem onClick={() => onKick(peer.userId)} className="text-red-400 cursor-pointer hover:bg-red-900/20 focus:text-red-400">
-                                                    Remover da Sala
-                                                </DropdownMenuItem>
+                                                    {onKick && (
+                                                        <DropdownMenuItem onClick={() => onKick(peer.userId)} className="text-red-400 cursor-pointer hover:bg-red-900/20 focus:text-red-400">
+                                                            Remover da Sala
+                                                        </DropdownMenuItem>
+                                                    )}
+
+                                                </>
                                             )}
                                         </DropdownMenuContent>
                                     </DropdownMenu>

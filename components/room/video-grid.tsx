@@ -21,6 +21,7 @@ interface VideoGridProps {
     volumeBalance?: number // 0-100 (0 = floor, 100 = interpreter)
     handRaised: boolean
     masterVolume?: number // 0-1 (Global Volume Control)
+    localMutedPeers?: Set<string> // IDs of peers muted locally by me
 }
 
 export function VideoGrid({
@@ -38,22 +39,40 @@ export function VideoGrid({
     selectedLang,
     volumeBalance = 0,
     handRaised,
-    masterVolume = 1
+    masterVolume = 1,
+    localMutedPeers = new Set()
 }: VideoGridProps) {
+
+    // Flatten peers to include Screen Shares as separate "Virtual Peers"
+    const displayItems = peers.flatMap(p => {
+        const items = [{ ...p, isScreen: false, id: p.userId }]
+        if (p.screenStream) {
+            items.push({
+                ...p,
+                stream: p.screenStream,
+                isScreen: true,
+                id: `${p.userId}-screen`,
+                name: `${p.name} (Tela)`,
+                micOn: false, // Screen share usually doesn't have mic, or it's mixed. Visually hide mic icon.
+                cameraOn: true // Always show as "video on"
+            })
+        }
+        return items
+    })
 
     // Determine the "featured" speaker for Speaker Mode
     // Priority: Pinned > Active Speaker > First Peer
-    const featuredPeerId = pinnedSpeakerId || activeSpeakerId || (peers.length > 0 ? peers[0].userId : null)
+    const featuredItemId = pinnedSpeakerId || activeSpeakerId || (displayItems.length > 0 ? displayItems[0].id : null)
 
-    const featuredPeer = peers.find(p => p.userId === featuredPeerId)
+    const featuredItem = displayItems.find(p => p.id === featuredItemId)
 
     // In Speaker Mode, we show others in a strip
-    const otherPeers = mode === 'speaker' && featuredPeer
-        ? peers.filter(p => p.userId !== featuredPeerId)
-        : peers
+    const otherItems = mode === 'speaker' && featuredItem
+        ? displayItems.filter(p => p.id !== featuredItemId)
+        : displayItems
 
     // Grid columns calculation for Gallery Mode
-    const totalItems = peers.length + 1 // +1 for Local
+    const totalItems = displayItems.length + 1 // +1 for Local
     const getGridClass = (count: number) => {
         if (count === 1) return "grid-cols-1"
         if (count === 2) return "grid-cols-1 md:grid-cols-2"
@@ -68,6 +87,10 @@ export function VideoGrid({
 
         // Implementation logic for volume scaling
         // If listening to Original (Floor), everyone is 1.0 (unless muted locally? logic is in VideoPlayer)
+        if (localMutedPeers.has(peer.userId)) {
+            return 0
+        }
+
         if (selectedLang === 'original') {
             vol = 1
         }
@@ -92,24 +115,25 @@ export function VideoGrid({
     return (
         <div className="w-full h-full relative flex flex-col gap-4">
 
-            {mode === 'speaker' && featuredPeer ? (
+            {mode === 'speaker' && featuredItem ? (
                 // --- SPEAKER VIEW ---
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                     {/* Featured Video */}
                     <div className="flex-1 relative min-h-0 bg-black/40 rounded-[2.5rem] border border-white/5 overflow-hidden">
                         <RemoteVideo
-                            stream={featuredPeer.stream}
-                            name={featuredPeer.name}
-                            role={featuredPeer.role}
-                            micOff={!featuredPeer.micOn}
-                            cameraOff={!featuredPeer.cameraOn}
-                            handRaised={featuredPeer.handRaised}
-                            isSpeaking={featuredPeer.isSpeaking}
-                            onSpeakingChange={(isSpeaking) => onPeerSpeaking(featuredPeer.userId, isSpeaking)}
-                            volume={getPeerVolume(featuredPeer)}
+                            stream={featuredItem.stream}
+                            name={featuredItem.name}
+                            role={featuredItem.role}
+                            micOff={!featuredItem.micOn}
+                            cameraOff={!featuredItem.cameraOn}
+                            handRaised={featuredItem.handRaised}
+                            isSpeaking={featuredItem.isSpeaking}
+                            onSpeakingChange={(isSpeaking) => onPeerSpeaking(featuredItem.userId, isSpeaking)}
+                            volume={getPeerVolume(featuredItem)}
+                            isPresentation={featuredItem.isScreen}
                         />
                         {/* Pin Indicator */}
-                        {pinnedSpeakerId === featuredPeer.userId && (
+                        {pinnedSpeakerId === featuredItem.id && (
                             <div className="absolute top-4 right-4 bg-[#06b6d4] p-1.5 rounded-full z-10">
                                 <span className="sr-only">Pinned</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pin text-white"><line x1="12" x2="12" y1="17" y2="22" /><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" /></svg>
@@ -130,22 +154,23 @@ export function VideoGrid({
                                 handRaised={handRaised}
                             />
                         </div>
-                        {otherPeers.map(peer => (
+                        {otherItems.map(item => (
                             <div
-                                key={peer.userId}
+                                key={item.id}
                                 className="w-40 md:w-56 shrink-0 snap-start cursor-pointer transition-transform hover:scale-105"
-                                onClick={() => onSpeakerChange(peer.userId)}
+                                onClick={() => onSpeakerChange(item.id)}
                             >
                                 <RemoteVideo
-                                    stream={peer.stream}
-                                    name={peer.name}
-                                    role={peer.role}
-                                    micOff={!peer.micOn}
-                                    cameraOff={!peer.cameraOn}
-                                    handRaised={peer.handRaised}
-                                    isSpeaking={peer.isSpeaking}
-                                    onSpeakingChange={(isSpeaking) => onPeerSpeaking(peer.userId, isSpeaking)}
-                                    volume={getPeerVolume(peer)}
+                                    stream={item.stream}
+                                    name={item.name}
+                                    role={item.role}
+                                    micOff={!item.micOn}
+                                    cameraOff={!item.cameraOn}
+                                    handRaised={item.handRaised}
+                                    isSpeaking={item.isSpeaking}
+                                    onSpeakingChange={(isSpeaking) => onPeerSpeaking(item.userId, isSpeaking)}
+                                    volume={getPeerVolume(item)}
+                                    isPresentation={item.isScreen}
                                 />
                             </div>
                         ))}
@@ -176,29 +201,30 @@ export function VideoGrid({
                     </motion.div>
 
                     <AnimatePresence>
-                        {peers.map(peer => (
+                        {displayItems.map(item => (
                             <motion.div
-                                key={peer.userId}
+                                key={item.id}
                                 layout
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className={cn(
                                     "relative cursor-pointer transition-all",
-                                    pinnedSpeakerId === peer.userId ? "ring-2 ring-[#06b6d4] rounded-[2.5rem]" : ""
+                                    pinnedSpeakerId === item.id ? "ring-2 ring-[#06b6d4] rounded-[2.5rem]" : ""
                                 )}
-                                onClick={() => onSpeakerChange(peer.userId)}
+                                onClick={() => onSpeakerChange(item.id)}
                             >
                                 <RemoteVideo
-                                    stream={peer.stream}
-                                    name={peer.name}
-                                    role={peer.role}
-                                    micOff={!peer.micOn}
-                                    cameraOff={!peer.cameraOn}
-                                    handRaised={peer.handRaised}
-                                    isSpeaking={peer.isSpeaking}
-                                    onSpeakingChange={(isSpeaking) => onPeerSpeaking(peer.userId, isSpeaking)}
-                                    volume={getPeerVolume(peer)}
+                                    stream={item.stream}
+                                    name={item.name}
+                                    role={item.role}
+                                    micOff={!item.micOn}
+                                    cameraOff={!item.cameraOn}
+                                    handRaised={item.handRaised}
+                                    isSpeaking={item.isSpeaking}
+                                    onSpeakingChange={(isSpeaking) => onPeerSpeaking(item.userId, isSpeaking)}
+                                    volume={getPeerVolume(item)}
+                                    isPresentation={item.isScreen}
                                 />
                             </motion.div>
                         ))}

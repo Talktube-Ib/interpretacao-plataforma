@@ -89,6 +89,18 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [currentPage, setCurrentPage] = useState(0)
     const itemsPerPage = 49
 
+    // Local Mute State
+    const [localMutedPeers, setLocalMutedPeers] = useState<Set<string>>(new Set())
+
+    const handleToggleLocalMute = (targetId: string) => {
+        setLocalMutedPeers(prev => {
+            const next = new Set(prev)
+            if (next.has(targetId)) next.delete(targetId)
+            else next.add(targetId)
+            return next
+        })
+    }
+
     useEffect(() => {
         const initUser = async () => {
             try {
@@ -248,6 +260,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
         updateUserLanguages,
         muteUser,
+        blockUserAudio,
+        unblockUserAudio,
         reconnect // NEW
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName)
 
@@ -603,6 +617,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         volumeBalance={volumeBalance}
                         handRaised={localHandRaised}
                         masterVolume={masterVolume}
+                        localMutedPeers={localMutedPeers}
                     />
 
                     {/* Pagination Controls */}
@@ -678,7 +693,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                             ...p,
                                             name: p.name || 'Participante',
                                             micOn: p.micOn ?? false,
-                                            cameraOn: p.cameraOn ?? false
+                                            cameraOn: p.cameraOn ?? false,
+                                            audioBlocked: p.audioBlocked
                                         }))
                                     ]}
                                     userRole={currentRole}
@@ -690,6 +706,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                     onUpdateRole={updateUserRole}
                                     onUpdateLanguages={updateUserLanguages}
                                     onMute={muteUser}
+                                    onBlockAudio={blockUserAudio}
+                                    onUnblockAudio={unblockUserAudio}
+
+                                    localMutedPeers={localMutedPeers}
+                                    onToggleLocalMute={handleToggleLocalMute}
 
                                     onClose={() => setActiveSidebar(null)}
                                 />
