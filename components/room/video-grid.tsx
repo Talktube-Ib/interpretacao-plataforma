@@ -117,9 +117,10 @@ export function VideoGrid({
 
             {mode === 'speaker' && featuredItem ? (
                 // --- SPEAKER VIEW ---
-                <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                    {/* Featured Video */}
-                    <div className="flex-1 relative min-h-0 bg-black/40 rounded-[2.5rem] border border-white/5 overflow-hidden">
+                // --- SPEAKER VIEW ---
+                <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden h-full">
+                    {/* Featured Video (Presentation/Speaker) - Takes majority of space */}
+                    <div className="flex-1 relative min-h-0 bg-black/40 rounded-[2.5rem] border border-white/5 overflow-hidden w-full md:w-auto">
                         <RemoteVideo
                             stream={featuredItem.stream}
                             name={featuredItem.name}
@@ -141,10 +142,15 @@ export function VideoGrid({
                         )}
                     </div>
 
-                    {/* Strip of others (including local) */}
-                    <div className="h-32 md:h-40 flex gap-2 overflow-x-auto pb-2 px-1 snap-x no-scrollbar">
+                    {/* Sidebar of others (Right side on desktop, Bottom strip on mobile) */}
+                    {/* Hiding scrollbar for cleaner look, but allowing scroll */}
+                    <div className={cn(
+                        "flex gap-4",
+                        // Mobile: Horizontal Scroll Strip
+                        "w-full h-32 md:h-full md:w-64 md:flex-col md:overflow-y-auto overflow-x-auto md:overflow-x-hidden pb-2 md:pb-0 px-1 snap-x md:snap-y no-scrollbar md:pr-1"
+                    )}>
                         {/* Always show Local in the strip in Speaker Mode */}
-                        <div className="w-40 md:w-56 shrink-0 snap-start">
+                        <div className="w-40 md:w-full shrink-0 snap-start aspect-video rounded-2xl overflow-hidden">
                             <LocalVideo
                                 stream={localStream}
                                 name={localUserName + " (Você)"}
@@ -157,7 +163,7 @@ export function VideoGrid({
                         {otherItems.map(item => (
                             <div
                                 key={item.id}
-                                className="w-40 md:w-56 shrink-0 snap-start cursor-pointer transition-transform hover:scale-105"
+                                className="w-40 md:w-full shrink-0 snap-start aspect-video cursor-pointer transition-transform hover:scale-105 rounded-2xl overflow-hidden"
                                 onClick={() => onSpeakerChange(item.id)}
                             >
                                 <RemoteVideo
