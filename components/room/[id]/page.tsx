@@ -103,6 +103,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         })
     }
 
+    // Guest Upsell Logic
+    useEffect(() => {
+        if (isJoined && currentRole !== 'host' && currentRole !== 'interpreter') {
+            const timer = setTimeout(() => setShowUpsell(true), 2000)
+            return () => clearTimeout(timer)
+        }
+    }, [isJoined, currentRole])
+
     useEffect(() => {
         const initUser = async () => {
             try {
