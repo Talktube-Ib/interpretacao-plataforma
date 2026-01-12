@@ -56,8 +56,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [userName, setUserName] = useState(t('room.participant_default'))
     const [currentRole, setCurrentRole] = useState<string>('participant')
     const [isLoaded, setIsLoaded] = useState(false)
-
-    const [isLoaded, setIsLoaded] = useState(false)
     const [showUpsell, setShowUpsell] = useState(false) // NEW STATE
 
     // State declarations moved for hoisting
@@ -1238,6 +1236,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     <PhoneOff className="h-5 w-5 mr-3" /> {t('room.leave')}
                 </Button>
             </div >
+
+            {/* Upsell Modal for Guests */}
+            <UpsellModal isOpen={showUpsell} onOpenChange={setShowUpsell} />
 
             {/* Floating Reactions Overlay */}
             < FloatingReactions reactions={reactions} />
