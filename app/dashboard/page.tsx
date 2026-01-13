@@ -10,17 +10,18 @@ export default async function DashboardPage() {
         redirect('/login')
     }
 
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-    const { data: meetings } = await supabase
-        .from('meetings')
-        .select('*')
-        .eq('host_id', user.id)
-        .order('start_time', { ascending: true })
+    const [{ data: profile }, { data: meetings }] = await Promise.all([
+        supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single(),
+        supabase
+            .from('meetings')
+            .select('*')
+            .eq('host_id', user.id)
+            .order('start_time', { ascending: true })
+    ])
 
     return <DashboardClient user={user} profile={profile} meetings={meetings || []} isDemo={false} />
 }
