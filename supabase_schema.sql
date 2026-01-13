@@ -57,7 +57,7 @@ create table public.meetings (
 );
 
 alter table public.meetings enable row level security;
-create policy "Meetings are viewable by everyone." on public.meetings for select using (true);
+create policy "Meetings are viewable by authenticated users only." on public.meetings for select using (auth.role() = 'authenticated');
 create policy "Hosts can create meetings." on public.meetings for insert with check (auth.uid() = host_id);
 create policy "Hosts can update their meetings." on public.meetings for update using (auth.uid() = host_id);
 
@@ -78,7 +78,7 @@ alter table public.profiles add column if not exists languages text[] default '{
 
 -- Update RLS for profiles
 drop policy if exists "Public profiles are viewable by everyone." on public.profiles;
-create policy "Public profiles are viewable by everyone." on public.profiles for select using (true);
+create policy "Public profiles are viewable by authenticated users only." on public.profiles for select using (auth.role() = 'authenticated');
 
 -- Admin can update any profile
 create policy "Admins can update any profile." on public.profiles for update using (
@@ -165,3 +165,31 @@ create policy "Anyone can update their own avatar."
   on storage.objects for update
   using ( bucket_id = 'avatars' and auth.uid() = owner )
   with check ( bucket_id = 'avatars' and auth.uid() = owner );
+
+-- Secure Room Events (Signaling)
+create table public.room_events (
+  id uuid default gen_random_uuid() primary key,
+  meeting_id uuid references public.meetings(id) on delete cascade not null,
+  type text not null, -- 'KICK', 'MUTE', 'MUTE_ALL', 'BLOCK_AUDIO'
+  payload jsonb, -- { targetId: '...' }
+  created_by uuid references auth.users(id) default auth.uid(),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.room_events enable row level security;
+
+-- Visible to anyone authenticated (so clients can listen)
+create policy "Room events are viewable by authenticated users."
+  on public.room_events for select
+  using (auth.role() = 'authenticated');
+
+-- Only Host or Admin can Insert Critical Actions
+create policy "Hosts and Admins can create room events."
+  on public.room_events for insert
+  with check (
+    exists (
+      select 1 from public.meetings
+      where id = meeting_id
+      and (host_id = auth.uid() or exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
+    )
+  );

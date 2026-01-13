@@ -12,7 +12,8 @@ import {
   Zap,
 
   Headphones,
-  User
+  User,
+  Menu
 } from 'lucide-react'
 import {
   Accordion,
@@ -20,30 +21,26 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetClose
+} from "@/components/ui/sheet"
+
 import { Logo } from '@/components/logo'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { useLanguage } from '@/components/providers/language-provider'
 import { motion, Variants } from 'framer-motion'
-import { startDemoMode } from '@/app/actions/demo'
+import { FloatingWhatsApp } from '@/components/floating-whatsapp'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
-import { FloatingWhatsApp } from '@/components/floating-whatsapp'
 
 export default function LandingPage() {
   const { t } = useLanguage()
   const router = useRouter()
-  const [isLoadingDemo, setIsLoadingDemo] = useState(false)
-
-  const handleDemoClick = async () => {
-    setIsLoadingDemo(true)
-    try {
-      await startDemoMode()
-    } catch (error) {
-      console.error("Demo start failed", error)
-      setIsLoadingDemo(false)
-    }
-  }
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -97,19 +94,52 @@ export default function LandingPage() {
                 {t('landing.client_area')}
               </Button>
             </Link>
-            <Link href="/login" className="md:hidden">
-              <Button variant="ghost" size="icon" className="text-gray-300 hover:text-white hover:bg-white/5">
-                <User className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Button
-              onClick={handleDemoClick}
-              className="bg-white text-[#020817] hover:bg-gray-100 font-bold px-4 md:px-6 shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:scale-105"
-              disabled={isLoadingDemo}
-            >
-              {isLoadingDemo ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {isLoadingDemo ? t('common.loading') : <><span className="md:hidden">{t('landing.cta_demo_short')}</span><span className="hidden md:inline">{t('landing.cta_demo')}</span></>}
-            </Button>
+
+            {/* Mobile Menu */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden text-gray-300 hover:text-white hover:bg-white/5">
+                  <Menu className="w-6 h-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="bg-[#020817] border-white/10 text-white w-[300px]">
+                <SheetHeader>
+                  <SheetTitle className="text-left mb-6">
+                    <Logo className="scale-90" />
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-6 font-medium text-lg">
+                  <SheetClose asChild>
+                    <Link href="#features" className="text-gray-400 hover:text-cyan-400 transition-colors">
+                      {t('landing.features')}
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link href="#tech" className="text-gray-400 hover:text-cyan-400 transition-colors">
+                      {t('landing.about')}
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link href="#use-cases" className="text-gray-400 hover:text-cyan-400 transition-colors">
+                      {t('landing.use_cases_title')}
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link href="#pricing" className="text-gray-400 hover:text-cyan-400 transition-colors">
+                      {t('landing.pricing')}
+                    </Link>
+                  </SheetClose>
+                  <div className="h-px bg-white/10 my-2" />
+                  <SheetClose asChild>
+                    <Link href="/login" className="flex items-center gap-2 text-cyan-400">
+                      <User className="w-5 h-5" />
+                      {t('landing.client_area')}
+                    </Link>
+                  </SheetClose>
+                </div>
+              </SheetContent>
+            </Sheet>
+
           </div>
         </div>
       </header>
@@ -147,16 +177,8 @@ export default function LandingPage() {
 
 
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row gap-4 justify-center pt-8">
-              <Button
-                size="lg"
-                onClick={handleDemoClick}
-                className="h-14 px-8 text-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-full font-semibold shadow-[0_0_40px_-5px_rgba(6,182,212,0.5)] transition-all hover:scale-105"
-                disabled={isLoadingDemo}
-              >
-                {isLoadingDemo ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                {t('landing.cta_demo')} <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/10 bg-white/5 text-white hover:bg-white/10 rounded-full backdrop-blur-sm" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+
+              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/10 bg-white/5 text-white hover:bg-white/10 rounded-full backdrop-blur-sm transition-all" onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
                 {t('landing.cta_specialist')}
               </Button>
             </motion.div>
@@ -413,12 +435,12 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
                 size="lg"
-                onClick={handleDemoClick}
                 className="h-16 px-10 text-lg bg-white text-[#020817] hover:bg-gray-100 rounded-full font-bold shadow-2xl hover:shadow-[0_0_50px_rgba(255,255,255,0.2)] transition-all transform hover:-translate-y-1"
-                disabled={isLoadingDemo}
+                asChild
               >
-                {isLoadingDemo ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                Acessar Demonstração
+                <Link href="/login">
+                  Começar Agora
+                </Link>
               </Button>
             </div>
             <p className="mt-8 text-sm text-gray-500">
@@ -477,7 +499,7 @@ export default function LandingPage() {
 
             <div className="text-center">
               <blockquote className="text-2xl md:text-3xl font-serif italic text-cyan-200/90 max-w-3xl mx-auto leading-relaxed">
-                "{t('landing.quote')}"
+                &quot;{t('landing.quote')}&quot;
               </blockquote>
             </div>
           </div>

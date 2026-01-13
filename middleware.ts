@@ -31,15 +31,15 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    const demoMode = request.cookies.get('demo_mode')
+
 
     // 1. RBAC & Basic Protection
-    // Allow if user is logged in OR if demo_mode cookie is present
-    if (!user && !demoMode && request.nextUrl.pathname.startsWith('/dashboard')) {
+    // Allow if user is logged in
+    if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    if (!user && !demoMode && request.nextUrl.pathname.startsWith('/admin')) {
+    if (!user && request.nextUrl.pathname.startsWith('/admin')) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 

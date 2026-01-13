@@ -10,7 +10,6 @@ export default async function DashboardLayout({
     children: React.ReactNode
 }) {
     const cookieStore = await cookies()
-    const isDemo = cookieStore.get('demo_mode')?.value === 'true'
 
     let user = null
     let role = 'participant'
@@ -18,48 +17,33 @@ export default async function DashboardLayout({
     let fullName = null
     let unreadCount = 0
 
-    if (isDemo) {
-        // Mock Data for Demo
-        user = {
-            id: 'demo-user',
-            email: 'demo@interpret.io',
-            user_metadata: { full_name: 'Demo User' },
-            app_metadata: {},
-            aud: 'authenticated',
-            created_at: new Date().toISOString()
-        }
-        role = 'demo_viewer'
-        avatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo'
-        fullName = 'Demo User'
-    } else {
-        const supabase = await createClient()
-        const { data } = await supabase.auth.getUser()
-        user = data.user
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getUser()
+    user = data.user
 
-        if (!user) {
-            redirect('/login')
-        }
-
-        // Fetch role, avatar, full_name, and last read time
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('role, avatar_url, full_name, last_read_announcements_at')
-            .eq('id', user.id)
-            .single()
-
-        role = profile?.role || user.user_metadata?.role || 'participant'
-        avatar = profile?.avatar_url
-        fullName = profile?.full_name || user.user_metadata?.full_name
-        const lastRead = profile?.last_read_announcements_at || '2000-01-01'
-
-        // Count unread announcements
-        const { count } = await supabase
-            .from('announcements')
-            .select('id', { count: 'exact', head: true })
-            .gt('created_at', lastRead)
-
-        unreadCount = count || 0
+    if (!user) {
+        redirect('/login')
     }
+
+    // Fetch role, avatar, full_name, and last read time
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, avatar_url, full_name, last_read_announcements_at')
+        .eq('id', user.id)
+        .single()
+
+    role = profile?.role || user.user_metadata?.role || 'participant'
+    avatar = profile?.avatar_url
+    fullName = profile?.full_name || user.user_metadata?.full_name
+    const lastRead = profile?.last_read_announcements_at || '2000-01-01'
+
+    // Count unread announcements
+    const { count } = await supabase
+        .from('announcements')
+        .select('id', { count: 'exact', head: true })
+        .gt('created_at', lastRead)
+
+    unreadCount = count || 0
 
     return (
         <div className="h-screen flex flex-col md:flex-row overflow-hidden bg-background text-foreground transition-colors duration-300">

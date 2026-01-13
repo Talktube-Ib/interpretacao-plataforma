@@ -240,40 +240,51 @@ export function useWebRTC(
                 setReactions(prev => [...prev, { id, emoji, userId: sender }])
                 setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 5000)
             })
-            // New Admin Actions Listener
-            .on('broadcast', { event: 'admin-action' }, async (event) => {
-                const { action, targetId, payload } = event.payload
-                if (targetId === userId) {
-                    if (action === 'set-role') {
-                        updateMetadata({ role: payload.role })
-                        if (payload.role !== 'interpreter') {
-                            updateMetadata({ language: 'floor' })
+            // Secure Signaling with Postgres Changes
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'room_events',
+                    filter: `meeting_id=eq.${roomId}` // Listen only for this room
+                },
+                (payload) => {
+                    const event = payload.new
+                    // Ignore my own events
+                    if (event.created_by === userId) return
+
+                    const type = event.type
+                    const data = event.payload || {}
+
+                    if (data.targetId === userId) {
+                        if (type === 'KICK') {
+                            alert('Você foi removido da reunião pelo administrador.')
+                            window.location.href = '/dashboard'
+                        } else if (type === 'MUTE') {
+                            toggleMic(false)
+                            window.dispatchEvent(new CustomEvent('admin-mute'))
+                        } else if (type === 'BLOCK_AUDIO') {
+                            updateMetadata({ audioBlocked: true })
+                            toggleMic(false)
+                            alert('Seu áudio foi bloqueado pelo anfitrião.')
+                        } else if (type === 'UNBLOCK_AUDIO') {
+                            updateMetadata({ audioBlocked: false })
+                            alert('Seu áudio foi desbloqueado.')
+                        } else if (type === 'SET_ROLE') {
+                            updateMetadata({ role: data.role })
+                            if (data.role !== 'interpreter') {
+                                updateMetadata({ language: 'floor' })
+                            }
                         }
                     }
-                    else if (action === 'set-allowed-languages') {
-                        window.dispatchEvent(new CustomEvent('admin-update-languages', { detail: payload.languages }))
-                    }
-                    // ... (existing code)
-                    else if (action === 'kick') {
-                        alert('Você foi removido da reunião pelo administrador.')
-                        window.location.href = '/dashboard'
-                    }
-                    else if (action === 'mute-user') {
-                        toggleMic(false)
-                        // Trigger visual feedback (maybe a custom event or relying on metadata update)
-                        window.dispatchEvent(new CustomEvent('admin-mute'))
-                    }
-                    else if (action === 'block-audio') {
-                        updateMetadata({ audioBlocked: true })
-                        toggleMic(false)
-                        alert('Seu áudio foi bloqueado pelo anfitrião.')
-                    }
-                    else if (action === 'unblock-audio') {
-                        updateMetadata({ audioBlocked: false })
-                        alert('Seu áudio foi desbloqueado. Você já pode ligar o microfone.')
+
+                    // Global Events (Everyone receives)
+                    if (type === 'SET_ALLOWED_LANGUAGES') {
+                        window.dispatchEvent(new CustomEvent('admin-update-languages', { detail: data.languages }))
                     }
                 }
-            })
+            )
 
             .on('presence', { event: 'sync' }, () => {
                 const state = newChannel.presenceState(); const users = Object.keys(state); setUserCount(users.length)
@@ -625,28 +636,53 @@ export function useWebRTC(
     }
 
     // Admin Actions
-    const kickUser = (targetId: string) => {
-        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'kick', targetId } })
+    // Admin Actions (Moved to DB-based Signaling)
+    const kickUser = async (targetId: string) => {
+        await supabase.from('room_events').insert({
+            meeting_id: roomId,
+            type: 'KICK',
+            payload: { targetId }
+        })
     }
 
-    const updateUserRole = (targetId: string, newRole: string) => {
-        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'set-role', targetId, payload: { role: newRole } } })
+    const updateUserRole = async (targetId: string, newRole: string) => {
+        await supabase.from('room_events').insert({
+            meeting_id: roomId,
+            type: 'SET_ROLE',
+            payload: { targetId, role: newRole }
+        })
     }
 
-    const updateUserLanguages = (targetId: string, languages: string[]) => {
-        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'set-allowed-languages', targetId, payload: { languages } } })
+    const updateUserLanguages = async (targetId: string, languages: string[]) => {
+        await supabase.from('room_events').insert({
+            meeting_id: roomId,
+            type: 'SET_ALLOWED_LANGUAGES',
+            payload: { targetId, languages }
+        })
     }
 
-    const muteUser = (targetId: string) => {
-        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'mute-user', targetId } })
+    const muteUser = async (targetId: string) => {
+        await supabase.from('room_events').insert({
+            meeting_id: roomId,
+            type: 'MUTE',
+            payload: { targetId }
+        })
     }
 
-    const blockUserAudio = (targetId: string) => {
-        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'block-audio', targetId } })
+    const blockUserAudio = async (targetId: string) => {
+        await supabase.from('room_events').insert({
+            meeting_id: roomId,
+            type: 'BLOCK_AUDIO',
+            payload: { targetId }
+        })
     }
 
-    const unblockUserAudio = (targetId: string) => {
-        channelRef.current?.send({ type: 'broadcast', event: 'admin-action', payload: { action: 'unblock-audio', targetId } })
+    const unblockUserAudio = async (targetId: string) => {
+        await supabase.from('room_events').insert({
+            meeting_id: roomId,
+            type: 'UNBLOCK_AUDIO',
+            payload: { targetId }
+        })
     }
 
 

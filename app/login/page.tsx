@@ -23,13 +23,17 @@ function LoginForm() {
         const status = searchParams.get('status')
 
         if (errorType === 'account_locked') {
-            if (status === 'banned') {
-                setError('Sua conta foi banida permanentemente. Entre em contato com o suporte.')
-            } else if (status === 'suspended') {
-                setError('Sua conta está suspensa temporariamente. Entre em contato com o suporte.')
-            } else {
-                setError('Acesso negado. Sua conta não está ativa.')
-            }
+            // Delay state update to avoid synchronous render warning
+            const timer = setTimeout(() => {
+                if (status === 'banned') {
+                    setError('Sua conta foi banida permanentemente. Entre em contato com o suporte.')
+                } else if (status === 'suspended') {
+                    setError('Sua conta está suspensa temporariamente. Entre em contato com o suporte.')
+                } else {
+                    setError('Acesso negado. Sua conta não está ativa.')
+                }
+            }, 0)
+            return () => clearTimeout(timer)
         }
     }, [searchParams])
 
@@ -59,7 +63,7 @@ function LoginForm() {
             {/* Background patterns */}
             <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
 
-            <div className="w-full max-w-md space-y-8 relative z-10 bg-white/5 backdrop-blur-lg p-8 rounded-2xl border border-white/10 shadow-2xl">
+            <div className="w-full max-w-md space-y-8 relative z-10 bg-black/40 backdrop-blur-sm md:backdrop-blur-lg p-8 rounded-2xl border border-white/10 shadow-2xl">
                 <div className="text-center flex flex-col items-center">
                     <Logo className="scale-150 mb-4" />
                     <p className="mt-2 text-sm text-gray-400">
@@ -96,6 +100,14 @@ function LoginForm() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
+                        </div>
+                        <div className="flex justify-end">
+                            <Link
+                                href="/auth/forgot-password"
+                                className="text-sm text-cyan-500 hover:text-cyan-400 font-medium transition-colors"
+                            >
+                                Esqueceu sua senha?
+                            </Link>
                         </div>
                     </div>
 
