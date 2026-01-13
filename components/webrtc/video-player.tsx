@@ -15,9 +15,10 @@ interface VideoPlayerProps {
     connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected' | 'closed'
     onSpeakingChange?: (isSpeaking: boolean) => void
     isPresentation?: boolean
+    onMutePeer?: () => void
 }
 
-export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation }: VideoPlayerProps) {
+export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
@@ -252,6 +253,22 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Mute Peer Button (Host Only) */}
+            {onMutePeer && !micOff && (
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onMutePeer()
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg"
+                        title="Mutar participante"
+                    >
+                        <MicOff className="h-4 w-4" />
+                    </button>
+                </div>
             )}
 
             {/* OVERLAYS */}

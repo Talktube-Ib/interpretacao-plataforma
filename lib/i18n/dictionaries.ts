@@ -186,6 +186,9 @@ export const dictionaries = {
             audio_mix: "Mix de Áudio",
             mode_interpreter: "MODO: INTÉRPRETE",
             host_leave_confirm: "Você é o anfitrião. Sair encerrará a reunião para todos. Continuar?",
+            network_offline: "Sem conexão com a internet",
+            signaling_disconnected: "Problema de conexão com o servidor",
+            connecting: "Conectando...",
         },
         create_meeting: {
             button_label: "Agendar Reunião",
@@ -519,6 +522,9 @@ export const dictionaries = {
             audio_mix: "Audio Mix",
             mode_interpreter: "MODE: INTERPRETER",
             host_leave_confirm: "You are the host. Leaving will end the meeting for everyone. Continue?",
+            network_offline: "No internet connection",
+            signaling_disconnected: "Server connection issue",
+            connecting: "Connecting...",
         },
         create_meeting: {
             button_label: "Schedule Meeting",
@@ -853,6 +859,9 @@ export const dictionaries = {
             audio_mix: "Mezcla de Audio",
             mode_interpreter: "MODO: INTÉRPRETE",
             host_leave_confirm: "Eres el anfitrión. Salir terminará la reunión para todos. ¿Continuar?",
+            network_offline: "Sin conexión a internet",
+            signaling_disconnected: "Problema de conexión con el servidor",
+            connecting: "Conectando...",
         },
         create_meeting: {
             button_label: "Programar Reunión",

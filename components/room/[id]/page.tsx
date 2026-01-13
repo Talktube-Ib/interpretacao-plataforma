@@ -105,11 +105,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // Guest Upsell Logic
     useEffect(() => {
-        if (isJoined && currentRole !== 'host' && currentRole !== 'interpreter') {
-            const timer = setTimeout(() => setShowUpsell(true), 2000)
-            return () => clearTimeout(timer)
+        // Only show upsell to guests (users not logged in)
+        // Wait for isLoaded to ensure userId is stable
+        if (isLoaded && isJoined) {
+            const isGuestUser = userId.startsWith('guest-')
+            if (isGuestUser) {
+                const timer = setTimeout(() => setShowUpsell(true), 5000)
+                return () => clearTimeout(timer)
+            }
         }
-    }, [isJoined, currentRole])
+    }, [isJoined, userId, isLoaded])
 
     useEffect(() => {
         const initUser = async () => {
@@ -309,10 +314,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         const file = e.target.files?.[0]
         if (file) {
             setIsSharing(true)
-            await shareVideoFile(file, () => {
-                setIsSharing(false)
-                if (fileInputRef.current) fileInputRef.current.value = ''
-            })
+            await shareVideoFile(file)
+            setIsSharing(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
         }
     }
 
@@ -517,7 +521,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     useEffect(() => {
         if (!channel) return
-        const status = channel.status
+        const status = (channel as any).status
         setIsSignalingConnected(status === 'SUBSCRIBED')
 
         // Supabase channel has explicit state change listener if needed, 
@@ -676,6 +680,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         handRaised={localHandRaised}
                         masterVolume={masterVolume}
                         localMutedPeers={localMutedPeers}
+                        onMutePeer={muteUser}
                     />
 
                     {/* Pagination Controls */}

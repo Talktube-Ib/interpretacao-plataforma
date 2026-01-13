@@ -22,6 +22,7 @@ interface VideoGridProps {
     handRaised: boolean
     masterVolume?: number // 0-1 (Global Volume Control)
     localMutedPeers?: Set<string> // IDs of peers muted locally by me
+    onMutePeer?: (targetId: string) => void
 }
 
 export function VideoGrid({
@@ -40,7 +41,8 @@ export function VideoGrid({
     volumeBalance = 0,
     handRaised,
     masterVolume = 1,
-    localMutedPeers = new Set()
+    localMutedPeers = new Set(),
+    onMutePeer
 }: VideoGridProps) {
 
     // Flatten peers to include Screen Shares as separate "Virtual Peers"
@@ -132,6 +134,7 @@ export function VideoGrid({
                             onSpeakingChange={(isSpeaking) => onPeerSpeaking(featuredItem.userId, isSpeaking)}
                             volume={getPeerVolume(featuredItem)}
                             isPresentation={featuredItem.isScreen}
+                            onMutePeer={onMutePeer ? () => onMutePeer(featuredItem.userId) : undefined}
                         />
                         {/* Pin Indicator */}
                         {pinnedSpeakerId === featuredItem.id && (
