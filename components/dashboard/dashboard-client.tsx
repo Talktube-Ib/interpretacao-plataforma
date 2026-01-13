@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import CreateMeetingModal from '@/components/create-meeting-modal'
 import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-button'
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
+import EditMeetingModal from '@/components/dashboard/edit-meeting-modal'
+import DeleteMeetingDialog from '@/components/dashboard/delete-meeting-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
 import { NotificationsDropdown } from '@/components/notifications-dropdown'
 
@@ -200,17 +202,20 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
                                                     {new Date(meeting.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                 </div>
                                             </div>
-                                            <div className="col-span-1 md:col-span-2 text-right flex items-center justify-end gap-3 mt-2 md:mt-0 w-full">
+                                            <div className="col-span-1 md:col-span-2 text-right flex items-center justify-end gap-1 md:gap-2 mt-2 md:mt-0 w-full">
                                                 <ShareMeetingDialog
                                                     roomId={meeting.id}
                                                     trigger={
-                                                        <Button size="icon" variant="ghost" className="h-10 w-10 text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-all border border-transparent hover:border-cyan-500/20">
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all">
                                                             <Share2 className="h-4 w-4" />
                                                         </Button>
                                                     }
                                                 />
-                                                <Link href={`/room/${meeting.id}`} className="w-full md:w-auto">
-                                                    <Button variant="outline" className="w-full md:w-auto h-10 px-6 border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all group-hover/row:shadow-lg group-hover/row:shadow-cyan-600/10">
+                                                <EditMeetingModal meeting={meeting} />
+                                                <DeleteMeetingDialog meetingId={meeting.id} meetingTitle={meeting.title} />
+
+                                                <Link href={`/room/${meeting.id}`} className="ml-2">
+                                                    <Button variant="outline" className="h-8 px-4 border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all">
                                                         {t('common.enter')}
                                                     </Button>
                                                 </Link>

@@ -1,16 +1,12 @@
 
-'use client'
-
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Plus, X, Loader2 } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
 import { useLanguage } from '@/components/providers/language-provider'
+import { MeetingForm, MeetingFormData } from './dashboard/meeting-form'
 
 interface CreateMeetingModalProps {
     userId: string
@@ -20,19 +16,11 @@ interface CreateMeetingModalProps {
 export default function CreateMeetingModal({ userId, preselectedDate }: CreateMeetingModalProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [title, setTitle] = useState('')
-    const [date, setDate] = useState(() => preselectedDate ? format(preselectedDate, 'yyyy-MM-dd') : '')
-    const [time, setTime] = useState('')
-    const [interpreters, setInterpreters] = useState<{ name: string, email: string, languages: string[] }[]>([])
     const supabase = createClient()
     const router = useRouter()
     const { t } = useLanguage()
 
-
-
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault()
-
+    const handleCreate = async (data: MeetingFormData) => {
         if (userId === 'demo-user') {
             alert(t('create_meeting.demo_error'))
             return
@@ -41,57 +29,53 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
         setLoading(true)
 
         // Combine date and time
-        const startDateTime = new Date(`${date}T${time}:00`).toISOString()
+        const startDateTime = new Date(`${data.date}T${data.time}:00`).toISOString()
 
         const { data: meetingData, error } = await supabase
             .from('meetings')
             .insert({
                 host_id: userId,
-                title,
+                title: data.title,
                 start_time: startDateTime,
                 status: 'scheduled',
-                allowed_languages: Array.from(new Set(['pt', 'en', ...interpreters.flatMap(i => i.languages)])),
-                settings: { interpreters }
+                allowed_languages: Array.from(new Set(['pt', 'en', ...data.interpreters.flatMap(i => i.languages)])),
+                settings: { interpreters: data.interpreters }
             })
-            .select() // Select to get the meeting ID
+            .select()
 
         if (!error && meetingData && meetingData[0]) {
             const meetingId = meetingData[0].id
 
             // Send Notifications
-            for (const interpreter of interpreters) {
+            for (const interpreter of data.interpreters) {
                 if (interpreter.email) {
-                    // 1. Find user by email
-                    const { data: userData } = await supabase
-                        .from('profiles')
-                        .select('id')
-                        .eq('email', interpreter.email)
-                        .single()
-
-                    // 2. If user exists, create notification
+                    const { data: userData } = await supabase.from('profiles').select('id').eq('email', interpreter.email).single()
                     if (userData) {
-                        await supabase
-                            .from('notifications')
-                            .insert({
-                                user_id: userData.id,
-                                title: t('notifications.invite_title') || 'Convite para Reunião',
-                                message: `${t('notifications.invite_msg_prefix') || 'Você foi convidado para interpretar na reunião'}: ${title}`,
-                                link: `/room/${meetingId}`
-                            })
+                        await supabase.from('notifications').insert({
+                            user_id: userData.id,
+                            title: t('notifications.invite_title') || 'Convite para Reunião',
+                            message: `${t('notifications.invite_msg_prefix') || 'Você foi convidado para interpretar na reunião'}: ${data.title}`,
+                            link: `/room/${meetingId}`
+                        })
                     }
                 }
             }
 
             setLoading(false)
             setIsOpen(false)
-            setTitle('')
-            if (!preselectedDate) setDate('')
-            setTime('')
             router.refresh()
         } else {
             setLoading(false)
             alert(t('create_meeting.error') + (error?.message || 'Unknown error'))
         }
+    }
+
+    // Default values logic
+    const initialValues = {
+        title: '',
+        date: preselectedDate ? format(preselectedDate, 'yyyy-MM-dd') : '',
+        time: '',
+        interpreters: []
     }
 
     return (
@@ -117,122 +101,12 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                             <p className="text-muted-foreground text-xs md:text-sm mt-1">{t('create_meeting.modal_desc')}</p>
                         </div>
 
-                        <form onSubmit={handleCreate} className="space-y-4 md:space-y-6">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#06b6d4]">{t('create_meeting.label_title')}</Label>
-                                <Input
-                                    required
-                                    placeholder={t('create_meeting.placeholder_title')}
-                                    className="bg-accent/30 border-border text-foreground h-10 md:h-12 rounded-xl focus-visible:ring-[#06b6d4]"
-                                    value={title}
-                                    onChange={e => setTitle(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 md:gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('create_meeting.label_date')}</Label>
-                                    <Input
-                                        type="date"
-                                        required
-                                        className="bg-accent/30 border-border text-foreground h-10 md:h-12 rounded-xl focus-visible:ring-[#06b6d4]"
-                                        value={date}
-                                        onChange={e => setDate(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{t('create_meeting.label_time')}</Label>
-                                    <Input
-                                        type="time"
-                                        required
-                                        className="bg-accent/30 border-border text-foreground h-10 md:h-12 rounded-xl focus-visible:ring-[#06b6d4]"
-                                        value={time}
-                                        onChange={e => setTime(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 pt-4 border-t border-border/50">
-                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-[#06b6d4]">{t('create_meeting.label_interpreters')}</Label>
-                                {interpreters.map((interpreter, index) => (
-                                    <div key={index} className="space-y-3 p-3 md:p-4 bg-accent/20 rounded-2xl border border-border/50 relative">
-                                        <button
-                                            type="button"
-                                            onClick={() => setInterpreters(prev => prev.filter((_, i) => i !== index))}
-                                            className="absolute top-2 right-2 text-muted-foreground hover:text-red-500"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </button>
-                                        <Input
-                                            placeholder={t('create_meeting.placeholder_name')}
-                                            className="bg-background border-border h-10 rounded-xl"
-                                            value={interpreter.name}
-                                            onChange={e => {
-                                                const newInt = [...interpreters]
-                                                newInt[index] = { ...newInt[index], name: e.target.value }
-                                                setInterpreters(newInt)
-                                            }}
-                                        />
-                                        <Input
-                                            type="email"
-                                            placeholder={t('create_meeting.placeholder_email')}
-                                            className="bg-background border-border h-10 rounded-xl"
-                                            value={interpreter.email}
-                                            onChange={e => {
-                                                const newInt = [...interpreters]
-                                                newInt[index] = { ...newInt[index], email: e.target.value }
-                                                setInterpreters(newInt)
-                                            }}
-                                        />
-                                        <div className="flex gap-2 flex-wrap">
-                                            {['pt', 'en', 'es', 'fr'].map(lang => (
-                                                <button
-                                                    key={lang}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const newInt = [...interpreters];
-                                                        const currentLangs = newInt[index].languages || []; // Safety check
-
-                                                        let newLangs;
-                                                        if (currentLangs.includes(lang)) {
-                                                            newLangs = currentLangs.filter(l => l !== lang);
-                                                        } else {
-                                                            newLangs = [...currentLangs, lang];
-                                                        }
-
-                                                        newInt[index] = { ...newInt[index], languages: newLangs };
-                                                        setInterpreters(newInt);
-                                                    }}
-                                                    className={cn(
-                                                        "text-[10px] px-2 py-1 rounded-md font-bold uppercase",
-                                                        (interpreter.languages || []).includes(lang) ? "bg-[#06b6d4] text-white" : "bg-accent text-muted-foreground"
-                                                    )}
-                                                >
-                                                    {lang}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setInterpreters(prev => [...prev, { name: '', email: '', languages: [] }])}
-                                    className="w-full border-dashed border-border text-muted-foreground hover:text-[#06b6d4] hover:border-[#06b6d4] rounded-xl h-10"
-                                >
-                                    <Plus className="h-4 w-4 mr-2" /> {t('create_meeting.add_interpreter')}
-                                </Button>
-                            </div>
-
-                            <div className="pt-4 md:pt-6 flex flex-col gap-3">
-                                <Button type="submit" className="w-full bg-[#06b6d4] hover:bg-[#0891b2] text-white h-12 md:h-14 rounded-2xl font-black text-lg shadow-lg shadow-[#06b6d4]/20 border-0" disabled={loading}>
-                                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : t('create_meeting.submit_btn')}
-                                </Button>
-                                <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground font-bold rounded-xl h-12">
-                                    {t('create_meeting.cancel_btn')}
-                                </Button>
-                            </div>
-                        </form>
+                        <MeetingForm
+                            initialValues={initialValues}
+                            onSubmit={handleCreate}
+                            loading={loading}
+                            onCancel={() => setIsOpen(false)}
+                        />
                     </div>
                 </div>
             )}

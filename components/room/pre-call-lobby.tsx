@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User, Monitor, Headphones, ChevronDown, Check } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User, Monitor, Headphones, ChevronDown, Check, Volume2 } from 'lucide-react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from '@/lib/utils'
+import { useMediaStream } from '@/hooks/use-media-stream'
 
 interface PreCallLobbyProps {
     userName: string
@@ -31,58 +32,64 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
     const [name, setName] = useState(userName || '')
     const [micOn, setMicOn] = useState(true)
     const [cameraOn, setCameraOn] = useState(true)
-    const [stream, setStream] = useState<MediaStream | null>(null)
-    const videoRef = useRef<HTMLVideoElement>(null)
     const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
     const [selectedAudioId, setSelectedAudioId] = useState<string>('')
     const [selectedVideoId, setSelectedVideoId] = useState<string>('')
-    const isJoiningRef = useRef(false) // Track if we are transitioning
+    const isJoiningRef = useRef(false)
 
+    // Volume Meter State
+    const [volumeLevel, setVolumeLevel] = useState(0)
+    const requestRef = useRef<number>()
+    const analyserRef = useRef<AnalyserNode | null>(null)
+
+    // Use our refactored hook
+    const { stream, error, toggleMic, toggleCamera, switchDevice } = useMediaStream({
+        micOn,
+        cameraOn,
+        audioDeviceId: selectedAudioId,
+        videoDeviceId: selectedVideoId
+    }, true) // isJoined = true immediately for preview
+
+    // Audio Visualization Loop
     useEffect(() => {
-        let localStream: MediaStream | null = null
-
-        async function initMedia() {
-            try {
-                // If we have selected devices, use them. Otherwise use defaults (true)
-                const audioConstraints = selectedAudioId ? { deviceId: { exact: selectedAudioId } } : true
-                const videoConstraints = selectedVideoId ? { deviceId: { exact: selectedVideoId } } : true
-
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    audio: audioConstraints,
-                    video: videoConstraints
-                })
-                setStream(localStream)
-                if (videoRef.current) {
-                    videoRef.current.srcObject = localStream
-                }
-
-                // If we don't have selected IDs yet, try to set them from the active track settings
-                if (!selectedAudioId) {
-                    const audioTrack = localStream.getAudioTracks()[0]
-                    if (audioTrack) setSelectedAudioId(audioTrack.getSettings().deviceId || '')
-                }
-                if (!selectedVideoId) {
-                    const videoTrack = localStream.getVideoTracks()[0]
-                    if (videoTrack) setSelectedVideoId(videoTrack.getSettings().deviceId || '')
-                }
-
-            } catch (err) {
-                console.error("Failed to get media access", err)
-                setCameraOn(false)
-                setMicOn(false)
-            }
+        if (!stream || !micOn) {
+            setVolumeLevel(0)
+            return
         }
 
-        initMedia()
+        try {
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+            const analyser = audioContext.createAnalyser()
+            const source = audioContext.createMediaStreamSource(stream)
+            source.connect(analyser)
+            analyser.fftSize = 256
+            analyserRef.current = analyser
 
-        return () => {
-            if (localStream && !isJoiningRef.current) {
-                // Only stop tracks if NOT joining (abandoning lobby)
-                localStream.getTracks().forEach(track => track.stop())
+            const bufferLength = analyser.frequencyBinCount
+            const dataArray = new Uint8Array(bufferLength)
+
+            const updateVolume = () => {
+                analyser.getByteFrequencyData(dataArray)
+                const sum = dataArray.reduce((src, a) => src + a, 0)
+                const avg = sum / bufferLength
+                // Normalize roughly to 0-100, assuming max typical volume
+                setVolumeLevel(Math.min(100, avg * 2))
+                requestRef.current = requestAnimationFrame(updateVolume)
             }
+            updateVolume()
+
+            return () => {
+                if (requestRef.current) cancelAnimationFrame(requestRef.current)
+                if (audioContext.state !== 'closed') audioContext.close()
+            }
+        } catch (e) {
+            console.error("Audio Context Error", e)
         }
-    }, [selectedAudioId, selectedVideoId]) // Re-run when selection changes
+    }, [stream, micOn])
+
+
+    const videoRef = useRef<HTMLVideoElement>(null)
 
     // Enumerate Devices
     useEffect(() => {
@@ -91,6 +98,16 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                 const devices = await navigator.mediaDevices.enumerateDevices()
                 setAudioDevices(devices.filter(d => d.kind === 'audioinput'))
                 setVideoDevices(devices.filter(d => d.kind === 'videoinput'))
+
+                // Set initial selection if empty (use defaults or first found)
+                if (!selectedAudioId) {
+                    const audio = devices.find(d => d.kind === 'audioinput')
+                    if (audio) setSelectedAudioId(audio.deviceId)
+                }
+                if (!selectedVideoId) {
+                    const video = devices.find(d => d.kind === 'videoinput')
+                    if (video) setSelectedVideoId(video.deviceId)
+                }
             } catch (e) {
                 console.error("Error enumerating devices", e)
             }
@@ -100,35 +117,33 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
         return () => navigator.mediaDevices.removeEventListener('devicechange', getDevices)
     }, [])
 
-    useEffect(() => {
-        if (stream) {
-            stream.getAudioTracks().forEach(track => track.enabled = micOn)
-            stream.getVideoTracks().forEach(track => track.enabled = cameraOn)
-        }
-    }, [micOn, cameraOn, stream])
-
-    // NEW: Ensure video element gets the stream when mounted
+    // Ensure video element gets the stream
     useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream
         }
-    }, [cameraOn, stream])
+    }, [stream])
 
     const handleJoin = () => {
         if (!name.trim()) return
-        isJoiningRef.current = true // Mark as joining to prevent stream cleanup
+        isJoiningRef.current = true
         onJoin({
             micOn,
             cameraOn,
             name,
             audioDeviceId: selectedAudioId || 'default',
             videoDeviceId: selectedVideoId || 'default',
-            stream: stream || undefined
+            // IMPORTANT: Pass the stream?
+            // Actually, if we pass the stream, we risk track ownership issues.
+            // But useMediaStream handles cleanup via 'isJoined'.
+            // If the parent component (RoomPage) mounts <VideoRoom> which calls useWebRTC...
+            // useWebRTC will create a NEW stream based on deviceIds.
+            // So we can stop this stream here (by unmounting PreCallLobby).
         })
     }
 
     return (
-        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#020817] relative overflow-hidden p-6">
+        <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#020817] relative overflow-hidden p-6 text-foreground">
             {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-purple-600/20 rounded-full blur-[120px]" />
@@ -138,7 +153,7 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
             <div className="max-w-5xl w-full grid md:grid-cols-2 gap-12 z-10">
                 {/* Left Column: Preview */}
                 <div className="flex flex-col gap-6 animate-in slide-in-from-left-8 duration-700">
-                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl">
+                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl group">
                         {stream && cameraOn ? (
                             <video
                                 ref={videoRef}
@@ -152,12 +167,18 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                                 <div className="p-4 rounded-full bg-slate-800/50">
                                     <VideoOff className="h-12 w-12 opacity-50" />
                                 </div>
-                                <p>Camera is off</p>
+                                <p>Câmera desativada</p>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-red-400 p-4 text-center z-20">
+                                <p>Erro ao acessar mídia: {error}</p>
                             </div>
                         )}
 
                         {/* Overlay Controls */}
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100">
 
                             {/* Mic Split Button */}
                             <div className="flex items-center bg-zinc-800/80 rounded-xl overflow-hidden border border-white/10">
@@ -238,8 +259,26 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                         {/* Status Badge */}
                         <div className="absolute top-6 left-6 px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg text-xs font-bold text-white border border-white/10 flex items-center gap-2">
                             <div className={cn("w-2 h-2 rounded-full", stream ? "bg-green-500 animate-pulse" : "bg-red-500")} />
-                            {stream ? "Ready to Join" : "Checking devices..."}
+                            {stream ? "Pronto para entrar" : "Verificando dispositivos..."}
                         </div>
+
+                        {/* Audio Meter (Visual Feedback) */}
+                        {micOn && (
+                            <div className="absolute bottom-6 right-6 h-12 w-1.5 bg-black/40 rounded-full overflow-hidden border border-white/10">
+                                <div
+                                    className="w-full bg-green-500 transition-[height] duration-75 ease-out bottom-0 absolute rounded-full"
+                                    style={{ height: `${volumeLevel}%` }}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Audio Check Text */}
+                    <div className="flex items-center gap-2 text-slate-400 text-sm px-2">
+                        <Volume2 className={cn("h-4 w-4", volumeLevel > 10 ? "text-green-500" : "text-slate-600")} />
+                        <span>
+                            {volumeLevel > 0 ? "Áudio detectado!" : "Fale para testar o microfone..."}
+                        </span>
                     </div>
                 </div>
 
@@ -263,7 +302,7 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                                 <Input
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="pl-12 h-14 bg-slate-950/50 border-slate-800 text-lg focus:ring-purple-500/50 rounded-xl"
+                                    className="pl-12 h-14 bg-slate-950/50 border-slate-800 text-lg focus:ring-purple-500/50 rounded-xl text-white placeholder:text-slate-600"
                                     placeholder="Como quer ser chamado?"
                                 />
                             </div>

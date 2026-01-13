@@ -145,12 +145,12 @@ export function VideoGrid({
                     {/* Sidebar of others (Right side on desktop, Bottom strip on mobile) */}
                     {/* Hiding scrollbar for cleaner look, but allowing scroll */}
                     <div className={cn(
-                        "flex gap-4",
+                        "flex gap-2",
                         // Mobile: Horizontal Scroll Strip
-                        "w-full h-32 md:h-full md:w-64 md:flex-col md:overflow-y-auto overflow-x-auto md:overflow-x-hidden pb-2 md:pb-0 px-1 snap-x md:snap-y no-scrollbar md:pr-1"
+                        "w-full h-24 md:h-full md:w-64 md:flex-col md:overflow-y-auto overflow-x-auto md:overflow-x-hidden pb-1 md:pb-0 px-1 snap-x md:snap-y no-scrollbar md:pr-1"
                     )}>
                         {/* Always show Local in the strip in Speaker Mode */}
-                        <div className="w-40 md:w-full shrink-0 snap-start aspect-video rounded-2xl overflow-hidden">
+                        <div className="w-28 md:w-full shrink-0 snap-start aspect-video rounded-xl overflow-hidden shadow-sm border border-white/10">
                             <LocalVideo
                                 stream={localStream}
                                 name={localUserName + " (Você)"}
@@ -163,7 +163,7 @@ export function VideoGrid({
                         {otherItems.map(item => (
                             <div
                                 key={item.id}
-                                className="w-40 md:w-full shrink-0 snap-start aspect-video cursor-pointer transition-transform hover:scale-105 rounded-2xl overflow-hidden"
+                                className="w-28 md:w-full shrink-0 snap-start aspect-video cursor-pointer transition-transform hover:scale-105 rounded-xl overflow-hidden shadow-sm border border-white/10"
                                 onClick={() => onSpeakerChange(item.id)}
                             >
                                 <RemoteVideo

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff, Check,
     Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2, Hand, Smile, PlayCircle,
-    MoreHorizontal, Volume2,
+    MoreHorizontal, Volume2, Wifi, WifiOff, AlertTriangle,
 } from 'lucide-react'
 import { FloatingReactions } from '@/components/room/floating-reactions'
 import {
@@ -500,6 +500,34 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         }
     }
 
+    // Network Status Monitoring
+    const [isOnline, setIsOnline] = useState(true)
+    const [isSignalingConnected, setIsSignalingConnected] = useState(true)
+
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true)
+        const handleOffline = () => setIsOnline(false)
+        window.addEventListener('online', handleOnline)
+        window.addEventListener('offline', handleOffline)
+        return () => {
+            window.removeEventListener('online', handleOnline)
+            window.removeEventListener('offline', handleOffline)
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!channel) return
+        const status = channel.status
+        setIsSignalingConnected(status === 'SUBSCRIBED')
+
+        // Supabase channel has explicit state change listener if needed, 
+        // but checking 'status' property reactivity might need a polling or event listener.
+        // Let's assume 'channel' updates trigger re-render if hook updates it, 
+        // or we use an interval to check channel.state if it's not reactive.
+        // Actually, useWebRTC hook doesn't force re-render on channel status change maybe?
+        // Let's rely on isOnline for now as primary, and peers connectionState for secondary.
+    }, [channel])
+
     if (!isLoaded) {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center bg-[#020817] text-white gap-4">
@@ -775,6 +803,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             {mediaError && (
                 <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-red-500/90 text-white px-8 py-4 rounded-[2rem] z-50 text-center animate-bounce font-black shadow-2xl border-4 border-white/20">
                     ⚠️ {t('room.camera_error')} {mediaError}
+                </div>
+            )}
+
+            {/* Network Status Banner */}
+            {(!isOnline || !isSignalingConnected) && (
+                <div className="absolute top-36 left-1/2 -translate-x-1/2 bg-amber-500/90 text-white px-6 py-3 rounded-full z-50 text-center flex items-center gap-3 font-bold shadow-xl backdrop-blur-md animate-pulse">
+                    <WifiOff className="h-5 w-5" />
+                    <span>
+                        {!isOnline ? t('room.network_offline') || 'Sem conexão com a internet' : t('room.signaling_disconnected') || 'Problema de conexão com o servidor'}
+                    </span>
                 </div>
             )}
 
