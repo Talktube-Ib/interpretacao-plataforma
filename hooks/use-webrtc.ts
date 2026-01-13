@@ -427,6 +427,8 @@ export function useWebRTC(
         localHandRaised,
         hostId,
         isHost: hostId === userId,
-        reconnect
+        isHost: hostId === userId,
+        reconnect,
+        connectionState: signaling?.connectionState || 'disconnected'
     }
 }

@@ -27,6 +27,8 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
         }
     }, [metadata])
 
+    const [connectionState, setConnectionState] = useState<string>('disconnected')
+
     useEffect(() => {
         // Prevent joining if no userId
         if (!userId || !roomId) return
@@ -35,6 +37,7 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
         const newChannel = supabase.channel(`room:${roomId}`, { config: { presence: { key: userId } } })
         channelRef.current = newChannel
         setChannel(newChannel)
+        setConnectionState('connecting')
 
         newChannel
             .on('broadcast', { event: 'signal' }, (e) => events.onSignal(e.payload))
@@ -54,6 +57,7 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
                 events.onPresenceSync(users, state)
             })
             .subscribe(async (status) => {
+                setConnectionState(status)
                 if (status === 'SUBSCRIBED') {
                     await newChannel.track(metadataRef.current)
                 }
@@ -62,6 +66,7 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
         return () => {
             console.log("Disconnecting Signaling Channel")
             newChannel.unsubscribe()
+            setConnectionState('disconnected')
         }
     }, [roomId, userId]) // Removed events dependency to avoid re-subscription loop
 
@@ -85,6 +90,7 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
 
     return {
         channel,
+        connectionState,
         sendSignal,
         sendReaction,
         broadcastEvent,

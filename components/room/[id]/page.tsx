@@ -277,7 +277,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         muteUser,
         blockUserAudio,
         unblockUserAudio,
-        reconnect // NEW
+        unblockUserAudio,
+        reconnect,
+        connectionState
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName)
 
 
@@ -506,7 +508,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // Network Status Monitoring
     const [isOnline, setIsOnline] = useState(true)
-    const [isSignalingConnected, setIsSignalingConnected] = useState(true)
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true)
@@ -519,18 +520,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         }
     }, [])
 
-    useEffect(() => {
-        if (!channel) return
-        const status = (channel as any).status
-        setIsSignalingConnected(status === 'SUBSCRIBED')
+    const isSignalingConnected = connectionState === 'SUBSCRIBED'
 
-        // Supabase channel has explicit state change listener if needed, 
-        // but checking 'status' property reactivity might need a polling or event listener.
-        // Let's assume 'channel' updates trigger re-render if hook updates it, 
-        // or we use an interval to check channel.state if it's not reactive.
-        // Actually, useWebRTC hook doesn't force re-render on channel status change maybe?
-        // Let's rely on isOnline for now as primary, and peers connectionState for secondary.
-    }, [channel])
+
 
     if (!isLoaded) {
         return (
