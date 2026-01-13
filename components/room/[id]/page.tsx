@@ -277,7 +277,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         muteUser,
         blockUserAudio,
         unblockUserAudio,
-        unblockUserAudio,
         reconnect,
         connectionState
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName)
