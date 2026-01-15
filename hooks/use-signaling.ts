@@ -18,6 +18,12 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
     const supabase = createClient()
     const metadataRef = useRef(metadata)
 
+    const eventsRef = useRef(events)
+
+    useEffect(() => {
+        eventsRef.current = events
+    }, [events])
+
     // Keep metadata ref up to date
     useEffect(() => {
         metadataRef.current = metadata
@@ -40,21 +46,21 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
         setConnectionState('connecting')
 
         newChannel
-            .on('broadcast', { event: 'signal' }, (e) => events.onSignal(e.payload))
-            .on('broadcast', { event: 'share-started' }, (e) => events.onShareStarted(e.payload))
-            .on('broadcast', { event: 'share-ended' }, (e) => events.onShareEnded(e.payload))
-            .on('broadcast', { event: 'host-promoted' }, (e) => events.onHostPromoted(e.payload))
-            .on('broadcast', { event: 'reaction' }, (e) => events.onReaction(e.payload))
+            .on('broadcast', { event: 'signal' }, (e) => eventsRef.current.onSignal(e.payload))
+            .on('broadcast', { event: 'share-started' }, (e) => eventsRef.current.onShareStarted(e.payload))
+            .on('broadcast', { event: 'share-ended' }, (e) => eventsRef.current.onShareEnded(e.payload))
+            .on('broadcast', { event: 'host-promoted' }, (e) => eventsRef.current.onHostPromoted(e.payload))
+            .on('broadcast', { event: 'reaction' }, (e) => eventsRef.current.onReaction(e.payload))
             // Database Events (Room Actions)
             .on(
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'room_events', filter: `meeting_id=eq.${roomId}` },
-                (payload) => events.onRoomEvent(payload.new)
+                (payload) => eventsRef.current.onRoomEvent(payload.new)
             )
             .on('presence', { event: 'sync' }, () => {
                 const state = newChannel.presenceState()
                 const users = Object.keys(state)
-                events.onPresenceSync(users, state)
+                eventsRef.current.onPresenceSync(users, state)
             })
             .subscribe(async (status) => {
                 setConnectionState(status)
@@ -68,7 +74,7 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
             newChannel.unsubscribe()
             setConnectionState('disconnected')
         }
-    }, [roomId, userId]) // Removed events dependency to avoid re-subscription loop
+    }, [roomId, userId]) // Events ref is stable, no need to add
 
     const sendSignal = useCallback((payload: any) => {
         channelRef.current?.send({ type: 'broadcast', event: 'signal', payload })
