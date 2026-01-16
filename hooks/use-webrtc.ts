@@ -294,9 +294,8 @@ export function useWebRTC(
 
         peer.on('stream', (remoteStream) => {
             updatePeerData(targetUserId, (prev) => {
-                if (prev?.stream && prev.stream.id !== remoteStream.id) {
-                    return { screenStream: remoteStream, connectionState: 'connected' }
-                }
+                // FORCE UPDATE MAIN STREAM (Fix for flickering/black screen)
+                // We ignore screenStream logic for now as it was causing issues with stream replacement
                 return { stream: remoteStream, connectionState: 'connected' }
             })
         })
@@ -426,7 +425,6 @@ export function useWebRTC(
         reactions,
         localHandRaised,
         hostId,
-        isHost: hostId === userId,
         isHost: hostId === userId,
         reconnect,
         connectionState: signaling?.connectionState || 'disconnected'

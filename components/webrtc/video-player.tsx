@@ -255,16 +255,21 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                 </>
             )}
 
-            {/* Mute Peer Button (Host Only) */}
-            {onMutePeer && !micOff && (
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+            {/* Mute Peer Button (Host Only or Local Mute) */}
+            {onMutePeer && (
+                <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
                             onMutePeer()
                         }}
-                        className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg"
-                        title="Mutar participante"
+                        className={cn(
+                            "p-2 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95",
+                            micOff
+                                ? "bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500 hover:text-white"
+                                : "bg-zinc-800 text-white hover:bg-red-600 border border-white/10"
+                        )}
+                        title={micOff ? "Desmutar (Local)" : "Mutar (Local)"}
                     >
                         <MicOff className="h-4 w-4" />
                     </button>
