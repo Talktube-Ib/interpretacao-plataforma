@@ -46,6 +46,8 @@ import { VolumeControl } from '@/components/room/volume-control'
 import { UpsellModal } from '@/components/marketing/upsell-modal'
 import { VirtualBooth } from '@/components/VirtualBooth'
 import { GlossaryHUD } from '@/components/GlossaryHUD'
+import { FatigueTimer } from '@/components/room/FatigueTimer'
+import { AudioProcessor } from '@/components/audio/AudioProcessor'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -1221,17 +1223,23 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                 {
                     currentRole === 'interpreter' && (
-                        <Button
-                            variant="default"
-                            className="h-14 px-8 rounded-2xl font-black border-2 transition-all active:scale-95 bg-purple-600 hover:bg-purple-700 border-purple-500 shadow-[0_0_30px_rgba(147,51,234,0.4)] text-white"
-                            onClick={() => {
-                                // Already an interpreter, but maybe the button toggles the broadcast lang or panel
-                                // For now keep it as is or change to toggle controls
-                            }}
-                        >
-                            <Mic className="h-5 w-5 mr-3" />
-                            {t('room.mode_interpreter')}
-                        </Button>
+                        <>
+                            <Button
+                                variant="default"
+                                className="h-14 px-8 rounded-2xl font-black border-2 transition-all active:scale-95 bg-purple-600 hover:bg-purple-700 border-purple-500 shadow-[0_0_30px_rgba(147,51,234,0.4)] text-white"
+                                onClick={() => {
+                                    // Toggle interpreter mode or other
+                                }}
+                            >
+                                <Mic className="h-5 w-5 mr-3" />
+                                {t('room.mode_interpreter')}
+                            </Button>
+                            <div className="ml-4 flex items-center gap-4 bg-black/40 p-2 rounded-xl backdrop-blur border border-white/5">
+                                <FatigueTimer isActive={micOn} />
+                                <div className="h-8 w-px bg-white/10" />
+                                <AudioProcessor stream={localStream} isEnabled={true} />
+                            </div>
+                        </>
                     )
                 }
 
