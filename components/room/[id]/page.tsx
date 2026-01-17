@@ -43,7 +43,8 @@ import { SettingsDialog } from '@/components/room/settings-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
 import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal'
 import { VolumeControl } from '@/components/room/volume-control'
-import { UpsellModal } from '@/components/marketing/upsell-modal' // NEW IMPORT
+import { UpsellModal } from '@/components/marketing/upsell-modal'
+import { VirtualBooth } from '@/components/VirtualBooth'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -429,23 +430,23 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 setAttentionToast({ id: p.userId, name: p.name || t('room.someone') })
                 setTimeout(() => setAttentionToast(null), 5000)
 
-                const audio = new Audio('/sounds/notification.mp3') // Assume existance or fallback to synth
-                audio.play().catch(() => {
-                    // Fallback to synth if file not found
-                    try {
-                        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-                        const osc = ctx.createOscillator()
-                        const gain = ctx.createGain()
-                        osc.connect(gain); gain.connect(ctx.destination)
-                        osc.frequency.setValueAtTime(880, ctx.currentTime)
-                        gain.gain.setValueAtTime(0.1, ctx.currentTime)
-                        osc.start(); osc.stop(ctx.currentTime + 0.2)
-                    } catch (e) { }
-                })
+                const audio = new Audio('/sounds/notification.mp3')
+                audio.play().catch(() => { })
             }
             prevPeersHandRef.current[p.userId] = !!p.handRaised
         })
     }, [peers])
+
+    // Listen for Handover Acceptance (I requested it, partner accepted -> I go off air)
+    useEffect(() => {
+        const handleHandoverAccepted = () => {
+            // My partner accepted my request. I should mute.
+            if (micOn) handleToggleMic()
+            alert(t('room.handover_complete') || 'Handover concluído. Você está mudo.')
+        }
+        window.addEventListener('booth-handover-accepted', handleHandoverAccepted)
+        return () => window.removeEventListener('booth-handover-accepted', handleHandoverAccepted)
+    }, [micOn, handleToggleMic])
 
     const handleToggleMic = () => {
         const newState = !micOn
@@ -853,6 +854,18 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         availableLanguages={availableSystemLanguages}
                         allowedLanguages={assignedLanguages.length > 0 ? assignedLanguages : undefined}
                         occupiedLanguages={peers.filter(p => p.role?.includes('interpreter') && p.userId !== userId).map(p => p.language).filter(Boolean) as string[]}
+                    />
+
+                    <VirtualBooth
+                        roomId={roomId}
+                        userId={userId}
+                        userLanguage={myBroadcastLang}
+                        localStream={localStream}
+                        isActive={micOn}
+                        onHandoverComplete={() => {
+                            // I accepted the handover, so I go ON AIR
+                            if (!micOn) handleToggleMic()
+                        }}
                     />
                 </>
             )}
