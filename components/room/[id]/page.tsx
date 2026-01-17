@@ -48,6 +48,7 @@ import { VirtualBooth } from '@/components/VirtualBooth'
 import { GlossaryHUD } from '@/components/GlossaryHUD'
 import { FatigueTimer } from '@/components/room/FatigueTimer'
 import { AudioProcessor } from '@/components/audio/AudioProcessor'
+import { BriefingModal } from '@/components/briefing/BriefingModal'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -1030,6 +1031,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    {/* Briefing Button */}
+                    <div className="hidden md:block">
+                        <BriefingModal roomId={roomId} isHost={isHost} />
+                    </div>
 
                     {/* Volume Control - Desktop Only */}
                     <div className="hidden md:flex items-center gap-0.5 bg-background/50 backdrop-blur rounded-2xl p-1 border border-border/50 shadow-sm group hover:border-[#06b6d4]/50 transition-colors">
