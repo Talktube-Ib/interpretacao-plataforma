@@ -45,6 +45,7 @@ import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal
 import { VolumeControl } from '@/components/room/volume-control'
 import { UpsellModal } from '@/components/marketing/upsell-modal'
 import { VirtualBooth } from '@/components/VirtualBooth'
+import { GlossaryHUD } from '@/components/GlossaryHUD'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -75,6 +76,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [activeLanguages, setActiveLanguages] = useState<string[]>([]) // Dynamic languages from DB
     const [assignedLanguages, setAssignedLanguages] = useState<string[]>([]) // For restricted interpreters
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
+    const [isGlossaryActive, setIsGlossaryActive] = useState(true) // Default to true for now
 
     // Layout and Join States
     const [isJoined, setIsJoined] = useState(false)
@@ -437,7 +439,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         })
     }, [peers])
 
+    const handleToggleMic = () => {
+        const newState = !micOn
+        setMicOn(newState)
+        hookToggleMic(newState)
+    }
+
     // Listen for Handover Acceptance (I requested it, partner accepted -> I go off air)
+    // Moved here to avoid 'used before declaration' lint error
     useEffect(() => {
         const handleHandoverAccepted = () => {
             // My partner accepted my request. I should mute.
@@ -447,12 +456,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         window.addEventListener('booth-handover-accepted', handleHandoverAccepted)
         return () => window.removeEventListener('booth-handover-accepted', handleHandoverAccepted)
     }, [micOn, handleToggleMic])
-
-    const handleToggleMic = () => {
-        const newState = !micOn
-        setMicOn(newState)
-        hookToggleMic(newState)
-    }
 
     const handleToggleCamera = () => {
         const newState = !cameraOn
@@ -866,6 +869,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             // I accepted the handover, so I go ON AIR
                             if (!micOn) handleToggleMic()
                         }}
+                    />
+
+                    <GlossaryHUD
+                        meetingId={roomId}
+                        isInterpreter={true}
+                        targetLanguage={selectedLang}
+                        isActive={isGlossaryActive}
+                        onClose={() => setIsGlossaryActive(false)}
                     />
                 </>
             )}
