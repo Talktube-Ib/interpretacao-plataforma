@@ -50,6 +50,8 @@ import { FatigueTimer } from '@/components/room/FatigueTimer'
 import { AudioProcessor } from '@/components/audio/AudioProcessor'
 import { BriefingModal } from '@/components/briefing/BriefingModal'
 import { RecorderControls } from '@/components/room/RecorderControls'
+import { MinutesPanel } from '@/components/room/MinutesPanel'
+import { useMeetingTranscription } from '@/hooks/useMeetingTranscription'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -443,6 +445,16 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             prevPeersHandRef.current[p.userId] = !!p.handRaised
         })
     }, [peers])
+
+
+    // AI Transcription Background Service
+    useMeetingTranscription({
+        meetingId: roomId,
+        userId: userId,
+        userName: userName,
+        isMicOn: micOn && !isShadowing, // Don't transcript if shadowing
+        language: myBroadcastLang === 'floor' ? 'pt-BR' : myBroadcastLang // Simplistic lang detection
+    })
 
     const handleToggleMic = () => {
         // If shadowing, we keep micOn locally true (for recorder) but ensure WebRTC is muted?
@@ -1076,6 +1088,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     {/* Briefing Button */}
                     <div className="hidden md:block">
                         <BriefingModal roomId={roomId} isHost={isHost} />
+                    </div>
+
+                    {/* AI Minutes Button */}
+                    <div className="hidden md:block">
+                        <MinutesPanel meetingId={roomId} isHost={isHost} />
                     </div>
 
                     {/* Volume Control - Desktop Only */}
