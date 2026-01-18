@@ -66,7 +66,17 @@ Nota: Use tom formal, impessoal e objetivo. Se a transcrição for insuficiente 
 `
 
         const result = await model.generateContent(prompt)
-        const summary = result.response.text()
+        // Google Generative AI Response Handling
+        const candidate = result.response.candidates?.[0]
+        if (!candidate || !candidate.content || !candidate.content.parts || !candidate.content.parts[0]) {
+            throw new Error('Resposta vazia da IA')
+        }
+        const text = candidate.content.parts[0].text
+        if (!text) {
+            throw new Error('Texto vazio gerado pela IA')
+        }
+
+        const summary = text
 
         // 4. Save Summary
         const { error: saveError } = await supabase
