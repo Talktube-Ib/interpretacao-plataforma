@@ -49,6 +49,7 @@ import { GlossaryHUD } from '@/components/GlossaryHUD'
 import { FatigueTimer } from '@/components/room/FatigueTimer'
 import { AudioProcessor } from '@/components/audio/AudioProcessor'
 import { BriefingModal } from '@/components/briefing/BriefingModal'
+import { RecorderControls } from '@/components/room/RecorderControls'
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -80,6 +81,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [assignedLanguages, setAssignedLanguages] = useState<string[]>([]) // For restricted interpreters
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
     const [isGlossaryActive, setIsGlossaryActive] = useState(true) // Default to true for now
+    const [isShadowing, setIsShadowing] = useState(false) // NEW: Shadowing Mode
 
     // Layout and Join States
     const [isJoined, setIsJoined] = useState(false)
@@ -443,10 +445,49 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     }, [peers])
 
     const handleToggleMic = () => {
+        // If shadowing, we keep micOn locally true (for recorder) but ensure WebRTC is muted?
+        // Actually, logic is:
+        // Normal Mode: micOn = true -> WebRTC Unmuted
+        // Shadowing Mode: micOn = true -> WebRTC Muted (but local stream active for Recorder)
+
+        // HOWEVER, hookToggleMic controls the TRACK enabled state, which affects ALL consumers (Recorder too usually, unless we cloned the stream before).
+        // Since we pass 'localStream' to recorder, disabling the track there disables it for recorder too.
+
+        // WORKAROUND: We need 'hookToggleMic' to ONLY affect the PeerConnection sending, NOT the local track itself.
+        // But 'use-webrtc' likely toggles track.enabled.
+
+        // Strategy B: Keep track enabled. Use 'muteUser' or similar? No that's for incoming.
+        // Simple strategy: When IS SHADOWING, we DO NOT call hookToggleMic(true). We fake it ui-wise?
+
+        // Let's refine:
+        // If Shadowing is ON:
+        //   User clicks Mic: Toggles 'micOn' state.
+        //   But we force hookToggleMic(false) always so peers don't hear.
+
         const newState = !micOn
         setMicOn(newState)
-        hookToggleMic(newState)
+
+        if (isShadowing) {
+            // In shadowing, we want local mic ON (newState=true) but remote OFF.
+            // So we ensure hookToggleMic is FALSE always.
+            hookToggleMic(false)
+        } else {
+            // Normal behavior
+            hookToggleMic(newState)
+        }
     }
+
+    // Effect to enforce Shadowing logic when mode changes
+    useEffect(() => {
+        if (isShadowing) {
+            // Enter Shadowing: Cut audio to peers immediately
+            hookToggleMic(false)
+            // But if mic was on, keep 'micOn' true so user sees they are "speaking" (to recorder)
+        } else {
+            // Exit Shadowing: Restore audio to peers if mic is theoretically on
+            if (micOn) hookToggleMic(true)
+        }
+    }, [isShadowing])
 
     // Listen for Handover Acceptance (I requested it, partner accepted -> I go off air)
     // Moved here to avoid 'used before declaration' lint error
@@ -1242,6 +1283,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             </Button>
                             <div className="ml-4 flex items-center gap-4 bg-black/40 p-2 rounded-xl backdrop-blur border border-white/5">
                                 <FatigueTimer isActive={micOn} />
+                                <div className="h-8 w-px bg-white/10" />
+                                <RecorderControls
+                                    stream={localStream}
+                                    isShadowing={isShadowing}
+                                    onToggleShadowing={() => setIsShadowing(prev => !prev)}
+                                />
                                 <div className="h-8 w-px bg-white/10" />
                                 <AudioProcessor stream={localStream} isEnabled={true} />
                             </div>
