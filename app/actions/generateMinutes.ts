@@ -33,9 +33,8 @@ export async function generateMeetingMinutes(meetingId: string) {
 
         // 3. Call Gemini
         const genAI = new GoogleGenerativeAI(GEN_AI_KEY)
-        // Using standard 'gemini-1.5-flash' - valid and cheap.
-        // If this 404s, the user MUST enable the API in Google Cloud.
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+        // Using 'gemini-2.0-flash-001' as confirmed by user's available model list
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" })
 
         const prompt = `
 Role: Você é um Secretário Executivo experiente e profissional.
@@ -94,26 +93,6 @@ Nota: Use tom formal, impessoal e objetivo. Se a transcrição for insuficiente 
 
     } catch (err: any) {
         console.error("Erro na geração da ata:", err)
-        let errorMsg = err.message || "Erro desconhecido ao gerar ata."
-
-        // Deep Debug: Try to list available models to see what is going on
-        try {
-            const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEN_AI_KEY}`
-            const listResponse = await fetch(listModelsUrl)
-            const listData = await listResponse.json()
-
-            if (listData.error) {
-                errorMsg += ` [DEBUG: API List Error: ${listData.error.message}]`
-            } else if (listData.models) {
-                const modelNames = listData.models.map((m: any) => m.name).filter((n: string) => n.includes('gemini')).join(', ')
-                errorMsg += ` [DEBUG: Available Models: ${modelNames}]`
-            } else {
-                errorMsg += ` [DEBUG: API returned no models list]`
-            }
-        } catch (debugErr: any) {
-            errorMsg += ` [DEBUG: Failed to list models: ${debugErr.message}]`
-        }
-
-        return { success: false, error: errorMsg }
+        return { success: false, error: err.message || "Erro desconhecido ao gerar ata." }
     }
 }
