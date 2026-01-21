@@ -14,9 +14,10 @@ interface MinutesPanelProps {
     isHost: boolean
     isActive: boolean
     onToggle: () => void
+    currentTranscript?: string
 }
 
-export function MinutesPanel({ meetingId, isHost, isActive, onToggle }: MinutesPanelProps) {
+export function MinutesPanel({ meetingId, isHost, isActive, onToggle, currentTranscript }: MinutesPanelProps) {
     const [transcripts, setTranscripts] = useState<any[]>([])
     const [summary, setSummary] = useState<string | null>(null)
     const [isGenerating, setIsGenerating] = useState(false)
@@ -131,13 +132,20 @@ export function MinutesPanel({ meetingId, isHost, isActive, onToggle }: MinutesP
                             <div className="p-2 text-[10px] font-bold uppercase text-zinc-500 bg-black/10">Histórico em Tempo Real</div>
                             <ScrollArea className="flex-1 p-4">
                                 <div className="space-y-4">
-                                    {transcripts.length === 0 && <p className="text-zinc-600 text-xs italic">Aguardando falas...</p>}
+                                    {transcripts.length === 0 && !currentTranscript && <p className="text-zinc-600 text-xs italic">Aguardando falas...</p>}
                                     {transcripts.map((t) => (
                                         <div key={t.id} className="flex flex-col gap-1">
                                             <span className="text-xs font-bold text-[#06b6d4]">{t.user_name} <span className="text-[10px] text-zinc-600 font-normal">{new Date(t.created_at).toLocaleTimeString()}</span></span>
                                             <p className="text-sm text-zinc-300">{t.content}</p>
                                         </div>
                                     ))}
+                                    {/* Live Preview of Pending Transcript */}
+                                    {currentTranscript && (
+                                        <div className="flex flex-col gap-1 opacity-70 animate-pulse">
+                                            <span className="text-xs font-bold text-zinc-400">Você (Gravando...)</span>
+                                            <p className="text-sm text-zinc-400 italic">{currentTranscript}</p>
+                                        </div>
+                                    )}
                                 </div>
                             </ScrollArea>
                         </div>

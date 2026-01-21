@@ -1176,6 +1176,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             isHost={canManageMinutes}
                             isActive={isMinutesActive}
                             onToggle={handleToggleMinutes}
+                            currentTranscript={speechTranscript}
                         />
                     </div>
 
