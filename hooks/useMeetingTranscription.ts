@@ -10,9 +10,10 @@ interface UseMeetingTranscriptionProps {
     userName: string
     isMicOn: boolean
     language?: string
+    enabled?: boolean
 }
 
-export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, language = 'pt-BR' }: UseMeetingTranscriptionProps) {
+export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, language = 'pt-BR', enabled = false }: UseMeetingTranscriptionProps) {
     const {
         isListening,
         transcript,
@@ -62,7 +63,7 @@ export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, 
             // Let's implement a "Chunking" based on length difference for now
             const newContent = transcript.slice(lastProcessedRef.current.length).trim()
 
-            if (newContent.length > 10) { // Only upload substantial chunks
+            if (newContent.length > 10 && enabled) { // Only upload substantial chunks if enabled
                 // Upload
                 const supabase = createClient()
                 await supabase.from('meeting_transcripts').insert({

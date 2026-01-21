@@ -84,6 +84,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
     const [isGlossaryActive, setIsGlossaryActive] = useState(true) // Default to true for now
     const [isShadowing, setIsShadowing] = useState(false) // NEW: Shadowing Mode
+    const [isMinutesActive, setIsMinutesActive] = useState(false) // NEW: Minutes Mode
 
     // Layout and Join States
     const [isJoined, setIsJoined] = useState(false)
@@ -158,6 +159,10 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         .select('settings, start_time, status, host_id')
                         .eq('id', roomId)
                         .single()
+
+                    if (meeting?.settings?.minutes_active) {
+                        setIsMinutesActive(true)
+                    }
 
                     // Check Expiration (Lazy Check)
                     if (meeting?.status === 'active' && meeting.start_time) {
@@ -239,6 +244,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                     if (meeting?.settings?.active_languages) {
                         setActiveLanguages(meeting.settings.active_languages)
+                    }
+                    if (meeting?.settings?.minutes_active) {
+                        setIsMinutesActive(true)
                     }
 
                     const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
@@ -420,6 +428,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         return () => window.removeEventListener('admin-update-languages' as any, handleLangUpdate as any)
     }, [myBroadcastLang])
 
+    // Permission Logic
+    const canManageMinutes = isHost || currentRole === 'admin'
+
     // Listen for Admin Mute
     useEffect(() => {
         const handleMute = () => {
@@ -429,6 +440,44 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         window.addEventListener('admin-mute', handleMute)
         return () => window.removeEventListener('admin-mute', handleMute)
     }, [])
+
+    // Listen for Meeting Settings Updates (Minutes, etc)
+    useEffect(() => {
+        const supabase = createClient()
+        const channel = supabase.channel(`meeting-settings:${roomId}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'meetings',
+                filter: `id=eq.${roomId}`
+            }, (payload) => {
+                const newSettings = payload.new.settings
+                if (newSettings) {
+                    setIsMinutesActive(!!newSettings.minutes_active)
+                }
+            })
+            .subscribe()
+
+        return () => { channel.unsubscribe() }
+    }, [roomId])
+
+    const handleToggleMinutes = async () => {
+        if (!canManageMinutes) return;
+        const supabase = createClient()
+        // We need to fetch current settings first to merge or just update jsonb (Supabase merges top-level but be careful)
+        // Safer to fetch and update
+        const { data: meeting } = await supabase.from('meetings').select('settings').eq('id', roomId).single()
+        const currentSettings = meeting?.settings || {}
+
+        const newState = !isMinutesActive
+
+        await supabase.from('meetings').update({
+            settings: { ...currentSettings, minutes_active: newState }
+        }).eq('id', roomId)
+
+        // Optimistic update
+        setIsMinutesActive(newState)
+    }
 
     useEffect(() => {
         peers.forEach(p => {
@@ -453,7 +502,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         userId: userId,
         userName: userName,
         isMicOn: micOn && !isShadowing, // Don't transcript if shadowing
-        language: myBroadcastLang === 'floor' ? 'pt-BR' : myBroadcastLang // Simplistic lang detection
+        language: myBroadcastLang === 'floor' ? 'pt-BR' : myBroadcastLang, // Simplistic lang detection
+        enabled: isMinutesActive
     })
 
     const handleToggleMic = () => {
@@ -963,7 +1013,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                     <span className="text-2xl mr-4">{lang.flag}</span>
                                     <span className="font-bold text-sm tracking-tight">{lang.name}</span>
                                     {selectedLang === lang.code && (
-                                        <div className="ml-auto w-2 h-2 rounded-full bg-[#06b6d4] shadow-[0_0_10px_#06b6d4]" />
+                                        <div className="ml-auto w-2 h-2 rounded-full bg-[#06b6d4]" />
                                     )}
                                 </button>
                             ))}
@@ -1092,7 +1142,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                     {/* AI Minutes Button */}
                     <div className="hidden md:block">
-                        <MinutesPanel meetingId={roomId} isHost={isHost} />
+                        <MinutesPanel
+                            meetingId={roomId}
+                            isHost={canManageMinutes}
+                            isActive={isMinutesActive}
+                            onToggle={handleToggleMinutes}
+                        />
                     </div>
 
                     {/* Volume Control - Desktop Only */}

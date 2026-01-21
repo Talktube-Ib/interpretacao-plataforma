@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { FileText, Sparkles, Loader2, RefreshCw } from 'lucide-react'
+import { FileText, Sparkles, Loader2, RefreshCw, Power } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { generateMeetingMinutes } from '@/app/actions/generateMinutes'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -12,9 +12,11 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from 
 interface MinutesPanelProps {
     meetingId: string
     isHost: boolean
+    isActive: boolean
+    onToggle: () => void
 }
 
-export function MinutesPanel({ meetingId, isHost }: MinutesPanelProps) {
+export function MinutesPanel({ meetingId, isHost, isActive, onToggle }: MinutesPanelProps) {
     const [transcripts, setTranscripts] = useState<any[]>([])
     const [summary, setSummary] = useState<string | null>(null)
     const [isGenerating, setIsGenerating] = useState(false)
@@ -22,7 +24,7 @@ export function MinutesPanel({ meetingId, isHost }: MinutesPanelProps) {
 
     // Fetch Transcripts (Live)
     useEffect(() => {
-        if (!isOpen) return
+        if (!isOpen || !isActive) return
 
         const fetchTranscripts = async () => {
             const supabase = createClient()
@@ -58,7 +60,7 @@ export function MinutesPanel({ meetingId, isHost }: MinutesPanelProps) {
             .subscribe()
 
         return () => { channel.unsubscribe() }
-    }, [meetingId, isOpen])
+    }, [meetingId, isOpen, isActive])
 
     const handleGenerate = async () => {
         setIsGenerating(true)
@@ -81,6 +83,7 @@ export function MinutesPanel({ meetingId, isHost }: MinutesPanelProps) {
             <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white" title="Ata e Transcrição">
                     <FileText className="h-5 w-5" />
+                    {!isActive && <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-red-500" />}
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl h-[80vh] bg-[#020817] border-white/10 flex flex-col p-0 gap-0 overflow-hidden">
@@ -88,58 +91,90 @@ export function MinutesPanel({ meetingId, isHost }: MinutesPanelProps) {
                     <div className="flex items-center gap-3">
                         <FileText className="h-5 w-5 text-[#06b6d4]" />
                         <h2 className="text-sm font-bold tracking-wider font-mono text-white">ATA & REGISTRO</h2>
+                        {!isActive && <span className="text-[10px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded border border-red-500/20 font-bold uppercase">Desativado</span>}
                     </div>
-                </div>
-
-                <div className="flex flex-1 overflow-hidden">
-                    {/* Left: Raw Transcript */}
-                    <div className="w-1/2 border-r border-white/10 flex flex-col bg-zinc-950/30">
-                        <div className="p-2 text-[10px] font-bold uppercase text-zinc-500 bg-black/10">Histórico em Tempo Real</div>
-                        <ScrollArea className="flex-1 p-4">
-                            <div className="space-y-4">
-                                {transcripts.length === 0 && <p className="text-zinc-600 text-xs italic">Aguardando falas...</p>}
-                                {transcripts.map((t) => (
-                                    <div key={t.id} className="flex flex-col gap-1">
-                                        <span className="text-xs font-bold text-[#06b6d4]">{t.user_name} <span className="text-[10px] text-zinc-600 font-normal">{new Date(t.created_at).toLocaleTimeString()}</span></span>
-                                        <p className="text-sm text-zinc-300">{t.content}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </div>
-
-                    {/* Right: AI Summary */}
-                    <div className="w-1/2 flex flex-col bg-zinc-900/10">
-                        <div className="p-2 text-[10px] font-bold uppercase text-zinc-500 bg-black/10 flex justify-between items-center">
-                            <span>Ata Gerada por IA (Gemini)</span>
-                            {isHost && (
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 text-[10px] gap-1 text-purple-400 hover:text-purple-300"
-                                    onClick={handleGenerate}
-                                    disabled={isGenerating}
-                                >
-                                    {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                    {isGenerating && "Gerando..."}
-                                    {!isGenerating && "Gerar Nova Ata"}
-                                </Button>
-                            )}
-                        </div>
-                        <ScrollArea className="flex-1 p-6">
-                            {summary ? (
-                                <div className="prose prose-invert prose-sm max-w-none">
-                                    <ReactMarkdown>{summary}</ReactMarkdown>
-                                </div>
+                    {isHost && (
+                        <Button
+                            size="sm"
+                            variant={isActive ? "outline" : "default"}
+                            onClick={onToggle}
+                            className={isActive ? "border-red-500/50 text-red-400 hover:bg-red-500/10" : "bg-green-600 hover:bg-green-700 text-white border-0"}
+                        >
+                            {isActive ? (
+                                <>
+                                    <Power className="h-3 w-3 mr-2" /> Desativar Recurso
+                                </>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-zinc-600 gap-2 opacity-50">
-                                    <Sparkles className="h-10 w-10" />
-                                    <p className="text-xs">Nenhuma ata gerada ainda.</p>
-                                </div>
+                                <>
+                                    <Power className="h-3 w-3 mr-2" /> Ativar Ata Automática
+                                </>
                             )}
-                        </ScrollArea>
-                    </div>
+                        </Button>
+                    )}
                 </div>
+
+                {!isActive ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 p-8 text-center bg-zinc-950/50">
+                        <div className="bg-zinc-900/50 p-6 rounded-full mb-6">
+                            <FileText className="h-16 w-16 opacity-20" />
+                        </div>
+                        <h3 className="text-xl font-bold text-zinc-300 mb-2">Recurso Desativado</h3>
+                        <p className="max-w-md text-sm mb-6">
+                            A geração de ata e transcrição está desativada para esta reunião.
+                            {isHost ? " Como anfitrião, você pode ativá-la usando o botão acima." : " O anfitrião pode ativar este recurso se necessário."}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex flex-1 overflow-hidden">
+                        {/* Left: Raw Transcript */}
+                        <div className="w-1/2 border-r border-white/10 flex flex-col bg-zinc-950/30">
+                            <div className="p-2 text-[10px] font-bold uppercase text-zinc-500 bg-black/10">Histórico em Tempo Real</div>
+                            <ScrollArea className="flex-1 p-4">
+                                <div className="space-y-4">
+                                    {transcripts.length === 0 && <p className="text-zinc-600 text-xs italic">Aguardando falas...</p>}
+                                    {transcripts.map((t) => (
+                                        <div key={t.id} className="flex flex-col gap-1">
+                                            <span className="text-xs font-bold text-[#06b6d4]">{t.user_name} <span className="text-[10px] text-zinc-600 font-normal">{new Date(t.created_at).toLocaleTimeString()}</span></span>
+                                            <p className="text-sm text-zinc-300">{t.content}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        </div>
+
+                        {/* Right: AI Summary */}
+                        <div className="w-1/2 flex flex-col bg-zinc-900/10">
+                            <div className="p-2 text-[10px] font-bold uppercase text-zinc-500 bg-black/10 flex justify-between items-center">
+                                <span>Ata Gerada por IA (Gemini)</span>
+                                {isHost && (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 text-[10px] gap-1 text-purple-400 hover:text-purple-300"
+                                        onClick={handleGenerate}
+                                        disabled={isGenerating}
+                                    >
+                                        {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                        {isGenerating && "Gerando..."}
+                                        {!isGenerating && "Gerar Nova Ata"}
+                                    </Button>
+                                )}
+                            </div>
+                            <ScrollArea className="flex-1 p-6">
+                                {summary ? (
+                                    <div className="prose prose-invert prose-sm max-w-none">
+                                        <ReactMarkdown>{summary}</ReactMarkdown>
+                                    </div>
+                                ) : (
+                                    <div className="h-full flex flex-col items-center justify-center text-zinc-600 gap-2 opacity-50">
+                                        <Sparkles className="h-10 w-10" />
+                                        <p className="text-xs">Nenhuma ata gerada ainda.</p>
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     )
