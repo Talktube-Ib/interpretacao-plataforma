@@ -33,8 +33,8 @@ export async function generateMeetingMinutes(meetingId: string) {
 
         // 3. Call Gemini
         const genAI = new GoogleGenerativeAI(GEN_AI_KEY)
-        // Trying 'gemini-1.5-flash-8b' - often most reliable for v1beta currently
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" })
+        // Using specific version 'gemini-1.5-flash-001' to avoid alias 'Not Found' errors
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" })
 
         const prompt = `
 Role: Você é um Secretário Executivo experiente e profissional.

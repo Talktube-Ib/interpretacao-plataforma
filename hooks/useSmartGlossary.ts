@@ -44,18 +44,23 @@ export function useSmartGlossary(meetingId: string, textToAnalyze: string) {
 
     // 2. Analyze Text
     useEffect(() => {
-        if (!textToAnalyze || terms.length === 0) return
+        if (!textToAnalyze || terms.length === 0) {
+            if (textToAnalyze && terms.length === 0) console.log("Glossary: Text active but NO TERMS loaded.")
+            return
+        }
 
         // Simple strict match for now. Efficient Aho-Corasick would be better for scale.
         const found = terms.filter(t => {
-            const regex = new RegExp(`\\b${t.term}\\b`, 'i') // word boundary, case insensitive
+            const cleanTerm = t.term.trim()
+            if (!cleanTerm) return false
+            // Escape special regex chars in term
+            const escapedTerm = cleanTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\b${escapedTerm}\\b`, 'i') // word boundary, case insensitive
             return regex.test(textToAnalyze)
         })
 
-        // Limit to recently found to avoid clutter? 
-        // Or return all matches in the current text block.
-        // Let's return unique matches.
         if (found.length > 0) {
+            console.log("Glossary: MATCH FOUND!", found.map(f => f.term))
             setDetectedTerms(prev => {
                 // Add new ones to the top
                 const newOnes = found.filter(f => !prev.some(p => p.id === f.id))
