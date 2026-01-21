@@ -96,8 +96,22 @@ Nota: Use tom formal, impessoal e objetivo. Se a transcrição for insuficiente 
         console.error("Erro na geração da ata:", err)
         let errorMsg = err.message || "Erro desconhecido ao gerar ata."
 
-        if (errorMsg.includes('404') || errorMsg.includes('not found')) {
-            errorMsg = "Erro 404: Modelo de IA não encontrado ou API não ativada. Verifique se habilitou 'Generative Language API' no Google Cloud Console."
+        // Deep Debug: Try to list available models to see what is going on
+        try {
+            const listModelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEN_AI_KEY}`
+            const listResponse = await fetch(listModelsUrl)
+            const listData = await listResponse.json()
+
+            if (listData.error) {
+                errorMsg += ` [DEBUG: API List Error: ${listData.error.message}]`
+            } else if (listData.models) {
+                const modelNames = listData.models.map((m: any) => m.name).filter((n: string) => n.includes('gemini')).join(', ')
+                errorMsg += ` [DEBUG: Available Models: ${modelNames}]`
+            } else {
+                errorMsg += ` [DEBUG: API returned no models list]`
+            }
+        } catch (debugErr: any) {
+            errorMsg += ` [DEBUG: Failed to list models: ${debugErr.message}]`
         }
 
         return { success: false, error: errorMsg }
