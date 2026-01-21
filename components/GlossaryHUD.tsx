@@ -14,28 +14,19 @@ interface GlossaryHUDProps {
     targetLanguage: string
     isActive: boolean
     onClose: () => void
+    transcript: string // Shared
+    isListening: boolean // Shared
+    speechError: string | null // Shared
+    isSupported: boolean // Shared
 }
 
-export function GlossaryHUD({ meetingId, isInterpreter, targetLanguage, isActive, onClose }: GlossaryHUDProps) {
-    const {
-        isListening,
-        transcript,
-        startListening,
-        stopListening,
-        isSupported,
-        error: speechError
-    } = useSpeechRecognition(targetLanguage === 'original' ? 'pt-BR' : targetLanguage) // Assuming original is PT for now, should map properly
+export function GlossaryHUD({ meetingId, isInterpreter, targetLanguage, isActive, onClose, transcript, isListening, speechError, isSupported }: GlossaryHUDProps) {
+    // Removed internal useSpeechRecognition. Using shared state.
 
     const { detectedTerms, loading } = useSmartGlossary(meetingId, transcript)
 
-    // Auto-start listening if active
-    useEffect(() => {
-        if (isActive && isSupported && !isListening) {
-            startListening()
-        } else if (!isActive && isListening) {
-            stopListening()
-        }
-    }, [isActive, isSupported])
+    // Note: Start/Stop listening is now handled by the parent (RoomPage)
+
 
     // Debug / Demo Mock
     // useEffect(() => {

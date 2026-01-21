@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
-
 interface UseMeetingTranscriptionProps {
     meetingId: string
     userId: string
@@ -11,29 +9,16 @@ interface UseMeetingTranscriptionProps {
     isMicOn: boolean
     language?: string
     enabled?: boolean
+    transcript: string // New prop (Shared source)
 }
 
-export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, language = 'pt-BR', enabled = false }: UseMeetingTranscriptionProps) {
-    const {
-        isListening,
-        transcript,
-        startListening,
-        stopListening,
-        isSupported
-    } = useSpeechRecognition(language)
+export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, language = 'pt-BR', enabled = false, transcript }: UseMeetingTranscriptionProps) {
+    // Removed internal useSpeechRecognition to avoid conflicts
 
     const lastProcessedRef = useRef('')
 
-    // Auto-start listening if mic is on AND enabled
-    useEffect(() => {
-        if (!isSupported) return
+    // Note: Start/Stop listening is now handled by the parent (RoomPage)
 
-        if (isMicOn && enabled && !isListening) {
-            startListening()
-        } else if ((!isMicOn || !enabled) && isListening) {
-            stopListening()
-        }
-    }, [isMicOn, isListening, isSupported, enabled])
 
     // Monitor transcript changes and upload FINAL results
     // Limitation of Web Speech API: It streams results. We need to detect "final" or pauses.
@@ -83,7 +68,7 @@ export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, 
     }, [transcript, meetingId, userId, userName])
 
     return {
-        isListening,
+        // isListening is now managed externally
         currentTranscript: transcript
     }
 }

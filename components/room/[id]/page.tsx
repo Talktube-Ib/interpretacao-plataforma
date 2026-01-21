@@ -52,6 +52,7 @@ import { BriefingModal } from '@/components/briefing/BriefingModal'
 import { RecorderControls } from '@/components/room/RecorderControls'
 import { MinutesPanel } from '@/components/room/MinutesPanel'
 import { useMeetingTranscription } from '@/hooks/useMeetingTranscription'
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition' // NEW IMPORT
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -114,7 +115,30 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         })
     }
 
-    // Guest Upsell Logic
+
+    // --- SHARED SPEECH RECOGNITION (Singleton) ---
+    // This instance is shared between Minutes and Glossary to avoid conflicts.
+    const {
+        isListening: isSpeechListening,
+        transcript: speechTranscript,
+        startListening: startSpeechListening,
+        stopListening: stopSpeechListening,
+        isSupported: isSpeechSupported,
+        error: speechError
+    } = useSpeechRecognition(myBroadcastLang === 'floor' || selectedLang === 'original' ? 'pt-BR' : myBroadcastLang) // Default to PT or Broadcast Lang
+
+    // Manage Speech Recognition Lifecycle
+    useEffect(() => {
+        if (!isSpeechSupported) return
+
+        const shouldListen = micOn && !isShadowing && (isMinutesActive || isGlossaryActive)
+
+        if (shouldListen && !isSpeechListening) {
+            startSpeechListening()
+        } else if (!shouldListen && isSpeechListening) {
+            stopSpeechListening()
+        }
+    }, [micOn, isShadowing, isMinutesActive, isGlossaryActive, isSpeechSupported, isSpeechListening, startSpeechListening, stopSpeechListening])
     useEffect(() => {
         // Only show upsell to guests (users not logged in)
         // Wait for isLoaded to ensure userId is stable
@@ -503,7 +527,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         userName: userName,
         isMicOn: micOn && !isShadowing, // Don't transcript if shadowing
         language: myBroadcastLang === 'floor' ? 'pt-BR' : myBroadcastLang, // Simplistic lang detection
-        enabled: isMinutesActive
+        enabled: isMinutesActive,
+        transcript: speechTranscript // Shared Transcript
     })
 
     const handleToggleMic = () => {
@@ -983,6 +1008,10 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         targetLanguage={selectedLang}
                         isActive={isGlossaryActive}
                         onClose={() => setIsGlossaryActive(false)}
+                        transcript={speechTranscript}
+                        isListening={isSpeechListening}
+                        speechError={speechError}
+                        isSupported={isSpeechSupported}
                     />
                 </>
             )}
