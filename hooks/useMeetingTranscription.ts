@@ -24,16 +24,16 @@ export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, 
 
     const lastProcessedRef = useRef('')
 
-    // Auto-start listening if mic is on
+    // Auto-start listening if mic is on AND enabled
     useEffect(() => {
         if (!isSupported) return
 
-        if (isMicOn && !isListening) {
+        if (isMicOn && enabled && !isListening) {
             startListening()
-        } else if (!isMicOn && isListening) {
+        } else if ((!isMicOn || !enabled) && isListening) {
             stopListening()
         }
-    }, [isMicOn, isListening, isSupported])
+    }, [isMicOn, isListening, isSupported, enabled])
 
     // Monitor transcript changes and upload FINAL results
     // Limitation of Web Speech API: It streams results. We need to detect "final" or pauses.
