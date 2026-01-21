@@ -154,19 +154,39 @@ export function MinutesPanel({ meetingId, isHost, isActive, onToggle, currentTra
                         <div className="w-1/2 flex flex-col bg-zinc-900/10">
                             <div className="p-2 text-[10px] font-bold uppercase text-zinc-500 bg-black/10 flex justify-between items-center">
                                 <span>Ata Gerada por IA (Gemini)</span>
-                                {isHost && (
+                                <div className="flex gap-2">
                                     <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 text-[10px] gap-1 text-purple-400 hover:text-purple-300"
-                                        onClick={handleGenerate}
-                                        disabled={isGenerating}
+                                        size="sm" variant="outline"
+                                        className="h-6 text-[9px] border-red-500/30 text-red-400 hover:bg-red-500/10"
+                                        onClick={async () => {
+                                            const supabase = createClient()
+                                            const { error } = await supabase.from('meeting_transcripts').insert({
+                                                meeting_id: meetingId,
+                                                user_id: 'debug-user',
+                                                user_name: 'Debug',
+                                                content: 'Teste Manual de Upload',
+                                                language: 'pt-BR'
+                                            })
+                                            if (error) alert('Erro Upload: ' + error.message)
+                                            else alert('Sucesso! Upload Manual funcionou.')
+                                        }}
                                     >
-                                        {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                        {isGenerating && "Gerando..."}
-                                        {!isGenerating && "Gerar Nova Ata"}
+                                        Teste DB
                                     </Button>
-                                )}
+                                    {isHost && (
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 text-[10px] gap-1 text-purple-400 hover:text-purple-300"
+                                            onClick={handleGenerate}
+                                            disabled={isGenerating}
+                                        >
+                                            {isGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                            {isGenerating && "Gerando..."}
+                                            {!isGenerating && "Gerar Nova Ata"}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                             <ScrollArea className="flex-1 p-6">
                                 {summary ? (
