@@ -50,11 +50,10 @@ export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, 
                 language: language
             })
 
-            if (!error) {
-                // Only advance the pointer if successful? 
-                // Actually, we advanced it optimistically or we track specific length.
-                // Ideally we'd do it here, but React Refs inside async might experience race conditions with new renders.
-                // However, since we debounce/check 'transcript' dependency, it's seemingly linear for this user.
+            if (error) {
+                console.error("Transcription Upload Error:", error)
+            } else {
+                console.log("Transcription Uploaded:", text.substring(0, 20) + "...")
             }
         }
 
