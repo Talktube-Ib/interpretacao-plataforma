@@ -33,8 +33,9 @@ export async function generateMeetingMinutes(meetingId: string) {
 
         // 3. Call Gemini
         const genAI = new GoogleGenerativeAI(GEN_AI_KEY)
-        // User requested "lowest version" - trying explicit 1.0 Pro
-        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" })
+        // Using standard 'gemini-1.5-flash' - valid and cheap.
+        // If this 404s, the user MUST enable the API in Google Cloud.
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
 
         const prompt = `
 Role: Você é um Secretário Executivo experiente e profissional.
@@ -93,6 +94,12 @@ Nota: Use tom formal, impessoal e objetivo. Se a transcrição for insuficiente 
 
     } catch (err: any) {
         console.error("Erro na geração da ata:", err)
-        return { success: false, error: err.message || "Erro desconhecido ao gerar ata." }
+        let errorMsg = err.message || "Erro desconhecido ao gerar ata."
+
+        if (errorMsg.includes('404') || errorMsg.includes('not found')) {
+            errorMsg = "Erro 404: Modelo de IA não encontrado ou API não ativada. Verifique se habilitou 'Generative Language API' no Google Cloud Console."
+        }
+
+        return { success: false, error: errorMsg }
     }
 }
