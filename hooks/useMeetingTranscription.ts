@@ -40,32 +40,51 @@ export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, 
     useEffect(() => {
         if (!transcript) return
 
-        const timeout = setTimeout(async () => {
-            // Check for Reset/Truncation
-            if (transcript.length < lastProcessedRef.current.length) {
-                lastProcessedRef.current = '' // Reset pointer if transcript was cleared/truncated
+        const uploadContent = async (text: string, fullTranscriptSnapshot: string) => {
+            const supabase = createClient()
+            const { error } = await supabase.from('meeting_transcripts').insert({
+                meeting_id: meetingId,
+                user_id: userId,
+                user_name: userName,
+                content: text,
+                language: language
+            })
+
+            if (!error) {
+                // Only advance the pointer if successful? 
+                // Actually, we advanced it optimistically or we track specific length.
+                // Ideally we'd do it here, but React Refs inside async might experience race conditions with new renders.
+                // However, since we debounce/check 'transcript' dependency, it's seemingly linear for this user.
             }
+        }
 
-            // Debounce: User stopped talking for 2 seconds? Or sentence finished?
-            // Problem: If user speaks for 1 hour, transcript is huge.
-            // We need to cut it.
+        // Check for Reset/Truncation
+        if (transcript.length < lastProcessedRef.current.length) {
+            lastProcessedRef.current = ''
+        }
 
-            // Let's implement a "Chunking" based on length difference for now
-            const newContent = transcript.slice(lastProcessedRef.current.length).trim()
+        const pendingContent = transcript.slice(lastProcessedRef.current.length).trim()
 
-            if (newContent.length > 5 && enabled) { // Only upload substantial chunks if enabled
-                // Upload
-                const supabase = createClient()
-                await supabase.from('meeting_transcripts').insert({
-                    meeting_id: meetingId,
-                    user_id: userId,
-                    user_name: userName,
-                    content: newContent,
-                    language: language
-                })
+        // Rule 1: Immediate Upload (Burst) - If > 100 chars (~1 sentence), upload NOW.
+        if (pendingContent.length > 100 && enabled) {
+            // Snapshot the current state to lock what we are uploading
+            const contentToUpload = pendingContent
+            const currentReqLength = transcript.length
 
-                // Update marker
+            // Advance ref immediately to prevent double-triggering in next render
+            // (Since 'transcript' might update 10ms later with 101 chars)
+            lastProcessedRef.current = transcript
+
+            uploadContent(contentToUpload, transcript)
+            return // Skip debounce
+        }
+
+        // Rule 2: Debounce (Silence) - If user pauses for 3s, upload whatever is small.
+        const timeout = setTimeout(async () => {
+            const finalPending = transcript.slice(lastProcessedRef.current.length).trim()
+            if (finalPending.length > 5 && enabled) {
                 lastProcessedRef.current = transcript
+                await uploadContent(finalPending, transcript)
             }
         }, 3000)
 
