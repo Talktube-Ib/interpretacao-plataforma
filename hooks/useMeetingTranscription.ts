@@ -41,6 +41,11 @@ export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, 
         if (!transcript) return
 
         const timeout = setTimeout(async () => {
+            // Check for Reset/Truncation
+            if (transcript.length < lastProcessedRef.current.length) {
+                lastProcessedRef.current = '' // Reset pointer if transcript was cleared/truncated
+            }
+
             // Debounce: User stopped talking for 2 seconds? Or sentence finished?
             // Problem: If user speaks for 1 hour, transcript is huge.
             // We need to cut it.
@@ -65,7 +70,7 @@ export function useMeetingTranscription({ meetingId, userId, userName, isMicOn, 
         }, 3000)
 
         return () => clearTimeout(timeout)
-    }, [transcript, meetingId, userId, userName])
+    }, [transcript, meetingId, userId, userName, enabled, language])
 
     return {
         // isListening is now managed externally

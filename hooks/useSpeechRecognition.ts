@@ -59,7 +59,7 @@ export function useSpeechRecognition(language: string = 'pt-BR'): SpeechRecognit
                     setTranscript(prev => {
                         const newVal = prev + ' ' + finalTrans
                         // Keep buffer manageable
-                        return newVal.slice(-1000)
+                        return newVal.slice(-50000)
                     })
                 }
                 setInterimTranscript(interimTrans)
