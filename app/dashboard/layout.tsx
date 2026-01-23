@@ -37,7 +37,7 @@ export default async function DashboardLayout({
             <main className="md:pl-72 pb-10">
                 {children}
             </main>
-            <FloatingWhatsApp alwaysVisible />
+            <FloatingWhatsApp alwaysVisible type="support" />
         </div>
     )
 }

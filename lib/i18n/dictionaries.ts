@@ -33,6 +33,8 @@ export const dictionaries = {
             share_description: "Compartilhe este link para que outros possam entrar na reunião",
             invite_people: "Convidar Pessoas",
             whatsapp_button: "Fale com Especialista",
+            whatsapp_msg_sales: "Olá, vim do site e quero falar com um especialista.",
+            whatsapp_msg_support: "Olá, preciso de suporte na plataforma.",
         },
         notifications: {
             invite_title: 'Convite para Reunião',
@@ -370,6 +372,8 @@ export const dictionaries = {
             share_description: "Share this link so others can join meeting",
             invite_people: "Invite People",
             whatsapp_button: "Talk to an Expert",
+            whatsapp_msg_sales: "Hello, I visited the website and would like to speak with an expert.",
+            whatsapp_msg_support: "Hello, I need support on the platform.",
         },
         notifications: {
             invite_title: 'Meeting Invitation',
@@ -708,6 +712,8 @@ export const dictionaries = {
             share_description: "Comparte este enlace para que otros puedan unirse a la reunión",
             invite_people: "Invitar Personas",
             whatsapp_button: "Hable con un Especialista",
+            whatsapp_msg_sales: "Hola, visité el sitio y quiero hablar con un especialista.",
+            whatsapp_msg_support: "Hola, necesito soporte en la plataforma.",
         },
         notifications: {
             invite_title: 'Invitación a la Reunión',

@@ -9,11 +9,18 @@ import { useLanguage } from '@/components/providers/language-provider'
 
 interface FloatingWhatsAppProps {
     alwaysVisible?: boolean
+    type?: 'sales' | 'support'
 }
 
-export function FloatingWhatsApp({ alwaysVisible = false }: FloatingWhatsAppProps) {
+export function FloatingWhatsApp({ alwaysVisible = false, type = 'sales' }: FloatingWhatsAppProps) {
     const { t } = useLanguage()
     const [isVisible, setIsVisible] = useState(alwaysVisible)
+
+    // Select message based on type
+    const messageKey = type === 'support' ? 'common.whatsapp_msg_support' : 'common.whatsapp_msg_sales'
+    const message = t(messageKey)
+    const encodedMessage = encodeURIComponent(message)
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=5511998274824&text=${encodedMessage}`
 
     useEffect(() => {
         if (alwaysVisible) {
@@ -37,7 +44,7 @@ export function FloatingWhatsApp({ alwaysVisible = false }: FloatingWhatsAppProp
         <AnimatePresence>
             {isVisible && (
                 <motion.a
-                    href="https://api.whatsapp.com/send?phone=5511998274824"
+                    href={whatsappUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     initial={{ opacity: 0, scale: 0.8, y: 20 }}
