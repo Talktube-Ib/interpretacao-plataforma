@@ -32,6 +32,7 @@ export const dictionaries = {
             exit_demo: "Sair do Demo",
             share_description: "Compartilhe este link para que outros possam entrar na reunião",
             invite_people: "Convidar Pessoas",
+            whatsapp_button: "Fale com Especialista",
         },
         notifications: {
             invite_title: 'Convite para Reunião',
@@ -368,6 +369,7 @@ export const dictionaries = {
             exit_demo: "Exit Demo",
             share_description: "Share this link so others can join meeting",
             invite_people: "Invite People",
+            whatsapp_button: "Talk to an Expert",
         },
         notifications: {
             invite_title: 'Meeting Invitation',
@@ -705,6 +707,7 @@ export const dictionaries = {
             exit_demo: "Salir de Demo",
             share_description: "Comparte este enlace para que otros puedan unirse a la reunión",
             invite_people: "Invitar Personas",
+            whatsapp_button: "Hable con un Especialista",
         },
         notifications: {
             invite_title: 'Invitación a la Reunión',
