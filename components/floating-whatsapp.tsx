@@ -37,7 +37,7 @@ export function FloatingWhatsApp({ alwaysVisible = false }: FloatingWhatsAppProp
         <AnimatePresence>
             {isVisible && (
                 <motion.a
-                    href="https://wa.me/5511998274824"
+                    href="https://api.whatsapp.com/send?phone=5511998274824"
                     target="_blank"
                     rel="noopener noreferrer"
                     initial={{ opacity: 0, scale: 0.8, y: 20 }}
