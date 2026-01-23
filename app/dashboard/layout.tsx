@@ -2,6 +2,7 @@ import { Sidebar } from '@/components/sidebar'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { MobileSidebar } from '@/components/mobile-sidebar'
+import { FloatingWhatsApp } from '@/components/floating-whatsapp'
 
 export default async function DashboardLayout({
     children,
@@ -36,6 +37,7 @@ export default async function DashboardLayout({
             <main className="md:pl-72 pb-10">
                 {children}
             </main>
+            <FloatingWhatsApp alwaysVisible />
         </div>
     )
 }
