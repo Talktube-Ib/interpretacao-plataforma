@@ -27,24 +27,29 @@ export async function middleware(request: NextRequest) {
         }
     )
 
+    // 1. Get User Session (Fastest way to check if auth exists)
     const {
         data: { user },
     } = await supabase.auth.getUser()
 
+    const { pathname } = request.nextUrl
 
+    // 2. Public Routes Bypass (Do not run heavy DB checks here)
+    const isPublicRoute = pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/auth')
+    const isProtectedRoute = pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname.startsWith('/room')
 
-    // 1. RBAC & Basic Protection
-    // Allow if user is logged in
-    if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    // If no user and trying to access protected route -> Redirect to login
+    if (!user && isProtectedRoute) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    if (!user && request.nextUrl.pathname.startsWith('/admin')) {
-        return NextResponse.redirect(new URL('/login', request.url))
+    // If user is logged in and tries to access login/signup -> Dashboard
+    if (user && (pathname.startsWith('/login') || pathname.startsWith('/signup'))) {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    // 2. Real-time Status Enforcement (Global Kill Switch)
-    if (user) {
+    // 3. Heavy Profile Check (Only for logged-in users on protected routes)
+    if (user && isProtectedRoute) {
         // We fetch the profile to check for bans/suspensions
         const { data: profile, error } = await supabase
             .from('profiles')
@@ -52,51 +57,34 @@ export async function middleware(request: NextRequest) {
             .eq('id', user.id)
             .single()
 
-        // CRITICAL: If profile is missing or error (e.g. RLS block), treating as "Account Invalid"
-        // This prevents banned users from accessing if RLS blocks their profile read
         if (error || !profile) {
             const redirectUrl = new URL('/login', request.url)
             redirectUrl.searchParams.set('error', 'access_denied')
-
             response = NextResponse.redirect(redirectUrl)
-            // Force logout
             response.cookies.delete('sb-access-token')
             response.cookies.delete('sb-refresh-token')
             return response
         }
 
-        if (profile) {
-            // Block non-admins from /admin
-            if (request.nextUrl.pathname.startsWith('/admin') && profile.role !== 'admin') {
-                return NextResponse.redirect(new URL('/dashboard', request.url))
-            }
-
-            // Global ban enforcement
-            if (profile.status !== 'active') {
-                const redirectUrl = new URL('/login', request.url)
-                redirectUrl.searchParams.set('error', 'account_locked')
-                redirectUrl.searchParams.set('status', profile.status)
-
-                // Clear cookies to effectively log them out
-                response = NextResponse.redirect(redirectUrl)
-                response.cookies.delete('sb-access-token')
-                response.cookies.delete('sb-refresh-token')
-                return response
-            }
+        // Role-based access for /admin
+        if (pathname.startsWith('/admin') && profile.role !== 'admin') {
+            return NextResponse.redirect(new URL('/dashboard', request.url))
         }
 
-        // 3. Force Password Reset
-        if (
-            user.user_metadata?.must_reset_password &&
-            !request.nextUrl.pathname.startsWith('/update-password') &&
-            !request.nextUrl.pathname.startsWith('/auth') // Allow auth related routes e.g. logout
-        ) {
+        // Global ban enforcement
+        if (profile.status !== 'active') {
+            const redirectUrl = new URL('/login', request.url)
+            redirectUrl.searchParams.set('error', 'account_locked')
+            response = NextResponse.redirect(redirectUrl)
+            response.cookies.delete('sb-access-token')
+            response.cookies.delete('sb-refresh-token')
+            return response
+        }
+
+        // Force Password Reset check
+        if (user.user_metadata?.must_reset_password && !pathname.startsWith('/update-password')) {
             return NextResponse.redirect(new URL('/update-password', request.url))
         }
-    }
-
-    if (user && request.nextUrl.pathname.startsWith('/login')) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
     // 4. Security Headers
@@ -123,6 +111,6 @@ export const config = {
          * - favicon.ico (favicon file)
          * - api (api routes)
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }
