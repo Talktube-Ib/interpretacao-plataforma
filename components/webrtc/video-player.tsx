@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MicOff, VideoOff, Maximize2, Loader2, User, Hand, WifiOff } from 'lucide-react'
+import { MicOff, VideoOff, Maximize2, Loader2, User, Hand, WifiOff, VolumeX, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface VideoPlayerProps {
@@ -16,9 +16,10 @@ interface VideoPlayerProps {
     onSpeakingChange?: (isSpeaking: boolean) => void
     isPresentation?: boolean
     onMutePeer?: () => void
+    isLocalMuted?: boolean
 }
 
-export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer }: VideoPlayerProps) {
+export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer, isLocalMuted }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
@@ -265,13 +266,13 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         }}
                         className={cn(
                             "p-2 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95",
-                            micOff
-                                ? "bg-red-500/20 text-red-500 border border-red-500/50 hover:bg-red-500 hover:text-white"
-                                : "bg-zinc-800 text-white hover:bg-red-600 border border-white/10"
+                            isLocalMuted
+                                ? "bg-red-500 text-white border border-red-500/50"
+                                : "bg-zinc-800/80 backdrop-blur-md text-white hover:bg-red-600 border border-white/10"
                         )}
-                        title={micOff ? "Desmutar (Local)" : "Mutar (Local)"}
+                        title={isLocalMuted ? "Ouvir Usuário" : "Mutar Usuário (Local)"}
                     >
-                        <MicOff className="h-4 w-4" />
+                        {isLocalMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                     </button>
                 </div>
             )}

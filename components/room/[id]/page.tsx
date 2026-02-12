@@ -20,22 +20,21 @@ import {
 import Link from 'next/link'
 
 // Imports updated
-import { createClient } from '@/lib/supabase/client' // NEW IMPORT
+import { RecorderControls } from '@/components/room/RecorderControls'
+import { createClient } from '@/lib/supabase/client'
 import { useWebRTC } from '@/hooks/use-webrtc'
 import { useChat } from '@/hooks/use-chat'
 import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { ChatPanel } from '@/components/room/chat-panel'
-import { DebugLogs } from '@/components/debug-logs' // NEW
+import { DebugLogs } from '@/components/debug-logs'
 import { ParticipantList } from '@/components/room/participant-list'
-// InterpreterControls removed
 import { InterpreterConsole } from '@/components/room/InterpreterConsole'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 import { LANGUAGES } from '@/lib/languages'
-import { checkAndEndMeeting, restartPersonalMeeting, endMeeting } from '@/app/actions/meeting' // NEW IMPORT
-
+import { checkAndEndMeeting, restartPersonalMeeting, endMeeting } from '@/app/actions/meeting'
 import { VideoGrid } from '@/components/room/video-grid'
 import { LayoutGrid, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { PreCallLobby } from '@/components/room/pre-call-lobby'
@@ -45,14 +44,6 @@ import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal
 import { VolumeControl } from '@/components/room/volume-control'
 import { UpsellModal } from '@/components/marketing/upsell-modal'
 import { VirtualBooth } from '@/components/VirtualBooth'
-import { GlossaryHUD } from '@/components/GlossaryHUD'
-import { FatigueTimer } from '@/components/room/FatigueTimer'
-import { AudioProcessor } from '@/components/audio/AudioProcessor'
-import { BriefingModal } from '@/components/briefing/BriefingModal'
-import { RecorderControls } from '@/components/room/RecorderControls'
-import { MinutesPanel } from '@/components/room/MinutesPanel'
-import { useMeetingTranscription } from '@/hooks/useMeetingTranscription'
-import { useSpeechRecognition } from '@/hooks/useSpeechRecognition' // NEW IMPORT
 
 export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
     // ... preceding state remains ...
@@ -83,9 +74,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [activeLanguages, setActiveLanguages] = useState<string[]>([]) // Dynamic languages from DB
     const [assignedLanguages, setAssignedLanguages] = useState<string[]>([]) // For restricted interpreters
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
-    const [isGlossaryActive, setIsGlossaryActive] = useState(true) // Default to true for now
-    const [isShadowing, setIsShadowing] = useState(false) // NEW: Shadowing Mode
-    const [isMinutesActive, setIsMinutesActive] = useState(false) // NEW: Minutes Mode
 
     // Layout and Join States
     const [isJoined, setIsJoined] = useState(false)
@@ -116,29 +104,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     }
 
 
-    // --- SHARED SPEECH RECOGNITION (Singleton) ---
-    // This instance is shared between Minutes and Glossary to avoid conflicts.
-    const {
-        isListening: isSpeechListening,
-        transcript: speechTranscript,
-        startListening: startSpeechListening,
-        stopListening: stopSpeechListening,
-        isSupported: isSpeechSupported,
-        error: speechError
-    } = useSpeechRecognition(myBroadcastLang === 'floor' || selectedLang === 'original' ? 'pt-BR' : myBroadcastLang) // Default to PT or Broadcast Lang
-
-    // Manage Speech Recognition Lifecycle
-    useEffect(() => {
-        if (!isSpeechSupported) return
-
-        const shouldListen = micOn && !isShadowing && (isMinutesActive || isGlossaryActive)
-
-        if (shouldListen && !isSpeechListening) {
-            startSpeechListening()
-        } else if (!shouldListen && isSpeechListening) {
-            stopSpeechListening()
-        }
-    }, [micOn, isShadowing, isMinutesActive, isGlossaryActive, isSpeechSupported, isSpeechListening, startSpeechListening, stopSpeechListening])
     useEffect(() => {
         // Only show upsell to guests (users not logged in)
         // Wait for isLoaded to ensure userId is stable
@@ -183,10 +148,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         .select('settings, start_time, status, host_id')
                         .eq('id', roomId)
                         .single()
-
-                    if (meeting?.settings?.minutes_active) {
-                        setIsMinutesActive(true)
-                    }
 
                     // Check Expiration (Lazy Check)
                     if (meeting?.status === 'active' && meeting.start_time) {
@@ -268,9 +229,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
                     if (meeting?.settings?.active_languages) {
                         setActiveLanguages(meeting.settings.active_languages)
-                    }
-                    if (meeting?.settings?.minutes_active) {
-                        setIsMinutesActive(true)
                     }
 
                     const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
@@ -452,56 +410,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         return () => window.removeEventListener('admin-update-languages' as any, handleLangUpdate as any)
     }, [myBroadcastLang])
 
-    // Permission Logic
-    const canManageMinutes = isHost || currentRole === 'admin'
-
-    // Listen for Admin Mute
-    useEffect(() => {
-        const handleMute = () => {
-            // Optional: Show Toast
-            alert('O anfitrião desativou seu microfone.')
-        }
-        window.addEventListener('admin-mute', handleMute)
-        return () => window.removeEventListener('admin-mute', handleMute)
-    }, [])
-
-    // Listen for Meeting Settings Updates (Minutes, etc)
-    useEffect(() => {
-        const supabase = createClient()
-        const channel = supabase.channel(`meeting-settings:${roomId}`)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'meetings',
-                filter: `id=eq.${roomId}`
-            }, (payload) => {
-                const newSettings = payload.new.settings
-                if (newSettings) {
-                    setIsMinutesActive(!!newSettings.minutes_active)
-                }
-            })
-            .subscribe()
-
-        return () => { channel.unsubscribe() }
-    }, [roomId])
-
-    const handleToggleMinutes = async () => {
-        if (!canManageMinutes) return;
-        const supabase = createClient()
-        // We need to fetch current settings first to merge or just update jsonb (Supabase merges top-level but be careful)
-        // Safer to fetch and update
-        const { data: meeting } = await supabase.from('meetings').select('settings').eq('id', roomId).single()
-        const currentSettings = meeting?.settings || {}
-
-        const newState = !isMinutesActive
-
-        await supabase.from('meetings').update({
-            settings: { ...currentSettings, minutes_active: newState }
-        }).eq('id', roomId)
-
-        // Optimistic update
-        setIsMinutesActive(newState)
-    }
 
     useEffect(() => {
         peers.forEach(p => {
@@ -520,61 +428,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     }, [peers])
 
 
-    // AI Transcription Background Service
-    useMeetingTranscription({
-        meetingId: roomId,
-        userId: userId,
-        userName: userName,
-        isMicOn: micOn && !isShadowing, // Don't transcript if shadowing
-        language: myBroadcastLang === 'floor' ? 'pt-BR' : myBroadcastLang, // Simplistic lang detection
-        enabled: isMinutesActive,
-        transcript: speechTranscript // Shared Transcript
-    })
 
     const handleToggleMic = () => {
-        // If shadowing, we keep micOn locally true (for recorder) but ensure WebRTC is muted?
-        // Actually, logic is:
-        // Normal Mode: micOn = true -> WebRTC Unmuted
-        // Shadowing Mode: micOn = true -> WebRTC Muted (but local stream active for Recorder)
-
-        // HOWEVER, hookToggleMic controls the TRACK enabled state, which affects ALL consumers (Recorder too usually, unless we cloned the stream before).
-        // Since we pass 'localStream' to recorder, disabling the track there disables it for recorder too.
-
-        // WORKAROUND: We need 'hookToggleMic' to ONLY affect the PeerConnection sending, NOT the local track itself.
-        // But 'use-webrtc' likely toggles track.enabled.
-
-        // Strategy B: Keep track enabled. Use 'muteUser' or similar? No that's for incoming.
-        // Simple strategy: When IS SHADOWING, we DO NOT call hookToggleMic(true). We fake it ui-wise?
-
-        // Let's refine:
-        // If Shadowing is ON:
-        //   User clicks Mic: Toggles 'micOn' state.
-        //   But we force hookToggleMic(false) always so peers don't hear.
-
         const newState = !micOn
         setMicOn(newState)
-
-        if (isShadowing) {
-            // In shadowing, we want local mic ON (newState=true) but remote OFF.
-            // So we ensure hookToggleMic is FALSE always.
-            hookToggleMic(false)
-        } else {
-            // Normal behavior
-            hookToggleMic(newState)
-        }
+        hookToggleMic(newState)
     }
-
-    // Effect to enforce Shadowing logic when mode changes
-    useEffect(() => {
-        if (isShadowing) {
-            // Enter Shadowing: Cut audio to peers immediately
-            hookToggleMic(false)
-            // But if mic was on, keep 'micOn' true so user sees they are "speaking" (to recorder)
-        } else {
-            // Exit Shadowing: Restore audio to peers if mic is theoretically on
-            if (micOn) hookToggleMic(true)
-        }
-    }, [isShadowing])
 
     // Listen for Handover Acceptance (I requested it, partner accepted -> I go off air)
     // Moved here to avoid 'used before declaration' lint error
@@ -806,7 +665,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         handRaised={localHandRaised}
                         masterVolume={masterVolume}
                         localMutedPeers={localMutedPeers}
-                        onMutePeer={muteUser}
+                        onMutePeer={handleToggleLocalMute}
                     />
 
                     {/* Pagination Controls */}
@@ -1002,17 +861,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         }}
                     />
 
-                    <GlossaryHUD
-                        meetingId={roomId}
-                        isInterpreter={true}
-                        targetLanguage={selectedLang}
-                        isActive={isGlossaryActive}
-                        onClose={() => setIsGlossaryActive(false)}
-                        transcript={speechTranscript}
-                        isListening={isSpeechListening}
-                        speechError={speechError}
-                        isSupported={isSpeechSupported}
-                    />
                 </>
             )}
             {/* Language Menu (Moved to Root) */}
@@ -1164,21 +1012,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Briefing Button */}
-                    <div className="hidden md:block">
-                        <BriefingModal roomId={roomId} isHost={isHost} />
-                    </div>
-
-                    {/* AI Minutes Button */}
-                    <div className="hidden md:block">
-                        <MinutesPanel
-                            meetingId={roomId}
-                            isHost={canManageMinutes}
-                            isActive={isMinutesActive}
-                            onToggle={handleToggleMinutes}
-                            currentTranscript={speechTranscript}
-                        />
-                    </div>
 
                     {/* Volume Control - Desktop Only */}
                     <div className="hidden md:flex items-center gap-0.5 bg-background/50 backdrop-blur rounded-2xl p-1 border border-border/50 shadow-sm group hover:border-[#06b6d4]/50 transition-colors">
@@ -1383,17 +1216,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                 <Mic className="h-5 w-5 mr-3" />
                                 {t('room.mode_interpreter')}
                             </Button>
-                            <div className="ml-4 flex items-center gap-4 bg-black/40 p-2 rounded-xl backdrop-blur border border-white/5">
-                                <FatigueTimer isActive={micOn} />
-                                <div className="h-8 w-px bg-white/10" />
-                                <RecorderControls
-                                    stream={localStream}
-                                    isShadowing={isShadowing}
-                                    onToggleShadowing={() => setIsShadowing(prev => !prev)}
-                                />
-                                <div className="h-8 w-px bg-white/10" />
-                                <AudioProcessor stream={localStream} isEnabled={true} />
-                            </div>
                         </>
                     )
                 }

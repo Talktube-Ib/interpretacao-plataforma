@@ -64,8 +64,16 @@ export async function middleware(request: NextRequest) {
         redirectUrl.searchParams.set('error', !profile || profile?.status !== 'active' ? 'account_locked' : 'access_denied')
 
         const ripResponse = NextResponse.redirect(redirectUrl)
-        ripResponse.cookies.delete('sb-access-token')
-        ripResponse.cookies.delete('sb-refresh-token')
+
+        // Delete all possible Supabase cookie names
+        const cookieNames = [
+            'sb-access-token',
+            'sb-refresh-token',
+            `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1]}-auth-token`,
+            'supabase-auth-token'
+        ]
+
+        cookieNames.forEach(name => ripResponse.cookies.delete(name))
         return ripResponse
     }
 
@@ -79,12 +87,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/update-password', request.url))
     }
 
+
     // 5. Security Headers for protected routes
     response.headers.set('X-Frame-Options', 'DENY')
     response.headers.set('X-Content-Type-Options', 'nosniff')
     response.headers.set('Permissions-Policy', "camera=(self), microphone=(self), geolocation=()")
-
-    return response
 
     return response
 }
@@ -93,11 +100,12 @@ export const config = {
     matcher: [
         /*
          * Match all request paths except for the ones starting with:
+         * - api (API routes)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
-         * - api (api routes)
+         * - images/logos (static assets)
          */
-        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!api|_next/static|_next/image|favicon.ico|logos|images|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

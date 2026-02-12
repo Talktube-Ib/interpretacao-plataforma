@@ -135,6 +135,7 @@ export function VideoGrid({
                             volume={getPeerVolume(featuredItem)}
                             isPresentation={featuredItem.isScreen}
                             onMutePeer={onMutePeer ? () => onMutePeer(featuredItem.userId) : undefined}
+                            isLocalMuted={localMutedPeers.has(featuredItem.userId)}
                         />
                         {/* Pin Indicator */}
                         {pinnedSpeakerId === featuredItem.id && (
@@ -180,6 +181,8 @@ export function VideoGrid({
                                     onSpeakingChange={(isSpeaking) => onPeerSpeaking(item.userId, isSpeaking)}
                                     volume={getPeerVolume(item)}
                                     isPresentation={item.isScreen}
+                                    onMutePeer={onMutePeer ? () => onMutePeer(item.userId) : undefined}
+                                    isLocalMuted={localMutedPeers.has(item.userId)}
                                 />
                             </div>
                         ))}
@@ -234,6 +237,8 @@ export function VideoGrid({
                                     onSpeakingChange={(isSpeaking) => onPeerSpeaking(item.userId, isSpeaking)}
                                     volume={getPeerVolume(item)}
                                     isPresentation={item.isScreen}
+                                    onMutePeer={onMutePeer ? () => onMutePeer(item.userId) : undefined}
+                                    isLocalMuted={localMutedPeers.has(item.userId)}
                                 />
                             </motion.div>
                         ))}
