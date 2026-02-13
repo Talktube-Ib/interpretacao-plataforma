@@ -29,7 +29,12 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
                     activeStream = config.stream
                 } else {
                     const constraints = {
-                        audio: config.micOn !== false ? { deviceId: config.audioDeviceId ? { exact: config.audioDeviceId } : undefined } : true,
+                        audio: config.micOn !== false ? {
+                            deviceId: config.audioDeviceId ? { exact: config.audioDeviceId } : undefined,
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        } : true,
                         video: config.cameraOn !== false ? { deviceId: config.videoDeviceId ? { exact: config.videoDeviceId } : undefined } : true
                     }
                     activeStream = await navigator.mediaDevices.getUserMedia(constraints)

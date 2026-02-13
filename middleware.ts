@@ -53,33 +53,43 @@ export async function middleware(request: NextRequest) {
     }
 
     // 3. Status/Ban Check (Only for logged-in users on sensitive routes)
-    const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('status, role')
-        .eq('id', user.id)
-        .single()
+    try {
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('status, role')
+            .eq('id', user.id)
+            .single()
 
-    if (error || !profile || profile.status !== 'active') {
-        const redirectUrl = new URL('/login', request.url)
-        redirectUrl.searchParams.set('error', !profile || profile?.status !== 'active' ? 'account_locked' : 'access_denied')
+        if (error || !profile || profile.status !== 'active') {
+            const redirectUrl = new URL('/login', request.url)
+            redirectUrl.searchParams.set('error', !profile || profile?.status !== 'active' ? 'account_locked' : 'access_denied')
+            if (profile?.status) redirectUrl.searchParams.set('status', profile.status)
 
-        const ripResponse = NextResponse.redirect(redirectUrl)
+            const ripResponse = NextResponse.redirect(redirectUrl)
 
-        // Delete all possible Supabase cookie names
-        const cookieNames = [
-            'sb-access-token',
-            'sb-refresh-token',
-            `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1]}-auth-token`,
-            'supabase-auth-token'
-        ]
+            // Delete all possible Supabase cookie names to force logout
+            const cookieNames = [
+                'sb-access-token',
+                'sb-refresh-token',
+                `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1]}-auth-token`,
+                'supabase-auth-token'
+            ]
 
-        cookieNames.forEach(name => ripResponse.cookies.delete(name))
-        return ripResponse
-    }
+            cookieNames.forEach(name => ripResponse.cookies.delete(name))
+            return ripResponse
+        }
 
-    // Admin check
-    if (pathname.startsWith('/admin') && profile.role !== 'admin') {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+        // Admin check
+        if (pathname.startsWith('/admin') && profile.role !== 'admin') {
+            return NextResponse.redirect(new URL('/dashboard', request.url))
+        }
+    } catch (err) {
+        console.error("Middleware profile check error:", err)
+        // If DB is down but user is authed, we might want to allow dashboard read-only or 
+        // redirect to a "temporarily unavailable" page. For now, let's redirect to login with a timeout error.
+        const errorUrl = new URL('/login', request.url)
+        errorUrl.searchParams.set('error', 'connection_timeout')
+        return NextResponse.redirect(errorUrl)
     }
 
     // 4. Force Password Reset

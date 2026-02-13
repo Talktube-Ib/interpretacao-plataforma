@@ -22,7 +22,7 @@ function LoginForm() {
         const errorType = searchParams.get('error')
         const status = searchParams.get('status')
 
-        if (errorType === 'account_locked') {
+        if (errorType === 'account_locked' || errorType === 'access_denied') {
             // Delay state update to avoid synchronous render warning
             const timer = setTimeout(() => {
                 if (status === 'banned') {
@@ -34,6 +34,8 @@ function LoginForm() {
                 }
             }, 0)
             return () => clearTimeout(timer)
+        } else if (errorType === 'connection_timeout') {
+            setError('O servidor demorou muito para responder. Por favor, tente novamente (pode ser uma oscilação no banco de dados).')
         }
     }, [searchParams])
 

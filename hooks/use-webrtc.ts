@@ -320,12 +320,22 @@ export function useWebRTC(
         return peer
     }
 
-    // Update local stream in peers when it changes (handled by useMediaStream somewhat, but need to add tracks to peers)
+    // Update local stream in peers when it changes
     useEffect(() => {
         if (!localStream) return
         peersRef.current.forEach(p => {
             localStream.getTracks().forEach(track => {
-                try { p.peer.addTrack(track, localStream) } catch (e) { }
+                try {
+                    // Check if track is already in the peer connection's senders
+                    const senders = (p.peer as any)._pc.getSenders()
+                    const alreadyHasTrack = senders.some((s: any) => s.track === track)
+
+                    if (!alreadyHasTrack) {
+                        p.peer.addTrack(track, localStream)
+                    }
+                } catch (e) {
+                    // console.warn("Could not add track to peer", e)
+                }
             })
         })
     }, [localStream])
