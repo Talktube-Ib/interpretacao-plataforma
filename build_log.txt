@@ -1,8 +1,0 @@
-﻿
-> interpretation-platform@0.1.0 build
-> next build
-
-   Ôû▓ Next.js 16.0.10 (Turbopack)
-   - Environments: .env.local, .env.production
-
-   Creating an optimized production build ...
