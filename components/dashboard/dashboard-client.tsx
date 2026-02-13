@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, Settings, Share2, Video, Clock, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import CreateMeetingModal from '@/components/create-meeting-modal'
 import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-button'
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
@@ -172,8 +173,12 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
                                                 </div>
                                                 <div className="flex flex-col gap-1 min-w-0">
                                                     <span className="text-base md:text-lg tracking-tight group-hover/row:text-cyan-400 transition-colors uppercase font-black truncate">{meeting.title}</span>
-                                                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1.5 ring-1 ring-slate-800 px-2 py-0.5 rounded-full w-fit">
-                                                        <Video className="h-2.5 w-2.5" /> Room Active
+                                                    <span className={cn(
+                                                        "text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ring-1 px-2 py-0.5 rounded-full w-fit",
+                                                        meeting.status === 'active' ? "ring-green-500/30 text-green-500" : "ring-slate-800 text-slate-500"
+                                                    )}>
+                                                        <Video className="h-2.5 w-2.5" />
+                                                        {meeting.status === 'active' ? t('room.room_active') || 'Sala Ativa' : t('room.room_ended') || 'Encerrada'}
                                                     </span>
                                                 </div>
                                             </div>
@@ -214,11 +219,36 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
                                                 <EditMeetingModal meeting={meeting} />
                                                 <DeleteMeetingDialog meetingId={meeting.id} meetingTitle={meeting.title} />
 
-                                                <Link href={`/room/${meeting.id}`} className="ml-2">
-                                                    <Button variant="outline" className="h-8 px-4 border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all">
-                                                        {t('common.enter')}
+                                                {meeting.status === 'active' ? (
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            className="h-8 px-3 text-red-500 hover:bg-red-500/10 rounded-lg font-black uppercase text-[10px]"
+                                                            onClick={async () => {
+                                                                if (confirm(t('room.end_meeting_confirm') || 'Encerrar reunião para todos?')) {
+                                                                    const { endMeeting } = await import('@/app/actions/meeting')
+                                                                    await endMeeting(meeting.id)
+                                                                    window.location.reload()
+                                                                }
+                                                            }}
+                                                        >
+                                                            {t('common.end') || 'Encerrar'}
+                                                        </Button>
+                                                        <Link href={`/room/${meeting.id}`}>
+                                                            <Button variant="outline" className="h-8 px-4 border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all">
+                                                                {t('common.enter')}
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
+                                                ) : (
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="h-8 px-4 text-slate-600 cursor-not-allowed font-black uppercase text-[10px]"
+                                                        disabled
+                                                    >
+                                                        {t('room.room_ended') || 'Finalizada'}
                                                     </Button>
-                                                </Link>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
