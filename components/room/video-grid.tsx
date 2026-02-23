@@ -25,6 +25,7 @@ interface VideoGridProps {
     onMutePeer?: (targetId: string) => void
     localPeerVolumes?: Record<string, number>
     onLocalVolumeChange?: (targetId: string, volume: number) => void
+    localScreenStream?: MediaStream | null
 }
 
 export function VideoGrid({
@@ -46,7 +47,8 @@ export function VideoGrid({
     localMutedPeers = new Set(),
     onMutePeer,
     localPeerVolumes = {},
-    onLocalVolumeChange
+    onLocalVolumeChange,
+    localScreenStream
 }: VideoGridProps) {
 
     // Flatten peers to include Screen Shares as separate "Virtual Peers"
@@ -65,6 +67,20 @@ export function VideoGrid({
         }
         return items
     })
+
+    // Add Local Screen Share to display items if active
+    if (localScreenStream) {
+        displayItems.push({
+            userId: 'local-screen',
+            id: 'local-screen',
+            name: 'Sua Tela',
+            stream: localScreenStream,
+            isScreen: true,
+            micOn: false,
+            cameraOn: true,
+            role: currentRole
+        } as any)
+    }
 
     // Determine the "featured" speaker for Speaker Mode
     // Priority: Pinned > Active Speaker > First Peer

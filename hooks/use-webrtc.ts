@@ -62,6 +62,7 @@ export function useWebRTC(
     const [reactions, setReactions] = useState<{ id: string, emoji: string, userId: string }[]>([])
     const [mediaStatus, setMediaStatus] = useState<'connecting' | 'connected' | 'failed' | 'disconnected'>('disconnected')
     const [lastError, setLastError] = useState<string | null>(null)
+    const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null)
 
     const roomRef = useRef<Room | null>(null)
     const metadataRef = useRef<any>({
@@ -389,6 +390,14 @@ export function useWebRTC(
         if (!roomRef.current) return
         try {
             await roomRef.current.localParticipant.setScreenShareEnabled(true)
+            // Wait a bit for the track to be published and then get the stream
+            setTimeout(() => {
+                const pub = roomRef.current?.localParticipant.getTrackPublication(Track.Source.ScreenShare)
+                if (pub?.videoTrack?.mediaStreamTrack) {
+                    const stream = new MediaStream([pub.videoTrack.mediaStreamTrack])
+                    setLocalScreenStream(stream)
+                }
+            }, 500)
             signaling?.broadcastEvent('share-started', { sender: userId })
         } catch (error) {
             console.error('Failed to share screen:', error)
@@ -399,6 +408,7 @@ export function useWebRTC(
         if (!roomRef.current) return
         try {
             await roomRef.current.localParticipant.setScreenShareEnabled(false)
+            setLocalScreenStream(null)
             signaling?.broadcastEvent('share-ended', { sender: userId })
         } catch (error) {
             console.error('Failed to stop screen share:', error)
@@ -485,6 +495,7 @@ export function useWebRTC(
         mediaStatus,
         signalingStatus: signaling?.connectionState || 'disconnected',
         lastError,
-        setLastError
+        setLastError,
+        localScreenStream
     }
 }

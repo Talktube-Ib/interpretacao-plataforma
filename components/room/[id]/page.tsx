@@ -316,7 +316,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         mediaStatus,
         signalingStatus,
         lastError,
-        setLastError
+        setLastError,
+        localScreenStream
     } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined)
 
 
@@ -706,6 +707,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         onMutePeer={handleToggleLocalMute}
                         localPeerVolumes={localPeerVolumes}
                         onLocalVolumeChange={handleSetLocalVolume}
+                        localScreenStream={localScreenStream}
                     />
 
                     {/* Pagination Controls */}
