@@ -130,12 +130,11 @@ export function useWebRTC(
             const userId = fullIdentity.split('_')[0]
             const isScreen = publication.source === Track.Source.ScreenShare
 
-            const peerId = isScreen ? `${fullIdentity}-presentation` : fullIdentity
+            const peerId = fullIdentity
             const existing = peersRef.current.get(peerId) || {
                 userId,
                 role: 'participant',
                 connectionState: 'connected',
-                isPresentation: isScreen,
                 joinedAt: Date.now()
             }
 
@@ -144,6 +143,7 @@ export function useWebRTC(
                 if (isScreen) {
                     existing.screenStream = stream
                     setSharingUserId(userId)
+                    console.log('--- Screen Share Attached to Peer:', peerId)
                 } else {
                     existing.stream = stream
                     existing.cameraOn = true
@@ -165,11 +165,21 @@ export function useWebRTC(
             publication: RemoteTrackPublication,
             participant: RemoteParticipant
         ) => {
-            if (publication.source === Track.Source.ScreenShare) {
-                peersRef.current.delete(`${participant.identity}-presentation`)
-                if (sharingUserId === participant.identity) setSharingUserId(null)
+            console.log(`--- SFU Track Unsubscribed: ${track.kind} from ${participant.identity}`)
+            const peerId = participant.identity
+            const existing = peersRef.current.get(peerId)
+            if (existing) {
+                if (publication.source === Track.Source.ScreenShare) {
+                    existing.screenStream = undefined
+                    if (sharingUserId === participant.identity.split('_')[0]) setSharingUserId(null)
+                } else if (track.kind === Track.Kind.Video) {
+                    existing.stream = undefined
+                    existing.cameraOn = false
+                } else if (track.kind === Track.Kind.Audio) {
+                    existing.micOn = false
+                }
+                syncToState()
             }
-            syncToState()
         }
 
         room
@@ -427,12 +437,28 @@ export function useWebRTC(
         window.location.reload()
     }, [])
 
+    const toggleMic = useCallback(async (enabled: boolean) => {
+        toggleMicStream(enabled)
+        if (roomRef.current) {
+            await roomRef.current.localParticipant.setMicrophoneEnabled(enabled)
+            updateMetadata({ micOn: enabled })
+        }
+    }, [toggleMicStream, updateMetadata])
+
+    const toggleCamera = useCallback(async (enabled: boolean) => {
+        toggleCameraStream(enabled)
+        if (roomRef.current) {
+            await roomRef.current.localParticipant.setCameraEnabled(enabled)
+            updateMetadata({ cameraOn: enabled })
+        }
+    }, [toggleCameraStream, updateMetadata])
+
     return {
         localStream,
         peers,
         userCount: Math.max(isJoined ? 1 : 0, userCount),
-        toggleMic: toggleMicStream,
-        toggleCamera: toggleCameraStream,
+        toggleMic,
+        toggleCamera,
         shareScreen,
         stopScreenShare,
         shareVideoFile,

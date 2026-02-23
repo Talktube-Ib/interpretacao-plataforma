@@ -260,7 +260,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
 
             {/* Volume Control Overlay (Fishbone) */}
             {onIndividualVolumeChange && (
-                <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 pointer-events-auto">
+                <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity duration-200 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 pointer-events-auto">
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
@@ -302,7 +302,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
 
             {/* Mute Peer Button (Host Only or Local Mute) */}
             {onMutePeer && (
-                <div className="absolute top-3 right-3 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="absolute top-3 right-3 z-30 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
