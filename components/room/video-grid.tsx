@@ -23,6 +23,8 @@ interface VideoGridProps {
     masterVolume?: number // 0-1 (Global Volume Control)
     localMutedPeers?: Set<string> // IDs of peers muted locally by me
     onMutePeer?: (targetId: string) => void
+    localPeerVolumes?: Record<string, number>
+    onLocalVolumeChange?: (targetId: string, volume: number) => void
 }
 
 export function VideoGrid({
@@ -42,7 +44,9 @@ export function VideoGrid({
     handRaised,
     masterVolume = 1,
     localMutedPeers = new Set(),
-    onMutePeer
+    onMutePeer,
+    localPeerVolumes = {},
+    onLocalVolumeChange
 }: VideoGridProps) {
 
     // Flatten peers to include Screen Shares as separate "Virtual Peers"
@@ -110,8 +114,9 @@ export function VideoGrid({
             vol = 0
         }
 
-        // Apply Master Volume
-        return vol * masterVolume
+        // Apply Local Individual Volume (User's preference for this specific peer)
+        const individualVol = localPeerVolumes[peer.userId] ?? 1
+        return vol * masterVolume * individualVol
     }
 
     return (
@@ -136,6 +141,8 @@ export function VideoGrid({
                             isPresentation={featuredItem.isScreen}
                             onMutePeer={onMutePeer ? () => onMutePeer(featuredItem.userId) : undefined}
                             isLocalMuted={localMutedPeers.has(featuredItem.userId)}
+                            individualVolume={localPeerVolumes[featuredItem.userId] ?? 1}
+                            onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(featuredItem.userId, v) : undefined}
                         />
                         {/* Pin Indicator */}
                         {pinnedSpeakerId === featuredItem.id && (
@@ -183,6 +190,8 @@ export function VideoGrid({
                                     isPresentation={item.isScreen}
                                     onMutePeer={onMutePeer ? () => onMutePeer(item.userId) : undefined}
                                     isLocalMuted={localMutedPeers.has(item.userId)}
+                                    individualVolume={localPeerVolumes[item.userId] ?? 1}
+                                    onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(item.userId, v) : undefined}
                                 />
                             </div>
                         ))}
@@ -239,6 +248,8 @@ export function VideoGrid({
                                     isPresentation={item.isScreen}
                                     onMutePeer={onMutePeer ? () => onMutePeer(item.userId) : undefined}
                                     isLocalMuted={localMutedPeers.has(item.userId)}
+                                    individualVolume={localPeerVolumes[item.userId] ?? 1}
+                                    onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(item.userId, v) : undefined}
                                 />
                             </motion.div>
                         ))}

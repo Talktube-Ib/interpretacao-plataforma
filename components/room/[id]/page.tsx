@@ -74,6 +74,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [activeLanguages, setActiveLanguages] = useState<string[]>([]) // Dynamic languages from DB
     const [assignedLanguages, setAssignedLanguages] = useState<string[]>([]) // For restricted interpreters
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
+    const [liveKitToken, setLiveKitToken] = useState<string | null>(null)
 
     // Layout and Join States
     const [isJoined, setIsJoined] = useState(false)
@@ -93,6 +94,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // Local Mute State
     const [localMutedPeers, setLocalMutedPeers] = useState<Set<string>>(new Set())
+    const [localPeerVolumes, setLocalPeerVolumes] = useState<Record<string, number>>({})
 
     const handleToggleLocalMute = (targetId: string) => {
         setLocalMutedPeers(prev => {
@@ -101,6 +103,13 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             else next.add(targetId)
             return next
         })
+    }
+
+    const handleSetLocalVolume = (targetId: string, volume: number) => {
+        setLocalPeerVolumes(prev => ({
+            ...prev,
+            [targetId]: volume
+        }))
     }
 
 
@@ -245,6 +254,24 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         initUser()
     }, [roomId])
 
+    // Fetch LiveKit Token for main room
+    useEffect(() => {
+        if (!isJoined || !userId || !roomId) return
+
+        const fetchToken = async () => {
+            try {
+                const resp = await fetch(`/api/livekit/token?room=${roomId}&username=${userId}`)
+                const data = await resp.json()
+                if (data.token) {
+                    setLiveKitToken(data.token)
+                }
+            } catch (error) {
+                console.error("Failed to fetch LiveKit token for main room:", error)
+            }
+        }
+        fetchToken()
+    }, [isJoined, userId, roomId])
+
     // State declarations previously here were moved up to fix 'used before declaration' errors
     // State declarations previously here were moved up to fix 'used before declaration' errors
 
@@ -279,7 +306,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         unblockUserAudio,
         reconnect,
         connectionState
-    } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName)
+    } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined)
 
 
     const isGuest = userId.startsWith('guest-')
@@ -666,6 +693,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         masterVolume={masterVolume}
                         localMutedPeers={localMutedPeers}
                         onMutePeer={handleToggleLocalMute}
+                        localPeerVolumes={localPeerVolumes}
+                        onLocalVolumeChange={handleSetLocalVolume}
                     />
 
                     {/* Pagination Controls */}

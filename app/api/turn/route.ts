@@ -34,19 +34,21 @@ export async function GET() {
     if (meteredApiKey) {
         try {
             const domain = process.env.METERED_DOMAIN || 'global.metered.live'
+            // Use the longer key if both are found, or try to be smart
             const url = `https://${domain}/api/v1/turn/credentials?apiKey=${meteredApiKey}`
 
+            console.log("Fetching TURN from Metered:", domain)
             const response = await fetch(url)
             if (response.ok) {
                 const iceServersFromMetered = await response.json()
-                // Metered returns an array of ICE servers directly or wrapped? 
-                // Usually returns: [ { urls: "...", username: "...", credential: "..." } ]
-                // We verify if it's an array.
                 if (Array.isArray(iceServersFromMetered)) {
-                    return NextResponse.json({ iceServers: iceServersFromMetered })
+                    // Combine with defaults for extra safety
+                    const merged = [...iceServersFromMetered, ...iceServers]
+                    return NextResponse.json({ iceServers: merged })
                 }
             } else {
-                console.error("Metered API returned error:", response.status, await response.text())
+                const errText = await response.text()
+                console.error("Metered API returned error:", response.status, errText)
             }
         } catch (e) {
             console.error("Metered fetch failed", e)
@@ -62,5 +64,6 @@ export async function GET() {
         })
     }
 
+    // Force add defaults if nothing else worked
     return NextResponse.json({ iceServers })
 }

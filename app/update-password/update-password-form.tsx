@@ -16,15 +16,23 @@ export function UpdatePasswordForm() {
         setLoading(true)
         setError(null)
 
-        // Validation could be here too, but server handles it well.
         try {
             const result = await updatePassword(formData)
             if (result && result.error) {
                 setError(result.error)
+                setLoading(false)
             }
+            // If successful, the server action 'updatePassword' calls redirect().
+            // In Next.js, redirect() throws an error that is caught by the caller
+            // or the framework. We must not catch it here OR re-throw it.
         } catch (e) {
+            // Check if it's a Next.js redirect error (which is expected and uses 'NEXT_REDIRECT' string internally in some versions, 
+            // but usually we just re-throw or don't catch everything).
+            if (e instanceof Error && (e.message.includes('NEXT_REDIRECT') || e.message.includes('redirect'))) {
+                throw e;
+            }
+            console.error('Update password error:', e)
             setError('Ocorreu um erro inesperado.')
-        } finally {
             setLoading(false)
         }
     }

@@ -45,18 +45,21 @@ function LoginForm() {
         setError(null)
 
         const supabase = createClient()
+        const cleanEmail = email.trim()
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
             password,
         })
 
-        if (error) {
-            setError(error.message === 'Invalid login credentials' ? 'Email ou senha incorretos.' : error.message)
+        if (signInError) {
+            setError(signInError.message === 'Invalid login credentials' ? 'Email ou senha incorretos.' : signInError.message)
             setLoading(false)
         } else {
-            router.push('/dashboard')
+            // It's important to keep loading state until the router actually navigates
+            // but router.push doesn't block. We'll refresh to ensure the session is picked up.
             router.refresh()
+            router.push('/dashboard')
         }
     }
 

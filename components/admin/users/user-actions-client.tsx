@@ -19,11 +19,10 @@ import {
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MoreHorizontal, Settings2, Languages } from 'lucide-react'
+import { MoreHorizontal, Settings2, Languages, Loader2, KeyRound } from 'lucide-react'
 import React, { useState } from 'react'
 import { updateUserRole, updateUserStatus, updateUserLimits, updateProfileLanguages, deleteUser, adminUpdateUserPassword } from '../actions'
 import { LANGUAGES } from '@/lib/languages'
-import { KeyRound } from 'lucide-react'
 
 interface Profile {
     id: string;
@@ -82,17 +81,22 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
         }
     }
 
+    const [passwordLoading, setPasswordLoading] = useState(false)
+
     const handleSavePassword = async () => {
         if (!newPassword || newPassword.length < 6) {
             alert('A senha deve ter pelo menos 6 caracteres.')
             return
         }
 
+        setPasswordLoading(true)
         const result = await adminUpdateUserPassword(profile.id, newPassword)
+        setPasswordLoading(false)
+
         if (result.success) {
             setOpenPassword(false)
             setNewPassword('')
-            alert('Senha alterada com sucesso!')
+            alert('Senha alterada com sucesso! O usuário deverá trocá-la no próximo acesso.')
         } else {
             alert(`Erro ao alterar senha: ${result.error}`)
         }
@@ -152,7 +156,12 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button onClick={handleSavePassword} className="bg-[#06b6d4] hover:bg-[#0891b2]">
+                        <Button
+                            onClick={handleSavePassword}
+                            className="bg-[#06b6d4] hover:bg-[#0891b2]"
+                            disabled={passwordLoading}
+                        >
+                            {passwordLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Salvar Nova Senha
                         </Button>
                     </DialogFooter>

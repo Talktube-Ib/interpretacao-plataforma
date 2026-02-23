@@ -17,9 +17,11 @@ interface VideoPlayerProps {
     isPresentation?: boolean
     onMutePeer?: () => void
     isLocalMuted?: boolean
+    individualVolume?: number
+    onIndividualVolumeChange?: (volume: number) => void
 }
 
-export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer, isLocalMuted }: VideoPlayerProps) {
+export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer, isLocalMuted, individualVolume = 1, onIndividualVolumeChange }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
@@ -254,6 +256,48 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Volume Control Overlay (Fishbone) */}
+            {onIndividualVolumeChange && (
+                <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 pointer-events-auto">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onIndividualVolumeChange(individualVolume > 0 ? 0 : 1)
+                        }}
+                        className={cn(
+                            "p-1.5 rounded-lg transition-colors",
+                            individualVolume === 0 ? "text-red-500 bg-red-500/10" : "text-white hover:bg-white/10"
+                        )}
+                        title={individualVolume === 0 ? "Ativar Áudio Local" : "Mutar Áudio Local"}
+                    >
+                        {individualVolume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    </button>
+
+                    <div className="flex items-end gap-[3px] h-4 px-1">
+                        {[1, 2, 3, 4, 5].map((level) => {
+                            const threshold = level * 0.2
+                            const isActive = individualVolume >= (threshold - 0.1)
+                            const height = `${level * 20}%`
+
+                            return (
+                                <div
+                                    key={level}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        onIndividualVolumeChange(threshold)
+                                    }}
+                                    className={cn(
+                                        "w-[3px] rounded-full cursor-pointer transition-all hover:scale-y-125",
+                                        isActive ? "bg-[#06b6d4]" : "bg-white/20"
+                                    )}
+                                    style={{ height }}
+                                />
+                            )
+                        })}
+                    </div>
+                </div>
             )}
 
             {/* Mute Peer Button (Host Only or Local Mute) */}

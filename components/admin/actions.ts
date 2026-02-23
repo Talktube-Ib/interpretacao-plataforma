@@ -87,7 +87,8 @@ export async function adminUpdateUserPassword(userId: string, newPassword: strin
         const supabaseAdmin = await ensureAdminClient()
 
         const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-            password: newPassword
+            password: newPassword,
+            user_metadata: { must_reset_password: true }
         })
 
         if (error) return { success: false, error: error.message }

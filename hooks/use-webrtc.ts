@@ -1,16 +1,25 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import '@/lib/polyfills'
-import SimplePeer from 'simple-peer'
 import { RealtimeChannel } from '@supabase/supabase-js'
+import {
+    Room,
+    RoomEvent,
+    RemoteParticipant,
+    RemoteTrack,
+    RemoteTrackPublication,
+    Participant,
+    Track,
+    VideoQuality,
+    LocalTrackPublication
+} from 'livekit-client'
 import { useMediaStream } from './use-media-stream'
 import { useSignaling } from './use-signaling'
 
 interface PeerData {
-    peer: SimplePeer.Instance
+    userId: string
     stream?: MediaStream
     screenStream?: MediaStream
-    userId: string
     role: string
     language?: string
     micOn?: boolean
@@ -19,10 +28,8 @@ interface PeerData {
     handRaised?: boolean
     name?: string
     isPresentation?: boolean
-    parentUserId?: string
     isHost?: boolean
     connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected'
-    lastSignalTime?: number
     audioBlocked?: boolean
 }
 
@@ -32,7 +39,8 @@ export function useWebRTC(
     userRole: string = 'participant',
     initialConfig: { micOn?: boolean, cameraOn?: boolean, audioDeviceId?: string, videoDeviceId?: string, stream?: MediaStream } = {},
     isJoined: boolean = false,
-    userName: string = 'Participante'
+    userName: string = 'Participante',
+    liveKitToken?: string
 ) {
     // --- Refactored: useMediaStream ---
     const { stream: localStream, error: mediaError, toggleMic: toggleMicStream, toggleCamera: toggleCameraStream, switchDevice } = useMediaStream({
@@ -44,6 +52,14 @@ export function useWebRTC(
     }, isJoined)
 
     const [peers, setPeers] = useState<PeerData[]>([])
+    const [userCount, setUserCount] = useState(0)
+    const [sharingUserId, setSharingUserId] = useState<string | null>(null)
+    const [hostId, setHostId] = useState<string | null>(null)
+    const [localHandRaised, setLocalHandRaised] = useState(false)
+    const [reactions, setReactions] = useState<{ id: string, emoji: string, userId: string }[]>([])
+    const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'failed' | 'disconnected'>('disconnected')
+
+    const roomRef = useRef<Room | null>(null)
     const metadataRef = useRef<any>({
         name: userName,
         role: userRole,
@@ -54,123 +70,131 @@ export function useWebRTC(
         audioBlocked: false,
         isHost: false
     })
-    const [userCount, setUserCount] = useState(0)
-    // const [mediaError, setMediaError] = useState<string | null>(null) // Handled by hook
-    const iceServersRef = useRef<any[]>([
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' }
-    ])
 
-    const [localHandRaised, setLocalHandRaised] = useState(false)
-    const [reactions, setReactions] = useState<{ id: string, emoji: string, userId: string }[]>([])
-
-    // const channelRef = useRef<RealtimeChannel | null>(null) // Handled by hook
-    const audioContextRef = useRef<AudioContext | null>(null)
-    const originalMicTrackRef = useRef<MediaStreamTrack | null>(null)
-    const currentAudioTrackRef = useRef<MediaStreamTrack | null>(null)
-    const mixedAudioTrackRef = useRef<MediaStreamTrack | null>(null)
-    const screenVideoTrackRef = useRef<MediaStreamTrack | null>(null)
-
-    const [hostId, setHostId] = useState<string | null>(null)
     const peersRef = useRef<Map<string, PeerData>>(new Map())
-    const [sharingUserId, setSharingUserId] = useState<string | null>(null)
-
-    // Capture references for legacy mixing logic (Ideally move to useMediaStream too later)
-    useEffect(() => {
-        if (localStream) {
-            originalMicTrackRef.current = localStream.getAudioTracks()[0]
-            currentAudioTrackRef.current = localStream.getAudioTracks()[0]
-        }
-    }, [localStream])
-
-    // Legacy host fetch (Keep for now)
-    useEffect(() => {
-        if (!roomId || !isJoined) return
-        createClient().from('meetings').select('host_id').eq('id', roomId).single().then(({ data }) => {
-            if (data?.host_id) {
-                setHostId(data.host_id)
-                metadataRef.current.isHost = data.host_id === userId
-            }
-        })
-        fetch('/api/turn').then(r => r.json()).then(d => { if (d.iceServers) iceServersRef.current = d.iceServers }).catch(e => { })
-    }, [roomId, isJoined, userId])
-
-    // --- Refactored: useSignaling ---
-    // We need to define callbacks *before* initializing the hook if they depend on state
-    // BUT useSignaling needs to be called at the top level.
-    // So we use a ref or stable callbacks.
-
-    // Force Opus to Music Mode
-    const optimizeSdp = (sdp: string) => {
-        try {
-            return sdp.replace(/a=fmtp:(\d+) (.+)/g, (match, pt, params) => {
-                if (sdp.includes(`a=rtpmap:${pt} opus/48000/2`)) {
-                    return `a=fmtp:${pt} ${params};stereo=1;sprop-stereo=1;maxaveragebitrate=510000;useinbandfec=1;cbr=1`
-                }
-                return match
-            })
-        } catch (e) { return sdp }
-    }
 
     const syncToState = useCallback(() => {
         setPeers(Array.from(peersRef.current.values()))
     }, [])
 
-    const updatePeerData = useCallback((id: string, patchOrFn: Partial<PeerData> | ((prev: PeerData | undefined) => Partial<PeerData>)) => {
-        const existing = peersRef.current.get(id)
-        if (existing) {
-            const patch = typeof patchOrFn === 'function' ? patchOrFn(existing) : patchOrFn
-            peersRef.current.set(id, { ...existing, ...patch })
+    // --- LiveKit Room Connection ---
+    useEffect(() => {
+        if (!isJoined || !liveKitToken || !roomId) return
+
+        const room = new Room({
+            adaptiveStream: true,
+            dynacast: true,
+            publishDefaults: {
+                videoEncoding: {
+                    maxBitrate: 1_500_000,
+                    maxFramerate: 30,
+                },
+                screenShareEncoding: {
+                    maxBitrate: 3_000_000,
+                    maxFramerate: 30,
+                }
+            }
+        })
+
+        roomRef.current = room
+
+        const handleParticipantConnected = (participant: RemoteParticipant) => {
+            console.log('Participant connected:', participant.identity)
+            setUserCount(room.remoteParticipants.size + 1)
+        }
+
+        const handleParticipantDisconnected = (participant: RemoteParticipant) => {
+            console.log('Participant disconnected:', participant.identity)
+            peersRef.current.delete(participant.identity)
+            peersRef.current.delete(`${participant.identity}-presentation`)
+            setUserCount(room.remoteParticipants.size + 1)
             syncToState()
         }
-    }, [syncToState])
 
-    // Forward declarations for signaling callbacks
-    const handleSignal = useCallback((payload: any) => {
-        const { sender, signal, target, role: r, name: n } = payload
-        if (target !== userId) return
+        const handleTrackSubscribed = (
+            track: RemoteTrack,
+            publication: RemoteTrackPublication,
+            participant: RemoteParticipant
+        ) => {
+            const userId = participant.identity
+            const isScreen = publication.source === Track.Source.ScreenShare
 
-        const existing = peersRef.current.get(sender)
-        if (existing) {
-            existing.lastSignalTime = Date.now();
-            if (existing.peer && !existing.peer.destroyed) existing.peer.signal(signal)
-        } else if (signal.type === 'offer') {
-            // Need to create peer here. We need access to createPeer function.
-            // Using a ref to access createPeer to avoid dependency cycle if defined later?
-            // Actually, we can define createPeer first using a ref for the signaling sender.
-            // OR we can use useSignaling but pass the event handlers that call createPeer.
-            // Let's defer this specific call to a "Coordinator" effect or keep createPeer inside.
-
-            // Allow creating peer from here.
-            createNewPeer(sender, false, localStream, r || 'participant', n || 'Participante', signal)
-        }
-    }, [userId, localStream]) // Added deps
-
-    // Signaling Callback Handlers
-    const handleShareStarted = useCallback((payload: any) => setSharingUserId(payload.sender), [])
-
-    const handleShareEnded = useCallback((payload: any) => {
-        const { sender } = payload
-        peersRef.current.delete(`${sender}-presentation`)
-        const actualPeer = peersRef.current.get(sender)
-        if (actualPeer) {
-            if (actualPeer.screenStream) {
-                actualPeer.screenStream.getTracks().forEach(t => t.stop())
-                actualPeer.screenStream = undefined
+            const peerId = isScreen ? `${userId}-presentation` : userId
+            const existing = peersRef.current.get(peerId) || {
+                userId,
+                role: 'participant', // Will be updated by metadata
+                connectionState: 'connected',
+                isPresentation: isScreen
             }
-            // Restore mixed/main stream logic would go here
+
+            if (track.kind === Track.Kind.Video) {
+                const stream = new MediaStream([track.mediaStreamTrack])
+                if (isScreen) {
+                    existing.screenStream = stream
+                    setSharingUserId(userId)
+                } else {
+                    existing.stream = stream
+                }
+            }
+
+            peersRef.current.set(peerId, existing)
+            syncToState()
         }
-        setSharingUserId(null); syncToState()
-    }, [syncToState])
 
+        const handleTrackUnsubscribed = (
+            track: RemoteTrack,
+            publication: RemoteTrackPublication,
+            participant: RemoteParticipant
+        ) => {
+            if (publication.source === Track.Source.ScreenShare) {
+                peersRef.current.delete(`${participant.identity}-presentation`)
+                if (sharingUserId === participant.identity) setSharingUserId(null)
+            }
+            syncToState()
+        }
+
+        room
+            .on(RoomEvent.ParticipantConnected, handleParticipantConnected)
+            .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
+            .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
+            .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
+            .on(RoomEvent.Disconnected, () => setConnectionState('disconnected'))
+            .on(RoomEvent.Reconnecting, () => setConnectionState('connecting'))
+            .on(RoomEvent.Reconnected, () => setConnectionState('connected'))
+
+        const connect = async () => {
+            try {
+                setConnectionState('connecting')
+                const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL!
+                await room.connect(wsUrl, liveKitToken)
+                setConnectionState('connected')
+
+                // Publish local tracks
+                if (localStream) {
+                    const audioTrack = localStream.getAudioTracks()[0]
+                    const videoTrack = localStream.getVideoTracks()[0]
+
+                    if (audioTrack) await room.localParticipant.publishTrack(audioTrack, { name: 'audio' })
+                    if (videoTrack) await room.localParticipant.publishTrack(videoTrack, { name: 'video' })
+                }
+
+                setUserCount(room.remoteParticipants.size + 1)
+            } catch (error) {
+                console.error('Failed to connect to LiveKit room:', error)
+                setConnectionState('failed')
+            }
+        }
+
+        connect()
+
+        return () => {
+            room.disconnect()
+        }
+    }, [isJoined, liveKitToken, roomId, localStream])
+
+    // --- Signaling & Presence Logic (Metadata) ---
     const handleRoomEvent = useCallback((event: any) => {
-        // Ignore my own events
         if (event.created_by === userId) return
-
         const type = event.type
         const data = event.payload || {}
 
@@ -179,12 +203,9 @@ export function useWebRTC(
                 alert('Você foi removido da reunião pelo administrador.')
                 window.location.href = '/dashboard'
             } else if (type === 'MUTE') {
-                toggleMicStream(false) // Use hook
+                toggleMicStream(false)
                 window.dispatchEvent(new CustomEvent('admin-mute'))
             } else if (type === 'BLOCK_AUDIO') {
-                // updateMetadata not available yet, need to fix architecture to circular dep
-                // For now, assume metadataRef is updated via prop sync or independent state
-                // We'll update the Ref directly here as a fallback or use a setter if exposed
                 metadataRef.current.audioBlocked = true
                 toggleMicStream(false)
                 alert('Seu áudio foi bloqueado pelo anfitrião.')
@@ -195,7 +216,6 @@ export function useWebRTC(
                 metadataRef.current.role = data.role
                 if (data.role !== 'interpreter') metadataRef.current.language = 'floor'
             }
-            // Trigger metadata update to channel
             signaling?.trackMetadata(metadataRef.current)
         }
 
@@ -205,48 +225,47 @@ export function useWebRTC(
     }, [userId, toggleMicStream])
 
     const handlePresenceSync = useCallback((users: string[], state: any) => {
-        setUserCount(users.length)
         let changed = false
-
-        // Remove disconnected
-        peersRef.current.forEach((p, id) => {
-            if (id !== userId && !id.endsWith('-presentation') && !users.includes(id)) {
-                p.peer.destroy()
-                peersRef.current.delete(id)
-                peersRef.current.delete(`${id}-presentation`)
-                changed = true
-            }
-        })
-
-        // Add new
         users.forEach(remoteId => {
+            if (remoteId === userId) return
             const remoteData = (state[remoteId] as any[])?.[0]
-            if (remoteId !== userId && !peersRef.current.has(remoteId)) {
-                createNewPeer(remoteId, userId > remoteId, localStream, remoteData?.role || 'participant', remoteData?.name || 'Participante', null)
-                changed = true
-            } else if (remoteId !== userId && peersRef.current.has(remoteId)) {
-                // Update existing peer data
-                const p = peersRef.current.get(remoteId)!
+            const existing = peersRef.current.get(remoteId)
+
+            if (existing) {
                 let peerChanged = false
-                if (remoteData?.name && p.name !== remoteData.name) { p.name = remoteData.name; peerChanged = true }
-                if (p.micOn !== remoteData?.micOn) { p.micOn = remoteData?.micOn; peerChanged = true }
-                if (p.cameraOn !== remoteData?.cameraOn) { p.cameraOn = remoteData?.cameraOn; peerChanged = true }
-                if (p.handRaised !== remoteData?.handRaised) { p.handRaised = remoteData?.handRaised; peerChanged = true }
-                if (p.language !== remoteData?.language) { p.language = remoteData?.language; peerChanged = true }
-                if (p.role !== remoteData?.role) { p.role = remoteData?.role; peerChanged = true }
-                if (p.isHost !== remoteData?.isHost) { p.isHost = remoteData?.isHost; peerChanged = true }
-                if (p.audioBlocked !== remoteData?.audioBlocked) { p.audioBlocked = remoteData?.audioBlocked; peerChanged = true }
+                if (remoteData?.name && existing.name !== remoteData.name) { existing.name = remoteData.name; peerChanged = true }
+                if (existing.micOn !== remoteData?.micOn) { existing.micOn = remoteData?.micOn; peerChanged = true }
+                if (existing.cameraOn !== remoteData?.cameraOn) { existing.cameraOn = remoteData?.cameraOn; peerChanged = true }
+                if (existing.handRaised !== remoteData?.handRaised) { existing.handRaised = remoteData?.handRaised; peerChanged = true }
+                if (existing.language !== remoteData?.language) { existing.language = remoteData?.language; peerChanged = true }
+                if (existing.role !== remoteData?.role) { existing.role = remoteData?.role; peerChanged = true }
+                if (existing.isHost !== remoteData?.isHost) { existing.isHost = remoteData?.isHost; peerChanged = true }
+                if (existing.audioBlocked !== remoteData?.audioBlocked) { existing.audioBlocked = remoteData?.audioBlocked; peerChanged = true }
                 if (peerChanged) changed = true
+            } else {
+                // Initialize if not present (waiting for tracks)
+                peersRef.current.set(remoteId, {
+                    userId: remoteId,
+                    name: remoteData?.name || 'Participante',
+                    role: remoteData?.role || 'participant',
+                    micOn: remoteData?.micOn,
+                    cameraOn: remoteData?.cameraOn,
+                    handRaised: remoteData?.handRaised,
+                    language: remoteData?.language,
+                    isHost: remoteData?.isHost,
+                    audioBlocked: remoteData?.audioBlocked,
+                    connectionState: 'connecting'
+                })
+                changed = true
             }
         })
         if (changed) syncToState()
-    }, [userId, localStream, syncToState]) // createNewPeer dependency handled by closure? No, need to be stable.
+    }, [userId, syncToState])
 
-    // Initialize Signaling Hook
     const signaling = useSignaling(roomId, userId, metadataRef.current, {
-        onSignal: handleSignal,
-        onShareStarted: handleShareStarted,
-        onShareEnded: handleShareEnded,
+        onSignal: () => { }, // P2P Signaling no longer needed
+        onShareStarted: (payload) => setSharingUserId(payload.sender),
+        onShareEnded: () => setSharingUserId(null),
         onHostPromoted: (payload) => setHostId(payload.newHostId),
         onReaction: (payload) => {
             const { emoji, sender } = payload
@@ -258,113 +277,39 @@ export function useWebRTC(
         onPresenceSync: handlePresenceSync
     })
 
-    // Create Peer Logic (Re-implemented)
-    // We define this *after* signaling so we can use signaling.sendSignal
-    // But handleSignal (defined before) needs to call it. 
-    // Typescript allows hoisting of functions if defined with 'function', but inside hook we use const.
-    // Solution: Use a Ref for the creating logic or move createPeer to a stable callback that uses a ref for signaling?
-
-    // Actually, `signaling` object is returned from hook. 
-    // We can't use `signaling.sendSignal` inside `handleSignal` if `handleSignal` is passed TO `useSignaling`.
-    // Circular dependency.
-
-    // FIX: `useSignaling` allows `events` to be stable, but implementation inside `useSignaling` calls them.
-    // The `signaling` return value has commands.
-    // We can use a Ref for `signaling` to break the circle.
-
-    const signalingRef = useRef<any>(null)
-    useEffect(() => { signalingRef.current = signaling }, [signaling])
-
-    const createNewPeer = (targetUserId: string, initiator: boolean, stream: MediaStream | null, targetRole: string, targetName: string, signalToAnswer: any | null) => {
-        if (peersRef.current.get(targetUserId)) return peersRef.current.get(targetUserId)!.peer
-
-        const peer = new SimplePeer({
-            initiator,
-            trickle: true,
-            stream: stream || undefined,
-            config: { iceServers: iceServersRef.current },
-            sdpTransform: optimizeSdp
-        })
-
-        peer.on('signal', (signal) => {
-            signalingRef.current?.sendSignal({ target: targetUserId, sender: userId, signal, role: userRole, name: userName })
-        })
-
-        peer.on('connect', () => { updatePeerData(targetUserId, { connectionState: 'connected' }) })
-
-        peer.on('stream', (remoteStream) => {
-            updatePeerData(targetUserId, (prev) => {
-                // FORCE UPDATE MAIN STREAM (Fix for flickering/black screen)
-                // We ignore screenStream logic for now as it was causing issues with stream replacement
-                return { stream: remoteStream, connectionState: 'connected' }
-            })
-        })
-
-        peer.on('error', (err) => {
-            console.error(`Peer error ${targetUserId}:`, err)
-            peer.destroy()
-        })
-
-        peer.on('close', () => {
-            const p = peersRef.current.get(targetUserId)
-            if (p) { p.peer.destroy(); peersRef.current.delete(targetUserId); peersRef.current.delete(`${targetUserId}-presentation`); syncToState() }
-        })
-
-        peersRef.current.set(targetUserId, { peer, userId: targetUserId, role: targetRole, name: targetName, connectionState: 'connecting', lastSignalTime: Date.now() })
-
-        if (signalToAnswer && !initiator) {
-            peer.signal(signalToAnswer)
-        }
-
-        syncToState()
-        return peer
-    }
-
-    // Update local stream in peers when it changes
-    useEffect(() => {
-        if (!localStream) return
-        peersRef.current.forEach(p => {
-            localStream.getTracks().forEach(track => {
-                try {
-                    // Check if track is already in the peer connection's senders
-                    const senders = (p.peer as any)._pc.getSenders()
-                    const alreadyHasTrack = senders.some((s: any) => s.track === track)
-
-                    if (!alreadyHasTrack) {
-                        p.peer.addTrack(track, localStream)
-                    }
-                } catch (e) {
-                    // console.warn("Could not add track to peer", e)
-                }
-            })
-        })
-    }, [localStream])
-
-    // Cleanup interval
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const now = Date.now()
-            let changed = false
-            peersRef.current.forEach((p, id) => {
-                if (p.connectionState === 'connecting' && p.lastSignalTime && (now - p.lastSignalTime > 45000)) {
-                    p.peer.destroy(); peersRef.current.delete(id); changed = true
-                }
-            })
-            if (changed) syncToState()
-        }, 10000)
-        return () => clearInterval(interval)
-    }, [syncToState])
-
-
-    // Metadata Updates
     const updateMetadata = useCallback((patch: any) => {
         metadataRef.current = { ...metadataRef.current, ...patch }
         signaling?.trackMetadata(metadataRef.current)
     }, [signaling])
 
-    // Public API Actions
+    // --- Restaurando Funções: Share Screen ---
+    const shareScreen = async () => {
+        if (!roomRef.current) return
+        try {
+            await roomRef.current.localParticipant.setScreenShareEnabled(true)
+            signaling?.broadcastEvent('share-started', { sender: userId })
+        } catch (error) {
+            console.error('Failed to share screen:', error)
+        }
+    }
+
+    const stopScreenShare = async () => {
+        if (!roomRef.current) return
+        try {
+            await roomRef.current.localParticipant.setScreenShareEnabled(false)
+            signaling?.broadcastEvent('share-ended', { sender: userId })
+        } catch (error) {
+            console.error('Failed to stop screen share:', error)
+        }
+    }
+
+    const shareVideoFile = async (file: File) => {
+        // Implementation for video file sharing could be added here
+        console.warn('shareVideoFile not yet implemented for LiveKit')
+    }
+
     const promoteToHost = async (newHostId: string) => {
-        if (hostId !== userId) return
+        if (!metadataRef.current.isHost) return
         await createClient().from('meetings').update({ host_id: newHostId }).eq('id', roomId)
         signaling?.broadcastEvent('host-promoted', { newHostId })
         setHostId(newHostId)
@@ -378,9 +323,6 @@ export function useWebRTC(
         updateMetadata({ handRaised: newState })
     }
 
-    // Admin Actions (using supabase direct or signaling?)
-    // The previous implementation used 'room_events' table inserts.
-    // We should keep that consistent.
     const supabase = createClient()
     const kickUser = async (targetId: string) => await supabase.from('room_events').insert({ meeting_id: roomId, type: 'KICK', payload: { targetId } })
     const updateUserRole = async (targetId: string, newRole: string) => await supabase.from('room_events').insert({ meeting_id: roomId, type: 'SET_ROLE', payload: { targetId, role: newRole } })
@@ -389,24 +331,9 @@ export function useWebRTC(
     const blockUserAudio = async (targetId: string) => await supabase.from('room_events').insert({ meeting_id: roomId, type: 'BLOCK_AUDIO', payload: { targetId } })
     const unblockUserAudio = async (targetId: string) => await supabase.from('room_events').insert({ meeting_id: roomId, type: 'UNBLOCK_AUDIO', payload: { targetId } })
 
-    // Missing logic: shareScreen / stopScreenShare / shareVideoFile
-    // These are complex and dependent on localStream mixing.
-    // For now, I'll provide placeholders or simplified versions to get the build passing, 
-    // as the main request was "Break the God Object". 
-    // Detailed re-implementation of screen share needs to be careful.
-
-    const shareScreen = async () => { console.warn("Screen share refactored temporarily"); }
-    const stopScreenShare = () => { }
-    const shareVideoFile = async (file: File) => { }
-
     const reconnect = useCallback(() => {
-        peersRef.current.forEach(p => p.peer.destroy())
-        peersRef.current.clear()
-        syncToState()
-        // Signal re-join? usage of useSignaling might handle it if key changes?
-        // Reuse logic?
-        window.location.reload() // Brute force reconnect for now
-    }, [syncToState])
+        window.location.reload()
+    }, [])
 
     return {
         localStream,
@@ -437,6 +364,6 @@ export function useWebRTC(
         hostId,
         isHost: hostId === userId,
         reconnect,
-        connectionState: signaling?.connectionState || 'disconnected'
+        connectionState
     }
 }
