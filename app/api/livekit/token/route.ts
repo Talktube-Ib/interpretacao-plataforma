@@ -28,7 +28,12 @@ export async function GET(req: NextRequest) {
         console.error('LIVEKIT CONFIG ERROR: Missing environment variables')
         return NextResponse.json({
             error: 'Server misconfigured',
-            details: `Missing: ${[!apiKey && 'API_KEY', !apiSecret && 'API_SECRET', !wsUrl && 'WS_URL'].filter(Boolean).join(', ')}`
+            details: `Missing: ${[!apiKey && 'API_KEY', !apiSecret && 'API_SECRET', !wsUrl && 'WS_URL'].filter(Boolean).join(', ')}`,
+            config: {
+                apiKeyLength: apiKey?.length || 0,
+                apiSecretLength: apiSecret?.length || 0,
+                hasWsUrl: !!wsUrl
+            }
         }, { status: 500 })
     }
 
@@ -36,12 +41,20 @@ export async function GET(req: NextRequest) {
         const at = new AccessToken(apiKey, apiSecret, { identity: username })
         at.addGrant({ roomJoin: true, room: room })
         const token = await at.toJwt()
-        return NextResponse.json({ token })
+        return NextResponse.json({
+            token,
+            serverInfo: {
+                apiKeyLength: apiKey.length,
+                apiSecretLength: apiSecret.length
+            }
+        })
     } catch (error) {
         console.error('Error generating LiveKit token:', error)
         return NextResponse.json({
             error: 'Failed to generate token',
-            details: error instanceof Error ? error.message : String(error)
+            details: error instanceof Error ? error.message : String(error),
+            apiKeyLength: apiKey?.length || 0,
+            apiSecretLength: apiSecret?.length || 0
         }, { status: 500 })
     }
 }

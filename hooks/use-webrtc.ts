@@ -61,6 +61,7 @@ export function useWebRTC(
     const [localHandRaised, setLocalHandRaised] = useState(false)
     const [reactions, setReactions] = useState<{ id: string, emoji: string, userId: string }[]>([])
     const [mediaStatus, setMediaStatus] = useState<'connecting' | 'connected' | 'failed' | 'disconnected'>('disconnected')
+    const [lastError, setLastError] = useState<string | null>(null)
 
     const roomRef = useRef<Room | null>(null)
     const metadataRef = useRef<any>({
@@ -230,6 +231,7 @@ export function useWebRTC(
             } catch (error) {
                 console.error('--- LiveKit Connection Failed ---')
                 console.error('Error detail:', error)
+                setLastError(error instanceof Error ? error.message : String(error))
                 setMediaStatus('failed')
                 setUserCount(1) // Always count self
             }
@@ -454,6 +456,8 @@ export function useWebRTC(
         isHost: hostId === userId,
         reconnect,
         mediaStatus,
-        signalingStatus: signaling?.connectionState || 'disconnected'
+        signalingStatus: signaling?.connectionState || 'disconnected',
+        lastError,
+        setLastError
     }
 }

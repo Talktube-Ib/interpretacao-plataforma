@@ -266,9 +266,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 const data = await resp.json()
                 if (data.token) {
                     setLiveKitToken(data.token)
+                    console.log('--- Token Metadata ---', data.serverInfo)
+                } else {
+                    console.error("Token API Error:", data)
+                    setLastError(`Token Error: ${data.details || data.error} (API Key Len: ${data.apiKeyLength || 0})`)
                 }
             } catch (error) {
                 console.error("Failed to fetch LiveKit token for main room:", error)
+                setLastError(`Network Error fetching token: ${error instanceof Error ? error.message : String(error)}`)
             }
         }
         fetchToken()
@@ -308,7 +313,9 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         unblockUserAudio,
         reconnect,
         mediaStatus,
-        signalingStatus
+        signalingStatus,
+        lastError,
+        setLastError
     } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined)
 
 
@@ -1319,6 +1326,43 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     <PhoneOff className="h-5 w-5 mr-3" /> {t('room.leave')}
                 </Button>
             </div >
+
+            {/* Debug Panel (Requested by User) */}
+            <div className="fixed bottom-24 left-4 z-[9999] pointer-events-none">
+                <div className="bg-black/80 backdrop-blur-md border border-white/20 p-3 rounded-lg text-[10px] text-white/70 max-w-[250px] pointer-events-auto shadow-2xl">
+                    <p className="font-bold border-b border-white/10 mb-1 flex justify-between items-center pb-1">
+                        <span className="flex items-center gap-1"><Wifi className="h-3 w-3" /> DEBUG CONEXÃO</span>
+                        <span className={cn(
+                            "w-2 h-2 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]",
+                            mediaStatus === 'connected' ? "bg-green-500 shadow-green-500/50" : (mediaStatus === 'failed' ? "bg-red-500 shadow-red-500/50" : "bg-yellow-500 shadow-yellow-500/50")
+                        )}></span>
+                    </p>
+                    <div className="space-y-1">
+                        <p className="flex justify-between">Status Mídia: <span className="text-white font-mono">{mediaStatus}</span></p>
+                        <p className="flex justify-between">Signaling: <span className="text-white font-mono">{signalingStatus}</span></p>
+                        <p className="flex justify-between text-[9px]">LiveKit Token: <span className={cn("font-mono", liveKitToken ? "text-green-400" : "text-red-400")}>{liveKitToken ? "OK (Set)" : "MISSING"}</span></p>
+                        <p className="flex justify-between border-t border-white/5 pt-1 mt-1 opacity-60 italic">Session: {sessionUserId?.split('_')[1] || '---'}</p>
+                    </div>
+                    {lastError && (
+                        <div className="mt-2 text-red-200 bg-red-900/40 p-2 rounded border border-red-500/30 break-words font-mono text-[9px]">
+                            <p className="font-bold mb-0.5 flex items-center gap-1 uppercase"><AlertTriangle className="h-2.5 w-2.5" /> Erro:</p>
+                            {lastError}
+                        </div>
+                    )}
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-3 w-full py-1.5 bg-white/10 hover:bg-white/20 rounded text-[9px] uppercase tracking-wider transition-colors font-bold border border-white/5"
+                    >
+                        Recarregar Página
+                    </button>
+                    <button
+                        onClick={() => setLastError(null)}
+                        className="mt-1 w-full py-1 text-[8px] opacity-40 hover:opacity-100 transition-opacity underline"
+                    >
+                        Limpar Log de Erro
+                    </button>
+                </div>
+            </div>
 
             {/* Upsell Modal for Guests */}
             <UpsellModal isOpen={showUpsell} onOpenChange={setShowUpsell} />
