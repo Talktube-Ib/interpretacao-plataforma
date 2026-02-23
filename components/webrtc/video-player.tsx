@@ -19,9 +19,12 @@ interface VideoPlayerProps {
     isLocalMuted?: boolean
     individualVolume?: number
     onIndividualVolumeChange?: (volume: number) => void
+    onPin?: () => void
+    isPinned?: boolean
+    showPinButton?: boolean
 }
 
-export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer, isLocalMuted, individualVolume = 1, onIndividualVolumeChange }: VideoPlayerProps) {
+export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer, isLocalMuted, individualVolume = 1, onIndividualVolumeChange, onPin, isPinned, showPinButton = true }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
@@ -258,55 +261,99 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                 </>
             )}
 
-            {/* Volume Control Overlay (Fishbone) */}
+            {/* Volume Control Overlay (Fishbone + Slider) */}
             {onIndividualVolumeChange && (
-                <div className={cn(
-                    "absolute top-3 left-3 z-[110] flex items-center gap-1.5 transition-opacity duration-200 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 pointer-events-auto",
-                    (isSpeaking || individualVolume < 1) ? "opacity-100" : "opacity-40 group-hover:opacity-100"
-                )}>
+                <div
+                    onClick={(e) => e.stopPropagation()} // Prevent grid maximize click
+                    className={cn(
+                        "absolute top-3 left-3 z-[110] flex flex-col gap-2 transition-opacity duration-200 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 pointer-events-auto",
+                        (isSpeaking || individualVolume < 1) ? "opacity-100" : "opacity-40 group-hover:opacity-100"
+                    )}
+                >
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                onIndividualVolumeChange(individualVolume > 0 ? 0 : 1)
+                            }}
+                            className={cn(
+                                "p-1.5 rounded-lg transition-colors",
+                                individualVolume === 0 ? "text-red-500 bg-red-500/10" : "text-white hover:bg-white/10"
+                            )}
+                            title={individualVolume === 0 ? "Ativar Áudio Local" : "Mutar Áudio Local"}
+                        >
+                            {individualVolume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </button>
+
+                        <div className="flex items-end gap-[3px] h-4 px-1">
+                            {[1, 2, 3, 4, 5].map((level) => {
+                                const threshold = level * 0.2
+                                const isActive = individualVolume >= (threshold - 0.1)
+                                const height = `${level * 20}%`
+
+                                return (
+                                    <div
+                                        key={level}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            onIndividualVolumeChange(threshold)
+                                        }}
+                                        className={cn(
+                                            "w-[3px] rounded-full cursor-pointer transition-all hover:scale-y-125",
+                                            isActive ? "bg-[#06b6d4]" : "bg-white/20",
+                                            isSpeaking && isActive && "animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.5)]"
+                                        )}
+                                        style={{ height }}
+                                    />
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Volume Slider ("Bolinha") */}
+                    <div className="px-1.5 pb-1">
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={individualVolume}
+                            onChange={(e) => onIndividualVolumeChange(parseFloat(e.target.value))}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#06b6d4] hover:accent-[#06b6d4]/80"
+                            style={{
+                                background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${individualVolume * 100}%, rgba(255,255,255,0.2) ${individualVolume * 100}%, rgba(255,255,255,0.2) 100%)`
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Pin / Maximize Button */}
+            {onPin && showPinButton && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
-                            onIndividualVolumeChange(individualVolume > 0 ? 0 : 1)
+                            onPin()
                         }}
                         className={cn(
-                            "p-1.5 rounded-lg transition-colors",
-                            individualVolume === 0 ? "text-red-500 bg-red-500/10" : "text-white hover:bg-white/10"
+                            "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-white font-bold text-xs uppercase tracking-widest transition-all",
+                            isPinned ? "bg-[#06b6d4] border-[#06b6d4]/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]" : "bg-black/40 hover:bg-black/60 active:scale-95"
                         )}
-                        title={individualVolume === 0 ? "Ativar Áudio Local" : "Mutar Áudio Local"}
                     >
-                        {individualVolume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        {isPinned ? "Desafixar" : "Fixar Vídeo"}
                     </button>
-
-                    <div className="flex items-end gap-[3px] h-4 px-1">
-                        {[1, 2, 3, 4, 5].map((level) => {
-                            const threshold = level * 0.2
-                            const isActive = individualVolume >= (threshold - 0.1)
-                            const height = `${level * 20}%`
-
-                            return (
-                                <div
-                                    key={level}
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        onIndividualVolumeChange(threshold)
-                                    }}
-                                    className={cn(
-                                        "w-[3px] rounded-full cursor-pointer transition-all hover:scale-y-125",
-                                        isActive ? "bg-[#06b6d4]" : "bg-white/20",
-                                        isSpeaking && isActive && "animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.5)]"
-                                    )}
-                                    style={{ height }}
-                                />
-                            )
-                        })}
-                    </div>
                 </div>
             )}
 
             {/* Mute Peer Button (Host Only or Local Mute) */}
             {onMutePeer && (
-                <div className="absolute top-3 right-3 z-[110] opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-3 right-3 z-[110] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-auto"
+                >
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
@@ -384,7 +431,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
     )
 }
 
-export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onSpeakingChange }: VideoPlayerProps) {
+export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onSpeakingChange, onPin, isPinned, showPinButton = true }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
@@ -400,10 +447,10 @@ export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, 
         )}>
             {cameraOff || !stream ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900">
-                    <div className="h-20 w-20 rounded-full bg-zinc-800 flex items-center justify-center">
-                        <User className="h-10 w-10 text-zinc-600" />
+                    <div className="h-14 w-14 md:h-20 md:w-20 rounded-full bg-zinc-800 flex items-center justify-center">
+                        <User className="h-7 w-7 md:h-10 md:w-10 text-zinc-600" />
                     </div>
-                    <span className="mt-3 text-zinc-400 text-sm font-medium tracking-tight">Você</span>
+                    <span className="mt-2 md:mt-3 text-zinc-400 text-xs md:text-sm font-medium tracking-tight">Você</span>
                 </div>
             ) : (
                 <video
@@ -412,26 +459,45 @@ export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, 
                     playsInline
                     muted
                     controls={false}
-                    className="w-full h-full object-contain bg-zinc-950 mirror" // Changed to contain
+                    className="w-full h-full object-contain bg-zinc-950 mirror"
                 />
             )}
 
-            <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 right-3 md:right-6 flex items-center justify-between">
+            {/* Pin / Maximize Button */}
+            {onPin && showPinButton && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation()
+                            onPin()
+                        }}
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-white font-bold text-xs uppercase tracking-widest transition-all",
+                            isPinned ? "bg-[#06b6d4] border-[#06b6d4]/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]" : "bg-black/40 hover:bg-black/60 active:scale-95"
+                        )}
+                    >
+                        <Maximize2 className="h-3.5 w-3.5" />
+                        {isPinned ? "Desafixar" : "Fixar Vídeo"}
+                    </button>
+                </div>
+            )}
+
+            <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 right-3 md:right-6 flex items-center justify-between pointer-events-none">
                 <div className="flex items-center gap-2 md:gap-3 bg-black/40 backdrop-blur-xl px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl border border-white/10">
-                    <span className="text-white text-[10px] md:text-sm font-bold tracking-tight">Você</span>
+                    <span className="text-white text-[9px] md:text-sm font-bold tracking-tight">Você</span>
                     {(role?.toLowerCase().includes('interpreter') || role?.toLowerCase().includes('admin')) && (
                         <div className="bg-[#06b6d4] h-1 w-1 md:h-1.5 md:w-1.5 rounded-full animate-pulse" />
                     )}
                 </div>
-                <div className="flex gap-1.5 md:gap-2">
+                <div className="flex gap-1 md:gap-2">
                     {handRaised && (
-                        <div className="bg-amber-500/20 backdrop-blur-xl border border-amber-500/30 p-1.5 md:p-2.5 rounded-xl md:rounded-2xl">
-                            <Hand className="h-3.5 w-3.5 md:h-4 md:w-4 text-amber-500 animate-bounce" />
+                        <div className="bg-amber-500/20 backdrop-blur-xl border border-amber-500/30 p-1 md:p-2.5 rounded-lg md:rounded-2xl">
+                            <Hand className="h-3 md:h-4 w-3 md:w-4 text-amber-500 animate-bounce" />
                         </div>
                     )}
                     {micOff && (
-                        <div className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 p-1.5 md:p-2.5 rounded-xl md:rounded-2xl">
-                            <MicOff className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-500" />
+                        <div className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 p-1 md:p-2.5 rounded-lg md:rounded-2xl">
+                            <MicOff className="h-3 md:h-4 w-3 md:w-4 text-red-500" />
                         </div>
                     )}
                 </div>

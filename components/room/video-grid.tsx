@@ -187,13 +187,15 @@ export function VideoGrid({
                                 micOff={!micOn}
                                 cameraOff={!cameraOn}
                                 handRaised={handRaised}
+                                onPin={() => onSpeakerChange('local')}
+                                isPinned={pinnedSpeakerId === 'local'}
+                                showPinButton={true}
                             />
                         </div>
                         {otherItems.map(item => (
                             <div
                                 key={item.id}
-                                className="w-28 md:w-full shrink-0 snap-start aspect-video cursor-pointer transition-transform hover:scale-105 rounded-xl overflow-hidden shadow-sm border border-white/10"
-                                onClick={() => onSpeakerChange(item.id)}
+                                className="w-32 md:w-full shrink-0 snap-start aspect-video rounded-xl overflow-hidden shadow-sm border border-white/10 group relative"
                             >
                                 <RemoteVideo
                                     stream={item.stream}
@@ -211,6 +213,9 @@ export function VideoGrid({
                                     individualVolume={localPeerVolumes[item.userId] ?? 1}
                                     onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(item.userId, v) : undefined}
                                     connectionState={item.connectionState}
+                                    onPin={() => onSpeakerChange(item.id)}
+                                    isPinned={pinnedSpeakerId === item.id}
+                                    showPinButton={true}
                                 />
                             </div>
                         ))}
@@ -220,13 +225,11 @@ export function VideoGrid({
                 // --- GALLERY VIEW (Default) ---
                 <div className={cn(
                     "grid gap-2 md:gap-4 w-full h-full auto-rows-fr transition-all",
-                    // Custom Responsive Grid Logic
-                    // Custom Responsive Grid Logic
                     totalItems <= 1 ? "grid-cols-1" :
                         totalItems === 2 ? "grid-cols-1 sm:grid-cols-2" :
-                            totalItems === 3 ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3" :
+                            totalItems === 3 ? "grid-cols-2 lg:grid-cols-3" :
                                 totalItems === 4 ? "grid-cols-2 md:grid-cols-2" :
-                                    "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                                    "grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
                 )}>
                     {/* Local Video - Always first? Or last? Let's put first for now */}
                     <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative">
@@ -237,6 +240,9 @@ export function VideoGrid({
                             micOff={!micOn}
                             cameraOff={!cameraOn}
                             handRaised={handRaised}
+                            onPin={() => onSpeakerChange('local')}
+                            isPinned={pinnedSpeakerId === 'local'}
+                            showPinButton={true}
                         />
                     </motion.div>
 
@@ -249,10 +255,9 @@ export function VideoGrid({
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className={cn(
-                                    "relative cursor-pointer transition-all",
+                                    "relative transition-all",
                                     pinnedSpeakerId === item.id ? "ring-2 ring-[#06b6d4] rounded-[2.5rem]" : ""
                                 )}
-                                onClick={() => onSpeakerChange(item.id)}
                             >
                                 <RemoteVideo
                                     stream={item.stream}
@@ -270,6 +275,9 @@ export function VideoGrid({
                                     individualVolume={localPeerVolumes[item.userId] ?? 1}
                                     onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(item.userId, v) : undefined}
                                     connectionState={item.connectionState}
+                                    onPin={() => onSpeakerChange(item.id)}
+                                    isPinned={pinnedSpeakerId === item.id}
+                                    showPinButton={true}
                                 />
                             </motion.div>
                         ))}
