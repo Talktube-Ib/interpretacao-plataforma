@@ -174,23 +174,39 @@ export function useWebRTC(
 
         const connect = async () => {
             try {
+                console.log('--- LiveKit Connection Attempt ---')
+                console.log('Room ID:', roomId)
+                console.log('Identity:', sessionUserId)
+                console.log('Token exists:', !!liveKitToken)
+
                 setMediaStatus('connecting')
                 const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL!
+                console.log('WS URL:', wsUrl)
+
                 await room.connect(wsUrl, liveKitToken)
+                console.log('--- LiveKit Connected Successfully ---')
                 setMediaStatus('connected')
 
                 // Publish local tracks
                 if (localStream) {
+                    console.log('Publishing local tracks...')
                     const audioTrack = localStream.getAudioTracks()[0]
                     const videoTrack = localStream.getVideoTracks()[0]
 
-                    if (audioTrack) await room.localParticipant.publishTrack(audioTrack, { name: 'audio' })
-                    if (videoTrack) await room.localParticipant.publishTrack(videoTrack, { name: 'video' })
+                    if (audioTrack) {
+                        const pub = await room.localParticipant.publishTrack(audioTrack, { name: 'audio' })
+                        console.log('Audio track published:', pub.trackSid)
+                    }
+                    if (videoTrack) {
+                        const pub = await room.localParticipant.publishTrack(videoTrack, { name: 'video' })
+                        console.log('Video track published:', pub.trackSid)
+                    }
                 }
 
                 setUserCount(room.remoteParticipants.size + 1)
             } catch (error) {
-                console.error('Failed to connect to LiveKit room:', error)
+                console.error('--- LiveKit Connection Failed ---')
+                console.error('Error detail:', error)
                 setMediaStatus('failed')
                 setUserCount(1) // Always count self
             }
@@ -199,9 +215,10 @@ export function useWebRTC(
         connect()
 
         return () => {
+            console.log('Cleaning up LiveKit room connection')
             room.disconnect()
         }
-    }, [isJoined, liveKitToken, roomId, localStream])
+    }, [isJoined, liveKitToken, roomId, localStream, sessionUserId])
 
     // --- Signaling & Presence Logic (Metadata) ---
     const handleRoomEvent = useCallback((event: any) => {
@@ -236,7 +253,23 @@ export function useWebRTC(
     }, [userId, toggleMicStream])
 
     const handlePresenceSync = useCallback((users: string[], state: any) => {
+        console.log('Presence Sync. Users in room:', users)
         let changed = false
+
+        // 1. Remove peers that are no longer in the presence list
+        const currentPeerIds = Array.from(peersRef.current.keys())
+        currentPeerIds.forEach(peerId => {
+            // Don't remove presentation tracks here, they are handled by LiveKit events
+            if (peerId.endsWith('-presentation')) return
+
+            if (!users.includes(peerId) && peerId !== sessionUserId) {
+                console.log('Removing ghost session:', peerId)
+                peersRef.current.delete(peerId)
+                changed = true
+            }
+        })
+
+        // 2. Add or update users that are in the presence list
         users.forEach(remoteSessionId => {
             if (remoteSessionId === sessionUserId) return
             const remoteData = (state[remoteSessionId] as any[])?.[0]
@@ -255,6 +288,7 @@ export function useWebRTC(
                 if (existing.audioBlocked !== remoteData?.audioBlocked) { existing.audioBlocked = remoteData?.audioBlocked; peerChanged = true }
                 if (peerChanged) changed = true
             } else {
+                console.log('Adding new session from presence:', remoteSessionId)
                 // Initialize if not present (waiting for tracks)
                 peersRef.current.set(remoteSessionId, {
                     userId: remoteId,
@@ -272,7 +306,7 @@ export function useWebRTC(
             }
         })
         if (changed) syncToState()
-    }, [userId, syncToState])
+    }, [sessionUserId, syncToState])
 
     const signaling = useSignaling(roomId, sessionUserId, metadataRef.current, {
         onSignal: () => { }, // P2P Signaling no longer needed
