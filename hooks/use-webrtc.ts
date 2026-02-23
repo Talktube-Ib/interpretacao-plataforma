@@ -31,6 +31,7 @@ interface PeerData {
     isHost?: boolean
     connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected'
     audioBlocked?: boolean
+    joinedAt?: number
 }
 
 export function useWebRTC(
@@ -106,12 +107,12 @@ export function useWebRTC(
         roomRef.current = room
 
         const handleParticipantConnected = (participant: RemoteParticipant) => {
-            console.log('Participant connected:', participant.identity)
+            console.log('--- SFU Event: Participant connected:', participant.identity)
             setUserCount(room.remoteParticipants.size + 1)
         }
 
         const handleParticipantDisconnected = (participant: RemoteParticipant) => {
-            console.log('Participant disconnected:', participant.identity)
+            console.log('--- SFU Event: Participant disconnected:', participant.identity)
             peersRef.current.delete(participant.identity)
             peersRef.current.delete(`${participant.identity}-presentation`)
             setUserCount(room.remoteParticipants.size + 1)
@@ -123,6 +124,7 @@ export function useWebRTC(
             publication: RemoteTrackPublication,
             participant: RemoteParticipant
         ) => {
+            console.log(`--- SFU Track Subscribed: ${track.kind} (${publication.source}) from ${participant.identity}`)
             const fullIdentity = participant.identity
             const userId = fullIdentity.split('_')[0]
             const isScreen = publication.source === Track.Source.ScreenShare
@@ -130,9 +132,10 @@ export function useWebRTC(
             const peerId = isScreen ? `${fullIdentity}-presentation` : fullIdentity
             const existing = peersRef.current.get(peerId) || {
                 userId,
-                role: 'participant', // Will be updated by metadata
+                role: 'participant',
                 connectionState: 'connected',
-                isPresentation: isScreen
+                isPresentation: isScreen,
+                joinedAt: Date.now()
             }
 
             if (track.kind === Track.Kind.Video) {
@@ -142,8 +145,13 @@ export function useWebRTC(
                     setSharingUserId(userId)
                 } else {
                     existing.stream = stream
+                    existing.cameraOn = true
                 }
                 existing.connectionState = 'connected'
+            }
+
+            if (track.kind === Track.Kind.Audio) {
+                existing.micOn = true
             }
 
             peersRef.current.set(peerId, existing)
@@ -168,9 +176,24 @@ export function useWebRTC(
             .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
             .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
             .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
-            .on(RoomEvent.Disconnected, () => setMediaStatus('disconnected'))
-            .on(RoomEvent.Reconnecting, () => setMediaStatus('connecting'))
-            .on(RoomEvent.Reconnected, () => setMediaStatus('connected'))
+            .on(RoomEvent.TrackPublished, (pub, participant) => {
+                console.log(`--- SFU Track Published: ${pub.kind} (${pub.source}) from ${participant.identity}`)
+            })
+            .on(RoomEvent.ConnectionStateChanged, (state) => {
+                console.log('--- SFU Room Connection State:', state)
+            })
+            .on(RoomEvent.Disconnected, (reason) => {
+                console.warn('--- SFU Room Disconnected:', reason)
+                setMediaStatus('disconnected')
+            })
+            .on(RoomEvent.Reconnecting, () => {
+                console.log('--- SFU Room Reconnecting...')
+                setMediaStatus('connecting')
+            })
+            .on(RoomEvent.Reconnected, () => {
+                console.log('--- SFU Room Reconnected')
+                setMediaStatus('connected')
+            })
 
         const connect = async () => {
             try {
@@ -300,11 +323,31 @@ export function useWebRTC(
                     language: remoteData?.language,
                     isHost: remoteData?.isHost,
                     audioBlocked: remoteData?.audioBlocked,
-                    connectionState: 'connecting'
+                    connectionState: 'connecting',
+                    joinedAt: Date.now()
                 })
                 changed = true
             }
         })
+
+        // 3. Cleanup: If a session is in 'connecting' for > 15 seconds 
+        // AND it's not in the LiveKit room.remoteParticipants list, it's a ghost or failing.
+        const now = Date.now()
+        const lkParticipantIdentities = roomRef.current ? Array.from(roomRef.current.remoteParticipants.keys()) : []
+
+        peersRef.current.forEach((peer, peerId) => {
+            if (peer.isPresentation) return
+
+            const isKnownByLK = lkParticipantIdentities.includes(peerId)
+            const timeInRoom = now - (peer.joinedAt || now)
+
+            if (!isKnownByLK && timeInRoom > 15000 && peer.connectionState === 'connecting') {
+                console.warn('Presence ghost detected (15s timeout):', peerId)
+                peersRef.current.delete(peerId)
+                changed = true
+            }
+        })
+
         if (changed) syncToState()
     }, [sessionUserId, syncToState])
 
