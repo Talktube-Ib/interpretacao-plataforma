@@ -137,7 +137,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     setUserId(user.id)
                     const { data: profile, error: profileError } = await supabase
                         .from('profiles')
-                        .select('role, full_name, username')
+                        .select('role, full_name')
                         .eq('id', user.id)
                         .single()
 
@@ -146,7 +146,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     }
 
                     if (profile) {
-                        setUserName(profile.full_name || profile.username || user?.user_metadata?.full_name || user.email?.split('@')[0] || t('room.participant_default'))
+                        setUserName(profile.full_name || user?.user_metadata?.full_name || user.email?.split('@')[0] || t('room.participant_default'))
                         setCurrentRole(profile.role || user?.user_metadata?.role || 'participant')
                     } else {
                         // Fallback if profile fetch fails but user exists (shouldn't happen often but RLS might cause it)

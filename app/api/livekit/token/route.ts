@@ -16,10 +16,20 @@ export async function GET(req: NextRequest) {
     const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL
 
     if (!apiKey || !apiSecret || !wsUrl) {
-        return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+        console.error('LIVEKIT CONFIG ERROR:', {
+            hasApiKey: !!apiKey,
+            apiKeyStart: apiKey?.substring(0, 4),
+            hasApiSecret: !!apiSecret,
+            hasWsUrl: !!wsUrl
+        })
+        return NextResponse.json({
+            error: 'Server misconfigured',
+            details: `Missing: ${[!apiKey && 'API_KEY', !apiSecret && 'API_SECRET', !wsUrl && 'WS_URL'].filter(Boolean).join(', ')}`
+        }, { status: 500 })
     }
 
     try {
+        console.log('Generating token for:', { room, username })
         const at = new AccessToken(apiKey, apiSecret, { identity: username })
 
         at.addGrant({ roomJoin: true, room: room })
