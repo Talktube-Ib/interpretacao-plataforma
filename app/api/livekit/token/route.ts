@@ -19,9 +19,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
     }
 
-    const at = new AccessToken(apiKey, apiSecret, { identity: username })
+    try {
+        const at = new AccessToken(apiKey, apiSecret, { identity: username })
 
-    at.addGrant({ roomJoin: true, room: room })
+        at.addGrant({ roomJoin: true, room: room })
 
-    return NextResponse.json({ token: await at.toJwt() })
+        const token = await at.toJwt()
+        return NextResponse.json({ token })
+    } catch (error) {
+        console.error('Error generating LiveKit token:', error)
+        return NextResponse.json({ error: 'Failed to generate token', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
+    }
 }
