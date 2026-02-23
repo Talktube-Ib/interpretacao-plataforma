@@ -142,7 +142,7 @@ export function VideoGrid({
                             onMutePeer={onMutePeer ? () => onMutePeer(featuredItem.userId) : undefined}
                             isLocalMuted={localMutedPeers.has(featuredItem.userId)}
                             individualVolume={localPeerVolumes[featuredItem.userId] ?? 1}
-                            onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(featuredItem.userId, v) : undefined}
+                            connectionState={featuredItem.connectionState}
                         />
                         {/* Pin Indicator */}
                         {pinnedSpeakerId === featuredItem.id && (

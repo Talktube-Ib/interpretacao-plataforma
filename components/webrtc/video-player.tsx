@@ -368,8 +368,8 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                             <WifiOff className="h-6 w-6 text-red-500" />
                         </div>
                         <span className="text-red-200 text-sm font-medium text-center px-4">
-                            Falha na Conexão P2P<br />
-                            <span className="text-red-500/50 text-xs mt-1 block">Verifique o Firewall/Rede</span>
+                            Falha na Conexão<br />
+                            <span className="text-red-500/50 text-xs mt-1 block">Verifique sua conexão ou Firewall</span>
                         </span>
                     </motion.div>
                 )}

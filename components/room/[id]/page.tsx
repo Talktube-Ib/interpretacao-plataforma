@@ -540,7 +540,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         }
     }, [])
 
-    const isSignalingConnected = connectionState === 'SUBSCRIBED'
+    const isSignalingConnected = connectionState === 'connected'
 
 
 

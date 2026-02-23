@@ -135,6 +135,7 @@ export function useWebRTC(
                 } else {
                     existing.stream = stream
                 }
+                existing.connectionState = 'connected'
             }
 
             peersRef.current.set(peerId, existing)
