@@ -15,13 +15,17 @@ export async function GET(req: NextRequest) {
     const apiSecret = process.env.LIVEKIT_API_SECRET
     const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL
 
+    // Diagnostic logs (safe, only lengths)
+    console.log('Generating LiveKit token - Meta:', {
+        apiKeyLength: apiKey?.length,
+        apiSecretLength: apiSecret?.length,
+        hasWsUrl: !!wsUrl,
+        room,
+        username
+    })
+
     if (!apiKey || !apiSecret || !wsUrl) {
-        console.error('LIVEKIT CONFIG ERROR:', {
-            hasApiKey: !!apiKey,
-            apiKeyStart: apiKey?.substring(0, 4),
-            hasApiSecret: !!apiSecret,
-            hasWsUrl: !!wsUrl
-        })
+        console.error('LIVEKIT CONFIG ERROR: Missing environment variables')
         return NextResponse.json({
             error: 'Server misconfigured',
             details: `Missing: ${[!apiKey && 'API_KEY', !apiSecret && 'API_SECRET', !wsUrl && 'WS_URL'].filter(Boolean).join(', ')}`
@@ -29,15 +33,15 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        console.log('Generating token for:', { room, username })
         const at = new AccessToken(apiKey, apiSecret, { identity: username })
-
         at.addGrant({ roomJoin: true, room: room })
-
         const token = await at.toJwt()
         return NextResponse.json({ token })
     } catch (error) {
         console.error('Error generating LiveKit token:', error)
-        return NextResponse.json({ error: 'Failed to generate token', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
+        return NextResponse.json({
+            error: 'Failed to generate token',
+            details: error instanceof Error ? error.message : String(error)
+        }, { status: 500 })
     }
 }
