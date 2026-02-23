@@ -192,6 +192,7 @@ export function VideoGrid({
                                     isLocalMuted={localMutedPeers.has(item.userId)}
                                     individualVolume={localPeerVolumes[item.userId] ?? 1}
                                     onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(item.userId, v) : undefined}
+                                    connectionState={item.connectionState}
                                 />
                             </div>
                         ))}
@@ -250,6 +251,7 @@ export function VideoGrid({
                                     isLocalMuted={localMutedPeers.has(item.userId)}
                                     individualVolume={localPeerVolumes[item.userId] ?? 1}
                                     onIndividualVolumeChange={onLocalVolumeChange ? (v) => onLocalVolumeChange(item.userId, v) : undefined}
+                                    connectionState={item.connectionState}
                                 />
                             </motion.div>
                         ))}
