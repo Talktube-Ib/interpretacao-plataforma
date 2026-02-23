@@ -74,7 +74,7 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
             newChannel.unsubscribe()
             setConnectionState('disconnected')
         }
-    }, [roomId, userId]) // Events ref is stable, no need to add
+    }, [roomId, userId, enabled]) // Events ref is stable, no need to add
 
     const sendSignal = useCallback((payload: any) => {
         channelRef.current?.send({ type: 'broadcast', event: 'signal', payload })

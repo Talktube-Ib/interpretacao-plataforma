@@ -259,7 +259,7 @@ export function useWebRTC(
             console.log('Cleaning up LiveKit room connection')
             room.disconnect()
         }
-    }, [isJoined, liveKitToken, roomId, localStream, sessionUserId])
+    }, [isJoined, liveKitToken, roomId, sessionUserId])
 
     // --- Signaling & Presence Logic (Metadata) ---
     const handleRoomEvent = useCallback((event: any) => {
