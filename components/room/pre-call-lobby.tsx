@@ -308,13 +308,32 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                             </div>
                         </div>
 
-                        <Button
-                            onClick={handleJoin}
-                            disabled={!name.trim()}
-                            className="w-full h-16 text-lg font-bold rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transition-all shadow-[0_0_40px_rgba(79,70,229,0.3)] hover:shadow-[0_0_60px_rgba(79,70,229,0.4)]"
-                        >
-                            Entrar na Sala <Sparkles className="ml-2 h-5 w-5" />
-                        </Button>
+                        {(!stream && !error) ? (
+                            <div className="w-full h-16 flex items-center justify-center gap-3 bg-slate-800/20 rounded-2xl border border-white/5 text-slate-500 font-medium">
+                                <div className="h-4 w-4 border-2 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
+                                <span>Iniciando dispositivos...</span>
+                            </div>
+                        ) : error ? (
+                            <div className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm text-center">
+                                <p>Não foi possível acessar sua câmera/microfone.</p>
+                                <p className="text-xs mt-1 opacity-70">Verifique as permissões do navegador.</p>
+                            </div>
+                        ) : (
+                            <Button
+                                onClick={handleJoin}
+                                disabled={!name.trim() || isJoiningRef.current}
+                                className="w-full h-16 text-lg font-bold rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transition-all shadow-[0_0_40px_rgba(79,70,229,0.3)] hover:shadow-[0_0_60px_rgba(79,70,229,0.4)]"
+                            >
+                                {isJoiningRef.current ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Entrando...</span>
+                                    </div>
+                                ) : (
+                                    <>Entrar na Sala <Sparkles className="ml-2 h-5 w-5" /></>
+                                )}
+                            </Button>
+                        )}
 
                         {!isGuest && (
                             <div className="text-center">

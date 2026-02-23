@@ -382,7 +382,7 @@ export function useWebRTC(
         },
         onRoomEvent: handleRoomEvent,
         onPresenceSync: handlePresenceSync
-    })
+    }, isJoined)
 
     const updateMetadata = useCallback((patch: any) => {
         metadataRef.current = { ...metadataRef.current, ...patch }

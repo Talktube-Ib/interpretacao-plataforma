@@ -12,7 +12,7 @@ export interface SignalingEvents {
     onPresenceSync: (users: string[], state: any) => void
 }
 
-export function useSignaling(roomId: string, userId: string, metadata: any, events: SignalingEvents) {
+export function useSignaling(roomId: string, userId: string, metadata: any, events: SignalingEvents, enabled: boolean = true) {
     const [channel, setChannel] = useState<RealtimeChannel | null>(null)
     const channelRef = useRef<RealtimeChannel | null>(null)
     const supabase = createClient()
@@ -36,8 +36,8 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
     const [connectionState, setConnectionState] = useState<string>('disconnected')
 
     useEffect(() => {
-        // Prevent joining if no userId
-        if (!userId || !roomId) return
+        // Prevent joining if no userId or if not enabled
+        if (!userId || !roomId || !enabled) return
 
         console.log("Connecting to Signaling Channel:", roomId)
         const newChannel = supabase.channel(`room:${roomId}`, { config: { presence: { key: userId } } })
