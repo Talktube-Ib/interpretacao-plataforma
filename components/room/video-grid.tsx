@@ -83,8 +83,9 @@ export function VideoGrid({
     }
 
     // Determine the "featured" speaker for Speaker Mode
-    // Priority: Pinned > Active Speaker > First Peer
-    const featuredItemId = pinnedSpeakerId || activeSpeakerId || (displayItems.length > 0 ? displayItems[0].id : null)
+    // Priority: Pinned > Screen Share (any) > Active Speaker > First Peer
+    const screenShareItem = displayItems.find(p => p.isScreen)
+    const featuredItemId = pinnedSpeakerId || (screenShareItem ? screenShareItem.id : (activeSpeakerId || (displayItems.length > 0 ? displayItems[0].id : null)))
 
     const featuredItem = displayItems.find(p => p.id === featuredItemId)
 

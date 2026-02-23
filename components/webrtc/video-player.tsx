@@ -260,7 +260,10 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
 
             {/* Volume Control Overlay (Fishbone) */}
             {onIndividualVolumeChange && (
-                <div className="absolute top-3 left-3 z-[110] flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity duration-200 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 pointer-events-auto">
+                <div className={cn(
+                    "absolute top-3 left-3 z-[110] flex items-center gap-1.5 transition-opacity duration-200 bg-black/40 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 pointer-events-auto",
+                    (isSpeaking || individualVolume < 1) ? "opacity-100" : "opacity-40 group-hover:opacity-100"
+                )}>
                     <button
                         onClick={(e) => {
                             e.stopPropagation()
@@ -290,7 +293,8 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                                     }}
                                     className={cn(
                                         "w-[3px] rounded-full cursor-pointer transition-all hover:scale-y-125",
-                                        isActive ? "bg-[#06b6d4]" : "bg-white/20"
+                                        isActive ? "bg-[#06b6d4]" : "bg-white/20",
+                                        isSpeaking && isActive && "animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.5)]"
                                     )}
                                     style={{ height }}
                                 />

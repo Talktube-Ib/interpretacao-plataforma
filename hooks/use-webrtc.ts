@@ -139,23 +139,21 @@ export function useWebRTC(
                 joinedAt: Date.now()
             }
 
-            if (track.kind === Track.Kind.Video) {
-                const stream = new MediaStream([track.mediaStreamTrack])
-                if (isScreen) {
-                    existing.screenStream = stream
-                    setSharingUserId(userId)
-                    console.log('--- Screen Share Attached to Peer:', peerId)
-                } else {
-                    existing.stream = stream
-                    existing.cameraOn = true
-                }
-                existing.connectionState = 'connected'
+            if (isScreen) {
+                const stream = existing.screenStream || new MediaStream()
+                stream.addTrack(track.mediaStreamTrack)
+                existing.screenStream = new MediaStream(stream.getTracks()) // Re-instantiate to trigger React effect
+                setSharingUserId(userId)
+                console.log('--- Screen Share Track Attached to Peer:', peerId, track.kind)
+            } else {
+                const stream = existing.stream || new MediaStream()
+                stream.addTrack(track.mediaStreamTrack)
+                existing.stream = new MediaStream(stream.getTracks()) // Re-instantiate to trigger React effect
+                if (track.kind === Track.Kind.Video) existing.cameraOn = true
+                if (track.kind === Track.Kind.Audio) existing.micOn = true
             }
 
-            if (track.kind === Track.Kind.Audio) {
-                existing.micOn = true
-            }
-
+            existing.connectionState = 'connected'
             peersRef.current.set(peerId, existing)
             syncToState()
             setUserCount(room.remoteParticipants.size + 1)
@@ -170,15 +168,31 @@ export function useWebRTC(
             const peerId = participant.identity
             const existing = peersRef.current.get(peerId)
             if (existing) {
-                if (publication.source === Track.Source.ScreenShare) {
-                    existing.screenStream = undefined
-                    if (sharingUserId === participant.identity.split('_')[0]) setSharingUserId(null)
-                } else if (track.kind === Track.Kind.Video) {
-                    existing.stream = undefined
-                    existing.cameraOn = false
-                } else if (track.kind === Track.Kind.Audio) {
-                    existing.micOn = false
+                const isScreen = publication.source === Track.Source.ScreenShare
+                const stream = isScreen ? existing.screenStream : existing.stream
+
+                if (stream) {
+                    stream.removeTrack(track.mediaStreamTrack)
+                    // Clean up if no tracks left
+                    if (stream.getTracks().length === 0) {
+                        if (isScreen) {
+                            existing.screenStream = undefined
+                            if (sharingUserId === participant.identity.split('_')[0]) setSharingUserId(null)
+                        } else {
+                            existing.stream = undefined
+                        }
+                    } else {
+                        // Re-instantiate to trigger React effect if tracks still remain
+                        if (isScreen) existing.screenStream = new MediaStream(stream.getTracks())
+                        else existing.stream = new MediaStream(stream.getTracks())
+                    }
                 }
+
+                if (!isScreen) {
+                    if (track.kind === Track.Kind.Video) existing.cameraOn = false
+                    if (track.kind === Track.Kind.Audio) existing.micOn = false
+                }
+
                 syncToState()
             }
         }
@@ -209,43 +223,31 @@ export function useWebRTC(
 
         const connect = async () => {
             try {
-                console.log('--- LiveKit Connection Attempt ---')
-                console.log('Room ID:', roomId)
-                console.log('Identity:', sessionUserId)
-                console.log('Token exists:', !!liveKitToken)
+                console.log('--- LiveKit Connection Attempt ---', { roomId, sessionUserId, token: !!liveKitToken })
 
                 setMediaStatus('connecting')
                 const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL!
-                console.log('WS URL:', wsUrl)
 
                 await room.connect(wsUrl, liveKitToken)
                 console.log('--- LiveKit Connected Successfully ---')
                 setMediaStatus('connected')
-                setLastError(null) // Clear any previous errors
+                setLastError(null)
 
-                // Publish local tracks
-                if (localStream) {
-                    console.log('Publishing local tracks...')
-                    const audioTrack = localStream.getAudioTracks()[0]
-                    const videoTrack = localStream.getVideoTracks()[0]
+                // Publish local tracks using LiveKit helpers (preferred)
+                // This will automatically pick tracks from our localStream if they are valid
+                const micEnabled = initialConfig.micOn !== false
+                const camEnabled = initialConfig.cameraOn !== false
 
-                    if (audioTrack) {
-                        const pub = await room.localParticipant.publishTrack(audioTrack, { name: 'audio' })
-                        console.log('Audio track published:', pub.trackSid)
-                    }
-                    if (videoTrack) {
-                        const pub = await room.localParticipant.publishTrack(videoTrack, { name: 'video' })
-                        console.log('Video track published:', pub.trackSid)
-                    }
-                }
+                console.log(`Setting initial media state: Mic=${micEnabled}, Cam=${camEnabled}`)
+                await room.localParticipant.setMicrophoneEnabled(micEnabled)
+                await room.localParticipant.setCameraEnabled(camEnabled)
 
                 setUserCount(room.remoteParticipants.size + 1)
             } catch (error) {
-                console.error('--- LiveKit Connection Failed ---')
-                console.error('Error detail:', error)
+                console.error('--- LiveKit Connection Failed ---', error)
                 setLastError(error instanceof Error ? error.message : String(error))
                 setMediaStatus('failed')
-                setUserCount(1) // Always count self
+                setUserCount(1)
             }
         }
 
