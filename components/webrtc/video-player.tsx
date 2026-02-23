@@ -29,6 +29,7 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
     const [isBuffering, setIsBuffering] = useState(false)
+    const [showSlider, setShowSlider] = useState(false)
 
     // Watchdog State
     const stuckFrameCountRef = useRef(0)
@@ -266,26 +267,30 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                 <div
                     onClick={(e) => e.stopPropagation()} // Prevent grid maximize click
                     className={cn(
-                        "absolute top-3 left-3 z-[110] flex flex-col gap-2 transition-opacity duration-200 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 pointer-events-auto",
-                        (isSpeaking || individualVolume < 1) ? "opacity-100" : "opacity-40 group-hover:opacity-100"
+                        "absolute top-3 left-3 z-[110] flex flex-col gap-2 transition-all duration-300 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 pointer-events-auto",
+                        (isSpeaking || individualVolume < 1 || showSlider) ? "opacity-100" : "opacity-40 group-hover:opacity-100",
+                        showSlider ? "w-32" : "w-fit"
                     )}
                 >
                     <div className="flex items-center gap-2">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation()
-                                onIndividualVolumeChange(individualVolume > 0 ? 0 : 1)
+                                setShowSlider(!showSlider)
                             }}
                             className={cn(
-                                "p-1.5 rounded-lg transition-colors",
+                                "p-1.5 rounded-lg transition-colors overflow-hidden",
                                 individualVolume === 0 ? "text-red-500 bg-red-500/10" : "text-white hover:bg-white/10"
                             )}
-                            title={individualVolume === 0 ? "Ativar Áudio Local" : "Mutar Áudio Local"}
+                            title={showSlider ? "Esconder Controle" : "Ajustar Volume"}
                         >
                             {individualVolume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                         </button>
 
-                        <div className="flex items-end gap-[3px] h-4 px-1">
+                        <div
+                            className="flex items-end gap-[3px] h-4 px-1 cursor-pointer"
+                            onClick={() => setShowSlider(!showSlider)}
+                        >
                             {[1, 2, 3, 4, 5].map((level) => {
                                 const threshold = level * 0.2
                                 const isActive = individualVolume >= (threshold - 0.1)
@@ -294,12 +299,8 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                                 return (
                                     <div
                                         key={level}
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            onIndividualVolumeChange(threshold)
-                                        }}
                                         className={cn(
-                                            "w-[3px] rounded-full cursor-pointer transition-all hover:scale-y-125",
+                                            "w-[3px] rounded-full transition-all hover:scale-y-125",
                                             isActive ? "bg-[#06b6d4]" : "bg-white/20",
                                             isSpeaking && isActive && "animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.5)]"
                                         )}
@@ -310,22 +311,31 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         </div>
                     </div>
 
-                    {/* Volume Slider ("Bolinha") */}
-                    <div className="px-1.5 pb-1">
-                        <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={individualVolume}
-                            onChange={(e) => onIndividualVolumeChange(parseFloat(e.target.value))}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#06b6d4] hover:accent-[#06b6d4]/80"
-                            style={{
-                                background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${individualVolume * 100}%, rgba(255,255,255,0.2) ${individualVolume * 100}%, rgba(255,255,255,0.2) 100%)`
-                            }}
-                        />
-                    </div>
+                    {/* Volume Slider ("Bolinha") - Subtle/Hidden */}
+                    <AnimatePresence>
+                        {showSlider && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="px-1.5 pb-1 overflow-hidden"
+                            >
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.01"
+                                    value={individualVolume}
+                                    onChange={(e) => onIndividualVolumeChange(parseFloat(e.target.value))}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#06b6d4] hover:accent-[#06b6d4]/80"
+                                    style={{
+                                        background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${individualVolume * 100}%, rgba(255,255,255,0.2) ${individualVolume * 100}%, rgba(255,255,255,0.2) 100%)`
+                                    }}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             )}
 

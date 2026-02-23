@@ -34,9 +34,14 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
                             echoCancellation: true,
                             noiseSuppression: true,
                             autoGainControl: true
-                        } : true,
-                        video: config.cameraOn !== false ? { deviceId: config.videoDeviceId ? { exact: config.videoDeviceId } : undefined } : true
+                        } : false,
+                        video: config.cameraOn !== false
+                            ? (config.videoDeviceId
+                                ? { deviceId: { exact: config.videoDeviceId } }
+                                : { facingMode: 'user' })
+                            : false
                     }
+                    console.log('--- Requesting UserMedia with constraints:', constraints)
                     activeStream = await navigator.mediaDevices.getUserMedia(constraints)
                 }
 

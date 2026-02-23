@@ -77,6 +77,8 @@ export function useWebRTC(
     })
 
     const peersRef = useRef<Map<string, PeerData>>(new Map())
+    const lastAudioDeviceId = useRef<string | undefined>(initialConfig.audioDeviceId)
+    const lastVideoDeviceId = useRef<string | undefined>(initialConfig.videoDeviceId)
 
     const syncToState = useCallback(() => {
         setPeers(Array.from(peersRef.current.values()))
@@ -238,9 +240,9 @@ export function useWebRTC(
                 const micEnabled = initialConfig.micOn !== false
                 const camEnabled = initialConfig.cameraOn !== false
 
-                console.log(`Setting initial media state: Mic=${micEnabled}, Cam=${camEnabled}`)
-                await room.localParticipant.setMicrophoneEnabled(micEnabled)
-                await room.localParticipant.setCameraEnabled(camEnabled)
+                console.log(`Setting initial media state: Mic=${micEnabled}, Cam=${camEnabled}, AudioID=${lastAudioDeviceId.current}, VideoID=${lastVideoDeviceId.current}`)
+                await room.localParticipant.setMicrophoneEnabled(micEnabled, { deviceId: lastAudioDeviceId.current })
+                await room.localParticipant.setCameraEnabled(camEnabled, { deviceId: lastVideoDeviceId.current })
 
                 setUserCount(room.remoteParticipants.size + 1)
             } catch (error) {
@@ -449,10 +451,30 @@ export function useWebRTC(
         window.location.reload()
     }, [])
 
+    const handleSwitchDevice = useCallback(async (kind: 'audio' | 'video', deviceId: string) => {
+        // 1. Switch locally in our MediaStream
+        await switchDevice(kind, deviceId)
+
+        // Update refs
+        if (kind === 'audio') lastAudioDeviceId.current = deviceId
+        else lastVideoDeviceId.current = deviceId
+
+        // 2. Switch in LiveKit Room if connected
+        if (roomRef.current && roomRef.current.state === 'connected') {
+            try {
+                const lkKind = kind === 'audio' ? 'audioinput' : 'videoinput'
+                await roomRef.current.switchActiveDevice(lkKind as any, deviceId)
+                console.log(`LiveKit switched ${kind} device to:`, deviceId)
+            } catch (err) {
+                console.error(`LiveKit failed to switch ${kind} device:`, err)
+            }
+        }
+    }, [switchDevice])
+
     const toggleMic = useCallback(async (enabled: boolean) => {
         toggleMicStream(enabled)
         if (roomRef.current) {
-            await roomRef.current.localParticipant.setMicrophoneEnabled(enabled)
+            await roomRef.current.localParticipant.setMicrophoneEnabled(enabled, { deviceId: lastAudioDeviceId.current })
             updateMetadata({ micOn: enabled })
         }
     }, [toggleMicStream, updateMetadata])
@@ -460,7 +482,7 @@ export function useWebRTC(
     const toggleCamera = useCallback(async (enabled: boolean) => {
         toggleCameraStream(enabled)
         if (roomRef.current) {
-            await roomRef.current.localParticipant.setCameraEnabled(enabled)
+            await roomRef.current.localParticipant.setCameraEnabled(enabled, { deviceId: lastVideoDeviceId.current })
             updateMetadata({ cameraOn: enabled })
         }
     }, [toggleCameraStream, updateMetadata])
