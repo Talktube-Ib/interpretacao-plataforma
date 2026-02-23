@@ -210,6 +210,7 @@ export function useWebRTC(
                 await room.connect(wsUrl, liveKitToken)
                 console.log('--- LiveKit Connected Successfully ---')
                 setMediaStatus('connected')
+                setLastError(null) // Clear any previous errors
 
                 // Publish local tracks
                 if (localStream) {

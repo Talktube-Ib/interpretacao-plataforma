@@ -267,6 +267,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 if (data.token) {
                     setLiveKitToken(data.token)
                     console.log('--- Token Metadata ---', data.serverInfo)
+                    setLastError(null) // Clear any token errors
                 } else {
                     console.error("Token API Error:", data)
                     setLastError(`Token Error: ${data.details || data.error} (API Key Len: ${data.apiKeyLength || 0})`)
