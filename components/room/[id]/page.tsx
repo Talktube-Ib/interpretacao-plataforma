@@ -305,7 +305,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         blockUserAudio,
         unblockUserAudio,
         reconnect,
-        connectionState
+        mediaStatus,
+        signalingStatus
     } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined)
 
 
@@ -540,7 +541,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         }
     }, [])
 
-    const isSignalingConnected = connectionState === 'connected'
+    const isSignalingConnected = signalingStatus === 'SUBSCRIBED'
 
 
 
@@ -676,7 +677,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 {/* Video Grid Section */}
                 <div className="flex-1 min-w-0 p-2 md:p-6 flex items-center justify-center transition-all duration-300 relative">
                     <VideoGrid
-                        peers={paginatedPeers}
+                        peers={paginatedPeers.map(p => ({ ...p, connectionState: p.connectionState || mediaStatus }))}
                         localStream={localStream}
                         currentRole={currentRole}
                         micOn={micOn}

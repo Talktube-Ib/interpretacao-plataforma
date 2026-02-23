@@ -57,7 +57,7 @@ export function useWebRTC(
     const [hostId, setHostId] = useState<string | null>(null)
     const [localHandRaised, setLocalHandRaised] = useState(false)
     const [reactions, setReactions] = useState<{ id: string, emoji: string, userId: string }[]>([])
-    const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'failed' | 'disconnected'>('disconnected')
+    const [mediaStatus, setMediaStatus] = useState<'connecting' | 'connected' | 'failed' | 'disconnected'>('disconnected')
 
     const roomRef = useRef<Room | null>(null)
     const metadataRef = useRef<any>({
@@ -159,16 +159,16 @@ export function useWebRTC(
             .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
             .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
             .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
-            .on(RoomEvent.Disconnected, () => setConnectionState('disconnected'))
-            .on(RoomEvent.Reconnecting, () => setConnectionState('connecting'))
-            .on(RoomEvent.Reconnected, () => setConnectionState('connected'))
+            .on(RoomEvent.Disconnected, () => setMediaStatus('disconnected'))
+            .on(RoomEvent.Reconnecting, () => setMediaStatus('connecting'))
+            .on(RoomEvent.Reconnected, () => setMediaStatus('connected'))
 
         const connect = async () => {
             try {
-                setConnectionState('connecting')
+                setMediaStatus('connecting')
                 const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL!
                 await room.connect(wsUrl, liveKitToken)
-                setConnectionState('connected')
+                setMediaStatus('connected')
 
                 // Publish local tracks
                 if (localStream) {
@@ -182,7 +182,7 @@ export function useWebRTC(
                 setUserCount(room.remoteParticipants.size + 1)
             } catch (error) {
                 console.error('Failed to connect to LiveKit room:', error)
-                setConnectionState('failed')
+                setMediaStatus('failed')
             }
         }
 
@@ -365,6 +365,7 @@ export function useWebRTC(
         hostId,
         isHost: hostId === userId,
         reconnect,
-        connectionState
+        mediaStatus,
+        signalingStatus: signaling?.connectionState || 'disconnected'
     }
 }
