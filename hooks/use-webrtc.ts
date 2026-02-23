@@ -42,8 +42,7 @@ export function useWebRTC(
     userName: string = 'Participante',
     liveKitToken?: string
 ) {
-    const sessionId = useRef(Math.random().toString(36).substr(2, 6)).current
-    const sessionUserId = `${userId}_${sessionId}`
+    const sessionUserId = userId // O userId já vem com o sufixo da RoomPage
 
     // --- Refactored: useMediaStream ---
     const { stream: localStream, error: mediaError, toggleMic: toggleMicStream, toggleCamera: toggleCameraStream, switchDevice } = useMediaStream({
@@ -351,7 +350,7 @@ export function useWebRTC(
     return {
         localStream,
         peers,
-        userCount,
+        userCount: Math.max(isJoined ? 1 : 0, userCount),
         toggleMic: toggleMicStream,
         toggleCamera: toggleCameraStream,
         shareScreen,

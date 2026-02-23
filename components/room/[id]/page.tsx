@@ -53,6 +53,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // User Identity Logic
     const [userId, setUserId] = useState('')
+    const sessionSuffix = useRef(Math.random().toString(36).substr(2, 4)).current
+    const sessionUserId = userId ? `${userId}_${sessionSuffix}` : null
     const [userName, setUserName] = useState(t('room.participant_default'))
     const [currentRole, setCurrentRole] = useState<string>('participant')
     const [isLoaded, setIsLoaded] = useState(false)
@@ -256,11 +258,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // Fetch LiveKit Token for main room
     useEffect(() => {
-        if (!isJoined || !userId || !roomId) return
+        if (!isJoined || !sessionUserId || !roomId) return
 
         const fetchToken = async () => {
             try {
-                const resp = await fetch(`/api/livekit/token?room=${roomId}&username=${userId}`)
+                const resp = await fetch(`/api/livekit/token?room=${roomId}&username=${sessionUserId}`)
                 const data = await resp.json()
                 if (data.token) {
                     setLiveKitToken(data.token)
@@ -307,7 +309,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         reconnect,
         mediaStatus,
         signalingStatus
-    } = useWebRTC(roomId, userId, currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined)
+    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined)
 
 
     const isGuest = userId.startsWith('guest-')

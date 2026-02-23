@@ -19,9 +19,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
     }
 
-    // Add a small random suffix to allow multiple devices for the same user
-    const participantIdentity = `${username}_${Math.random().toString(36).substr(2, 4)}`
-    const at = new AccessToken(apiKey, apiSecret, { identity: participantIdentity })
+    const at = new AccessToken(apiKey, apiSecret, { identity: username })
 
     at.addGrant({ roomJoin: true, room: room })
 
