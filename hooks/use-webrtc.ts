@@ -42,6 +42,9 @@ export function useWebRTC(
     userName: string = 'Participante',
     liveKitToken?: string
 ) {
+    const sessionId = useRef(Math.random().toString(36).substr(2, 6)).current
+    const sessionUserId = `${userId}_${sessionId}`
+
     // --- Refactored: useMediaStream ---
     const { stream: localStream, error: mediaError, toggleMic: toggleMicStream, toggleCamera: toggleCameraStream, switchDevice } = useMediaStream({
         micOn: initialConfig.micOn,
@@ -75,7 +78,12 @@ export function useWebRTC(
 
     const syncToState = useCallback(() => {
         setPeers(Array.from(peersRef.current.values()))
-    }, [])
+        if (roomRef.current) {
+            setUserCount(roomRef.current.remoteParticipants.size + 1)
+        } else if (isJoined) {
+            setUserCount(1)
+        }
+    }, [isJoined])
 
     // --- LiveKit Room Connection ---
     useEffect(() => {
@@ -116,10 +124,11 @@ export function useWebRTC(
             publication: RemoteTrackPublication,
             participant: RemoteParticipant
         ) => {
-            const userId = participant.identity
+            const fullIdentity = participant.identity
+            const userId = fullIdentity.split('_')[0]
             const isScreen = publication.source === Track.Source.ScreenShare
 
-            const peerId = isScreen ? `${userId}-presentation` : userId
+            const peerId = isScreen ? `${fullIdentity}-presentation` : fullIdentity
             const existing = peersRef.current.get(peerId) || {
                 userId,
                 role: 'participant', // Will be updated by metadata
@@ -140,6 +149,7 @@ export function useWebRTC(
 
             peersRef.current.set(peerId, existing)
             syncToState()
+            setUserCount(room.remoteParticipants.size + 1)
         }
 
         const handleTrackUnsubscribed = (
@@ -183,6 +193,7 @@ export function useWebRTC(
             } catch (error) {
                 console.error('Failed to connect to LiveKit room:', error)
                 setMediaStatus('failed')
+                setUserCount(1) // Always count self
             }
         }
 
@@ -227,10 +238,11 @@ export function useWebRTC(
 
     const handlePresenceSync = useCallback((users: string[], state: any) => {
         let changed = false
-        users.forEach(remoteId => {
-            if (remoteId === userId) return
-            const remoteData = (state[remoteId] as any[])?.[0]
-            const existing = peersRef.current.get(remoteId)
+        users.forEach(remoteSessionId => {
+            if (remoteSessionId === sessionUserId) return
+            const remoteData = (state[remoteSessionId] as any[])?.[0]
+            const remoteId = remoteSessionId.split('_')[0]
+            const existing = peersRef.current.get(remoteSessionId)
 
             if (existing) {
                 let peerChanged = false
@@ -245,7 +257,7 @@ export function useWebRTC(
                 if (peerChanged) changed = true
             } else {
                 // Initialize if not present (waiting for tracks)
-                peersRef.current.set(remoteId, {
+                peersRef.current.set(remoteSessionId, {
                     userId: remoteId,
                     name: remoteData?.name || 'Participante',
                     role: remoteData?.role || 'participant',
@@ -263,7 +275,7 @@ export function useWebRTC(
         if (changed) syncToState()
     }, [userId, syncToState])
 
-    const signaling = useSignaling(roomId, userId, metadataRef.current, {
+    const signaling = useSignaling(roomId, sessionUserId, metadataRef.current, {
         onSignal: () => { }, // P2P Signaling no longer needed
         onShareStarted: (payload) => setSharingUserId(payload.sender),
         onShareEnded: () => setSharingUserId(null),
