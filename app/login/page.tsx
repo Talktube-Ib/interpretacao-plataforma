@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { AlertCircle, Loader2, Zap, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { Logo } from '@/components/logo'
+import { login } from './actions'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/components/providers/language-provider'
 
@@ -49,7 +50,6 @@ function LoginForm() {
         setLoading(true)
         setError(null)
 
-        const supabase = createClient()
         const cleanEmail = email.trim()
 
         // Basic client-side sanitization/validation
@@ -60,20 +60,17 @@ function LoginForm() {
             return
         }
 
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-        })
+        const formData = new FormData()
+        formData.append('email', cleanEmail)
+        formData.append('password', password)
 
-        if (signInError) {
-            setError(signInError.message === 'Invalid login credentials' ? 'login_error_invalid' : signInError.message)
+        const result = await login(formData)
+
+        if (result && !result.success) {
+            setError(result.error || 'Erro inesperado')
             setLoading(false)
-        } else {
-            // It's important to keep loading state until the router actually navigates
-            // but router.push doesn't block. We'll refresh to ensure the session is picked up.
-            router.refresh()
-            router.push('/dashboard')
         }
+        // Result is undefined if redirect happens, which is handled by Next.js
     }
 
     return (
