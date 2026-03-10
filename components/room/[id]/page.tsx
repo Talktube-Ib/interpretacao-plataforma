@@ -59,6 +59,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [isLoaded, setIsLoaded] = useState(false)
     const [showUpsell, setShowUpsell] = useState(false) // NEW STATE
     const [isGhost, setIsGhost] = useState(false)
+    const [hostId, setHostId] = useState<string | null>(null) // State to store host_id
 
     // State declarations moved for hoisting
     const [micOn, setMicOn] = useState(true)
@@ -174,6 +175,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         }
                     }
 
+                    // Set hostId state
+                    if (meeting?.host_id) {
+                        setHostId(meeting.host_id)
+                    } else if (profile?.id) { // If it's a personal room, the profile ID is the host ID
+                        setHostId(profile.id)
+                    }
+
+
                     // Check Expiration (Lazy Check)
                     if (meeting?.status === 'active' && meeting.start_time) {
                         const startTime = new Date(meeting.start_time).getTime()
@@ -234,7 +243,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 } else {
                     const { data: meeting } = await supabase
                         .from('meetings')
-                        .select('id, status, start_time, settings')
+                        .select('id, status, start_time, settings, host_id')
                         .eq('id', roomId)
                         .maybeSingle()
 
@@ -251,6 +260,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             return
                         }
                     }
+
+                    // Set hostId state for guests too, if available
+                    if (meeting?.host_id) {
+                        setHostId(meeting.host_id)
+                    }
+
 
                     if (meeting?.status === 'ended') {
                         alert(t('room.meeting_ended_title'))
@@ -333,7 +348,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         sharingUserId,
         isAnySharing,
         reactions,
-        hostId,
         promoteToHost,
         kickUser,
         updateUserRole,
@@ -348,7 +362,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         lastError,
         setLastError,
         localScreenStream
-    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined, isGhost)
+    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined, isGhost, hostId)
 
 
     const isGuest = userId.startsWith('guest-')

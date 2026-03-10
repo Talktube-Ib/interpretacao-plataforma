@@ -43,7 +43,8 @@ export function useWebRTC(
     isJoined: boolean = false,
     userName: string = 'Participante',
     liveKitToken?: string,
-    isGhostMode: boolean = false
+    isGhostMode: boolean = false,
+    initialHostId?: string
 ) {
     const sessionUserId = userId // O userId já vem com o sufixo da RoomPage
 
@@ -59,7 +60,7 @@ export function useWebRTC(
     const [peers, setPeers] = useState<PeerData[]>([])
     const [userCount, setUserCount] = useState(0)
     const [sharingUserId, setSharingUserId] = useState<string | null>(null)
-    const [hostId, setHostId] = useState<string | null>(null)
+    const [hostId, setHostId] = useState<string | null>(initialHostId || null)
     const [localHandRaised, setLocalHandRaised] = useState(false)
     const [reactions, setReactions] = useState<{ id: string, emoji: string, userId: string }[]>([])
     const [mediaStatus, setMediaStatus] = useState<'connecting' | 'connected' | 'failed' | 'disconnected'>('disconnected')

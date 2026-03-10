@@ -40,8 +40,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                 start_time: startDateTime,
                 status: 'scheduled',
                 allowed_languages: Array.from(new Set(['pt', 'en', ...data.interpreters.flatMap(i => i.languages)])),
-                settings: { interpreters: data.interpreters },
-                slug: generateSlug()
+                settings: { interpreters: data.interpreters }
             })
             .select()
 
