@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User, Monitor, Headphones, ChevronDown, Check, Volume2 } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Settings, Sparkles, User, Monitor, Headphones, ChevronDown, Check, Volume2, Ghost, EyeOff } from 'lucide-react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,10 +17,12 @@ import { useMediaStream } from '@/hooks/use-media-stream'
 
 interface PreCallLobbyProps {
     userName: string
+    userRole: string
     isGuest: boolean
     onJoin: (config: {
         micOn: boolean
         cameraOn: boolean
+        isGhost: boolean
         name: string
         audioDeviceId: string
         videoDeviceId: string
@@ -28,10 +30,11 @@ interface PreCallLobbyProps {
     }) => void
 }
 
-export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
+export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLobbyProps) {
     const [name, setName] = useState(userName || '')
     const [micOn, setMicOn] = useState(true)
     const [cameraOn, setCameraOn] = useState(true)
+    const [isGhost, setIsGhost] = useState(false)
     const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
     const [selectedAudioId, setSelectedAudioId] = useState<string>('')
@@ -128,8 +131,9 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
         if (!name.trim()) return
         isJoiningRef.current = true
         onJoin({
-            micOn,
-            cameraOn,
+            micOn: isGhost ? false : micOn,
+            cameraOn: isGhost ? false : cameraOn,
+            isGhost,
             name,
             audioDeviceId: selectedAudioId || 'default',
             videoDeviceId: selectedVideoId || 'default',
@@ -336,10 +340,53 @@ export function PreCallLobby({ userName, isGuest, onJoin }: PreCallLobbyProps) {
                         )}
 
                         {!isGuest && (
-                            <div className="text-center">
-                                <p className="text-xs text-slate-500">
-                                    Conectado como <span className="text-slate-300 font-medium">{userName}</span>
-                                </p>
+                            <div className="flex flex-col gap-4">
+                                {(userRole === 'admin' || userRole === 'MASTER') && (
+                                    <div
+                                        className={cn(
+                                            "flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group",
+                                            isGhost
+                                                ? "bg-purple-500/20 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]"
+                                                : "bg-slate-950/30 border-slate-800 hover:border-slate-700"
+                                        )}
+                                        onClick={() => {
+                                            setIsGhost(!isGhost)
+                                            if (!isGhost) {
+                                                setMicOn(false)
+                                                setCameraOn(false)
+                                            }
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "p-2 rounded-lg transition-colors",
+                                                isGhost ? "bg-purple-500 text-white" : "bg-slate-800 text-slate-400 group-hover:text-slate-300"
+                                            )}>
+                                                <Ghost className="h-5 w-5" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-bold text-white">Modo Fantasma</span>
+                                                <span className="text-[10px] text-slate-500 uppercase font-black">Auditoria Invisível</span>
+                                            </div>
+                                        </div>
+                                        <div className={cn(
+                                            "w-12 h-6 rounded-full relative transition-colors duration-300",
+                                            isGhost ? "bg-purple-500" : "bg-slate-800"
+                                        )}>
+                                            <div className={cn(
+                                                "absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300",
+                                                isGhost ? "left-7" : "left-1"
+                                            )} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="text-center">
+                                    <p className="text-xs text-slate-500">
+                                        Conectado como <span className="text-slate-300 font-medium uppercase text-[10px] tracking-widest">{userName}</span>
+                                        {(userRole === 'admin' || userRole === 'MASTER') && <span className="ml-2 px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[9px] font-bold">ADMIN</span>}
+                                    </p>
+                                </div>
                             </div>
                         )}
                     </div>

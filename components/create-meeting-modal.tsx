@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { useLanguage } from '@/components/providers/language-provider'
 import { MeetingForm, MeetingFormData } from './dashboard/meeting-form'
+import { generateSlug } from '@/lib/utils'
 
 interface CreateMeetingModalProps {
     userId: string
@@ -39,7 +40,8 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
                 start_time: startDateTime,
                 status: 'scheduled',
                 allowed_languages: Array.from(new Set(['pt', 'en', ...data.interpreters.flatMap(i => i.languages)])),
-                settings: { interpreters: data.interpreters }
+                settings: { interpreters: data.interpreters },
+                slug: generateSlug()
             })
             .select()
 

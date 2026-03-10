@@ -19,8 +19,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { UserPlus, Loader2, Key, RefreshCw, Eye, EyeOff } from 'lucide-react'
+import { UserPlus, Loader2, Key, RefreshCw, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { createUser } from '../actions'
+import { toast } from 'sonner'
 
 export function CreateUserDialog() {
     const [open, setOpen] = useState(false)
@@ -92,13 +93,16 @@ export function CreateUserDialog() {
                 setPassword('')
                 setSelectedLanguages([])
                 setSelectedRole('participant')
-                alert('Usuário criado com sucesso! Envie as credenciais para o usuário.')
+                toast.success('Usuário criado com sucesso!', {
+                    description: 'As credenciais já podem ser enviadas ao usuário.',
+                    icon: <CheckCircle2 className="h-5 w-5 text-green-500" />
+                })
             } else {
-                alert('Erro ao criar usuário: ' + (result as any).error)
+                toast.error('Erro ao criar usuário: ' + (result as any).error)
             }
         } catch (error) {
             console.error(error)
-            alert('Erro inesperado: ' + (error as Error).message)
+            toast.error('Erro inesperado: ' + (error as Error).message)
         } finally {
             setLoading(false)
         }

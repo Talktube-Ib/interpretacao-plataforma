@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TalkTube - Video Conferencing Software",
-  description: "Reuniões globais sem barreiras de idioma via P2P.",
+  title: "TalkTube | Interpretação Simultânea Humana de Alta Performance",
+  description: "Elimine barreiras de idioma com máxima eficiência. Conecte-se a intérpretes profissionais em tempo real com qualidade de estúdio e latência zero.",
   icons: {
     icon: "/logos/talktube_favicon.png",
   },
@@ -24,6 +24,7 @@ export const metadata: Metadata = {
 import { WebRTCPolyfills } from '@/components/webrtc-polyfills'
 import { ToastProvider } from '@/components/providers/toast-provider'
 import { LanguageProvider } from '@/components/providers/language-provider'
+import { PageTransition } from '@/components/providers/page-transition'
 
 export default function RootLayout({
   children,
@@ -44,7 +45,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <LanguageProvider>
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </LanguageProvider>
         </ThemeProvider>
       </body>

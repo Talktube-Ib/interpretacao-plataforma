@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
-import DashboardClient from '@/components/dashboard/dashboard-client'
 import { redirect } from 'next/navigation'
+import DashboardClient from '@/components/dashboard/dashboard-client'
 
 export default async function DashboardPage() {
     const supabase = await createClient()
@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     const [{ data: profile }, { data: meetings }] = await Promise.all([
         supabase
             .from('profiles')
-            .select('*')
+            .select('id, full_name, personal_meeting_id')
             .eq('id', user.id)
             .single(),
         supabase
@@ -23,5 +23,10 @@ export default async function DashboardPage() {
             .order('start_time', { ascending: true })
     ])
 
-    return <DashboardClient user={user} profile={profile} meetings={meetings || []} isDemo={false} />
+    return <DashboardClient
+        user={user}
+        profile={profile || { id: user.id }}
+        meetings={meetings || []}
+        isDemo={false}
+    />
 }

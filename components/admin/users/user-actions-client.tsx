@@ -19,8 +19,9 @@ import {
 import { Input } from "../../../components/ui/input"
 import { Label } from "../../../components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { MoreHorizontal, Settings2, Languages, Loader2, KeyRound } from 'lucide-react'
+import { MoreHorizontal, Settings2, Languages, Loader2, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react'
 import React, { useState } from 'react'
+import { toast } from 'sonner'
 import { updateUserRole, updateUserStatus, updateUserLimits, updateProfileLanguages, deleteUser, adminUpdateUserPassword } from '../actions'
 import { LANGUAGES } from '@/lib/languages'
 
@@ -58,17 +59,17 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
         try {
             const result = await actionFn()
             if (!result.success) {
-                alert(`Erro: ${result.error}`)
+                toast.error(`Erro: ${result.error}`)
             } else {
                 // Show server message if available (for debugging), or fall back to client successMsg
                 if ('message' in result) {
-                    alert(`Sucesso: ${(result as any).message}`)
+                    toast.success((result as any).message)
                 } else if (successMsg) {
-                    alert(successMsg)
+                    toast.success(successMsg)
                 }
             }
         } catch (err) {
-            alert('Erro inesperado ao executar ação.')
+            toast.error('Erro inesperado ao executar ação.')
         }
     }
 
@@ -76,8 +77,9 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
         const result = await updateUserLimits(profile.id, limits)
         if (result.success) {
             setOpenLimits(false)
+            toast.success('Limites atualizados com sucesso!')
         } else {
-            alert(`Erro ao salvar limites: ${result.error}`)
+            toast.error(`Erro ao salvar limites: ${result.error}`)
         }
     }
 
@@ -96,9 +98,11 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
         if (result.success) {
             setOpenPassword(false)
             setNewPassword('')
-            alert('Senha alterada com sucesso! O usuário deverá trocá-la no próximo acesso.')
+            toast.success('Senha alterada com sucesso! O usuário deverá trocá-la no próximo acesso.', {
+                icon: <CheckCircle2 className="h-4 w-4 text-green-500" />
+            })
         } else {
-            alert(`Erro ao alterar senha: ${result.error}`)
+            toast.error(`Erro ao alterar senha: ${result.error}`)
         }
     }
 

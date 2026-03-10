@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X, User, Shield, Video, Mic, MoreVertical, Wifi, Volume2 } from 'lucide-react'
+import { X, User, Shield, Video, Mic, MoreVertical, Wifi, Volume2, Ghost } from 'lucide-react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -23,6 +23,7 @@ interface Peer {
     language?: string // Broadcast language
     isHost?: boolean
     audioBlocked?: boolean
+    isGhost?: boolean
 }
 
 interface ParticipantListProps {
@@ -107,8 +108,11 @@ export function ParticipantList({
                             <div key={peer.userId} className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
                                 <div className="flex items-center gap-3 overflow-hidden">
                                     <div className="relative">
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
-                                            <User className="h-5 w-5 text-slate-400" />
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-full flex items-center justify-center border transition-all",
+                                            peer.isGhost ? "bg-purple-500/20 border-purple-500/50" : "bg-slate-800 border-white/10"
+                                        )}>
+                                            {peer.isGhost ? <Ghost className="h-5 w-5 text-purple-400" /> : <User className="h-5 w-5 text-slate-400" />}
                                         </div>
                                         {isPeerHost && (
                                             <div className="absolute -bottom-1 -right-1 bg-yellow-500/20 text-yellow-500 p-0.5 rounded-full border border-yellow-500/50" title="Host">
@@ -134,8 +138,9 @@ export function ParticipantList({
                                                 {localMutedPeers?.has(peer.userId) && <Volume2 className="h-3 w-3 text-amber-500" />}
                                             </div>
                                         </div>
-                                        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                                        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
                                             {isPeerHost ? 'Anfitrião' : isInterpreter ? 'Intérprete' : 'Participante'}
+                                            {peer.isGhost && <span className="ml-1 text-[8px] bg-purple-500/30 text-purple-300 px-1 rounded border border-purple-500/20">GHOST</span>}
                                         </span>
                                     </div>
                                 </div>

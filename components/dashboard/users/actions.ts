@@ -38,7 +38,7 @@ export async function inviteUser(formData: FormData) {
 
     if (error) throw new Error(error.message)
 
-    revalidatePath('/dashboard/users')
+    revalidatePath('/admin/users')
     return { success: true }
 }
 
@@ -68,6 +68,6 @@ export async function deleteUser(userId: string | FormData) {
 
     if (error) throw new Error(error.message)
 
-    revalidatePath('/dashboard/users')
+    revalidatePath('/admin/users')
     return { success: true }
 }

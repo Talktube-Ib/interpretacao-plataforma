@@ -30,7 +30,7 @@ export async function generateMetadata(
         openGraph: {
             title: title,
             description: description,
-            url: `https://interpretbrasil.com/room/${roomId}`, // Assuming base URL, adjust if needed
+            url: `https://talktube.net/room/${roomId}`, // Using talktube.net domain
             siteName: 'TalkTube',
             images: [
                 {

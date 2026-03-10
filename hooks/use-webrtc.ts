@@ -25,6 +25,7 @@ interface PeerData {
     micOn?: boolean
     cameraOn?: boolean
     isSpeaking?: boolean
+    isGhost?: boolean
     handRaised?: boolean
     name?: string
     isPresentation?: boolean
@@ -41,7 +42,8 @@ export function useWebRTC(
     initialConfig: { micOn?: boolean, cameraOn?: boolean, audioDeviceId?: string, videoDeviceId?: string, stream?: MediaStream } = {},
     isJoined: boolean = false,
     userName: string = 'Participante',
-    liveKitToken?: string
+    liveKitToken?: string,
+    isGhostMode: boolean = false
 ) {
     const sessionUserId = userId // O userId já vem com o sufixo da RoomPage
 
@@ -73,7 +75,8 @@ export function useWebRTC(
         handRaised: false,
         language: 'floor',
         audioBlocked: false,
-        isHost: false
+        isHost: false,
+        isGhost: isGhostMode
     })
 
     const peersRef = useRef<Map<string, PeerData>>(new Map())
@@ -81,13 +84,21 @@ export function useWebRTC(
     const lastVideoDeviceId = useRef<string | undefined>(initialConfig.videoDeviceId)
 
     const syncToState = useCallback(() => {
-        setPeers(Array.from(peersRef.current.values()))
+        const allPeers = Array.from(peersRef.current.values())
+        // Filter: Hide ghost users UNLESS current user is an admin or MASTER
+        const isAdmin = userRole === 'admin' || userRole === 'MASTER'
+        const visiblePeers = allPeers.filter(p => !p.isGhost || isAdmin)
+        setPeers(visiblePeers)
+
         if (roomRef.current) {
-            setUserCount(roomRef.current.remoteParticipants.size + 1)
+            // Recalculate user count based on visible peers + self (if not ghost)
+            const remoteVisibleCount = allPeers.filter(p => !p.isGhost).length
+            const selfVisible = isGhostMode ? 0 : 1
+            setUserCount(remoteVisibleCount + selfVisible)
         } else if (isJoined) {
-            setUserCount(1)
+            setUserCount(isGhostMode ? 0 : 1)
         }
-    }, [isJoined])
+    }, [isJoined, userRole, isGhostMode])
 
     // --- LiveKit Room Connection ---
     useEffect(() => {
@@ -326,6 +337,7 @@ export function useWebRTC(
                 if (existing.language !== remoteData?.language) { existing.language = remoteData?.language; peerChanged = true }
                 if (existing.role !== remoteData?.role) { existing.role = remoteData?.role; peerChanged = true }
                 if (existing.isHost !== remoteData?.isHost) { existing.isHost = remoteData?.isHost; peerChanged = true }
+                if (existing.isGhost !== remoteData?.isGhost) { existing.isGhost = remoteData?.isGhost; peerChanged = true }
                 if (existing.audioBlocked !== remoteData?.audioBlocked) { existing.audioBlocked = remoteData?.audioBlocked; peerChanged = true }
                 if (peerChanged) changed = true
             } else {
@@ -340,6 +352,7 @@ export function useWebRTC(
                     handRaised: remoteData?.handRaised,
                     language: remoteData?.language,
                     isHost: remoteData?.isHost,
+                    isGhost: remoteData?.isGhost,
                     audioBlocked: remoteData?.audioBlocked,
                     connectionState: 'connecting',
                     joinedAt: Date.now()

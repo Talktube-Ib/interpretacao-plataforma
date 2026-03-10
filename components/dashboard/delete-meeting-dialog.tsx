@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Trash2, Loader2 } from 'lucide-react'
+import { Trash2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import {
     AlertDialog,
@@ -36,10 +37,16 @@ export default function DeleteMeetingDialog({ meetingId, meetingTitle }: DeleteM
 
         if (!error) {
             setLoading(false)
+            toast.success('Reunião excluída com sucesso!', {
+                icon: <CheckCircle2 className="h-4 w-4 text-green-500" />
+            })
             router.refresh()
         } else {
             setLoading(false)
-            alert('Error deleting meeting: ' + error.message)
+            toast.error('Erro ao excluir reunião', {
+                description: error.message,
+                icon: <AlertCircle className="h-4 w-4 text-red-500" />
+            })
         }
     }
 

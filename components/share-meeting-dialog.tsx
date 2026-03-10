@@ -20,9 +20,12 @@ export function ShareMeetingDialog({ roomId, trigger, className }: ShareMeetingD
     const [open, setOpen] = useState(false)
 
     // Construct URL (assuming window is available, otherwise generic)
+    const displayId = roomId
+    const pathPrefix = 'room'
+
     const url = typeof window !== 'undefined'
-        ? `${window.location.origin}/room/${roomId}`
-        : `https://talktube.net/room/${roomId}`
+        ? `${window.location.origin}/${pathPrefix}/${displayId}`
+        : `https://talktube.net/${pathPrefix}/${displayId}`
 
     const handleCopy = () => {
         navigator.clipboard.writeText(url)
@@ -49,7 +52,7 @@ export function ShareMeetingDialog({ roomId, trigger, className }: ShareMeetingD
                 </DialogHeader>
                 <div className="flex flex-col gap-4 py-4">
                     <p className="text-sm text-gray-400">
-                        {t('common.share_description')} <strong>{roomId}</strong>.
+                        {t('common.share_description')}
                     </p>
                     <div className="flex items-center space-x-2">
                         <div className="grid flex-1 gap-2">

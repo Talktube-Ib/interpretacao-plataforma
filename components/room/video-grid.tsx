@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LocalVideo, RemoteVideo } from '@/components/webrtc/video-player'
 import { cn } from '@/lib/utils'
+import { Mic, MicOff, Hand } from 'lucide-react'
 
 interface VideoGridProps {
     peers: any[]
@@ -26,6 +27,7 @@ interface VideoGridProps {
     localPeerVolumes?: Record<string, number>
     onLocalVolumeChange?: (targetId: string, volume: number) => void
     localScreenStream?: MediaStream | null
+    isGhost?: boolean
 }
 
 export function VideoGrid({
@@ -48,90 +50,78 @@ export function VideoGrid({
     onMutePeer,
     localPeerVolumes = {},
     onLocalVolumeChange,
-    localScreenStream
+    localScreenStream,
+    isGhost = false
 }: VideoGridProps) {
 
     // Flatten peers to include Screen Shares as separate "Virtual Peers"
-    const displayItems = peers.flatMap(p => {
-        const items = [{ ...p, isScreen: false, id: p.userId }]
-        if (p.screenStream) {
-            items.push({
-                ...p,
-                stream: p.screenStream,
-                isScreen: true,
-                id: `${p.userId}-screen`,
-                name: `${p.name} (Tela)`,
-                micOn: false, // Screen share usually doesn't have mic, or it's mixed. Visually hide mic icon.
-                cameraOn: true // Always show as "video on"
-            })
-        }
-        return items
-    })
+    const displayItems = useMemo(() => {
+        return peers.flatMap(p => {
+            const items = [{ ...p, isScreen: false, id: p.userId }]
+            if (p.screenStream) {
+                items.push({
+                    ...p,
+                    stream: p.screenStream,
+                    isScreen: true,
+                    id: `${p.userId}-screen`,
+                    name: `${p.name} (Tela)`,
+                    micOn: false,
+                    cameraOn: true
+                })
+            }
+            return items
+        })
+    }, [peers])
 
     // Add Local Screen Share to display items if active
-    if (localScreenStream) {
-        displayItems.push({
-            userId: 'local-screen',
-            id: 'local-screen',
-            name: 'Sua Tela',
-            stream: localScreenStream,
-            isScreen: true,
-            micOn: false,
-            cameraOn: true,
-            role: currentRole
-        } as any)
-    }
+    const finalDisplayItems = useMemo(() => {
+        if (!localScreenStream) return displayItems
+        return [
+            ...displayItems,
+            {
+                userId: 'local-screen',
+                id: 'local-screen',
+                name: 'Sua Tela',
+                stream: localScreenStream,
+                isScreen: true,
+                micOn: false,
+                cameraOn: true,
+                role: currentRole
+            } as any
+        ]
+    }, [displayItems, localScreenStream, currentRole])
 
     // Determine the "featured" speaker for Speaker Mode
-    // Priority: Pinned > Screen Share (any) > Active Speaker > First Peer
-    const screenShareItem = displayItems.find(p => p.isScreen)
-    const featuredItemId = pinnedSpeakerId || (screenShareItem ? screenShareItem.id : (activeSpeakerId || (displayItems.length > 0 ? displayItems[0].id : null)))
+    const featuredItemId = useMemo(() => {
+        const screenShareItem = finalDisplayItems.find(p => p.isScreen)
+        return pinnedSpeakerId || (screenShareItem ? screenShareItem.id : (activeSpeakerId || (finalDisplayItems.length > 0 ? finalDisplayItems[0].id : null)))
+    }, [pinnedSpeakerId, finalDisplayItems, activeSpeakerId])
 
-    const featuredItem = displayItems.find(p => p.id === featuredItemId)
+    const featuredItem = useMemo(() => finalDisplayItems.find(p => p.id === featuredItemId), [finalDisplayItems, featuredItemId])
 
     // In Speaker Mode, we show others in a strip
-    const otherItems = mode === 'speaker' && featuredItem
-        ? displayItems.filter(p => p.id !== featuredItemId)
-        : displayItems
+    const otherItems = useMemo(() => {
+        return mode === 'speaker' && featuredItem
+            ? finalDisplayItems.filter(p => p.id !== featuredItemId)
+            : finalDisplayItems
+    }, [mode, featuredItem, finalDisplayItems, featuredItemId])
 
     // Grid columns calculation for Gallery Mode
-    const totalItems = displayItems.length + 1 // +1 for Local
-    const getGridClass = (count: number) => {
-        if (count === 1) return "grid-cols-1"
-        if (count === 2) return "grid-cols-1 md:grid-cols-2"
-        if (count <= 4) return "grid-cols-2"
-        if (count <= 9) return "grid-cols-2 md:grid-cols-3"
-        return "grid-cols-2 md:grid-cols-4"
-    }
+    const totalItems = finalDisplayItems.length + (isGhost ? 0 : 1) // +1 for Local UNLESS ghost
 
     // Determine audio volume based on language selection and balance
     const getPeerVolume = (peer: any) => {
+        if (localMutedPeers.has(peer.userId)) return 0
         let vol = 1;
-
-        // Implementation logic for volume scaling
-        // If listening to Original (Floor), everyone is 1.0 (unless muted locally? logic is in VideoPlayer)
-        if (localMutedPeers.has(peer.userId)) {
-            return 0
-        }
-
         if (selectedLang === 'original') {
             vol = 1
-        }
-        // If listening to Interpretation
-        // Interpreter for selected language -> High Volume (based on balance)
-        else if (peer.language === selectedLang) {
+        } else if (peer.language === selectedLang) {
             vol = volumeBalance / 100
-        }
-        // Floor speakers (non-interpreters OR interpreters explicitly on 'floor') -> Low Volume (based on balance)
-        else if (!peer.role.includes('interpreter') || peer.language === 'floor') {
+        } else if (!peer.role.includes('interpreter') || peer.language === 'floor') {
             vol = (100 - volumeBalance) / 100
-        }
-        // Other interpreters (on different languages) -> Mute
-        else {
+        } else {
             vol = 0
         }
-
-        // Apply Local Individual Volume (User's preference for this specific peer)
         const individualVol = localPeerVolumes[peer.userId] ?? 1
         return vol * masterVolume * individualVol
     }
@@ -140,7 +130,6 @@ export function VideoGrid({
         <div className="w-full h-full relative flex flex-col gap-4">
 
             {mode === 'speaker' && featuredItem ? (
-                // --- SPEAKER VIEW ---
                 // --- SPEAKER VIEW ---
                 <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden h-full">
                     {/* Featured Video (Presentation/Speaker) - Takes majority of space */}
@@ -165,33 +154,32 @@ export function VideoGrid({
                         {/* Pin Indicator */}
                         {pinnedSpeakerId === featuredItem.id && (
                             <div className="absolute top-4 right-4 bg-[#06b6d4] p-1.5 rounded-full z-10">
-                                <span className="sr-only">Pinned</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pin text-white"><line x1="12" x2="12" y1="17" y2="22" /><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><line x1="12" x2="12" y1="17" y2="22" /><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" /></svg>
                             </div>
                         )}
                     </div>
 
-                    {/* Sidebar of others (Right side on desktop, Bottom strip on mobile) */}
-                    {/* Hiding scrollbar for cleaner look, but allowing scroll */}
+                    {/* Sidebar of others */}
                     <div className={cn(
-                        "flex gap-2",
-                        // Mobile: Horizontal Scroll Strip
-                        "w-full h-24 md:h-full md:w-64 md:flex-col md:overflow-y-auto overflow-x-auto md:overflow-x-hidden pb-1 md:pb-0 px-1 snap-x md:snap-y no-scrollbar md:pr-1"
+                        "flex gap-2 w-full h-24 md:h-full md:w-64 md:flex-col md:overflow-y-auto overflow-x-auto md:overflow-x-hidden pb-1 md:pb-0 px-1 snap-x md:snap-y no-scrollbar md:pr-1"
                     )}>
-                        {/* Always show Local in the strip in Speaker Mode */}
-                        <div className="w-28 md:w-full shrink-0 snap-start aspect-video rounded-xl overflow-hidden shadow-sm border border-white/10">
-                            <LocalVideo
-                                stream={localStream}
-                                name={localUserName + " (Você)"}
-                                role={currentRole}
-                                micOff={!micOn}
-                                cameraOff={!cameraOn}
-                                handRaised={handRaised}
-                                onPin={() => onSpeakerChange('local')}
-                                isPinned={pinnedSpeakerId === 'local'}
-                                showPinButton={true}
-                            />
-                        </div>
+                        {/* Local Participant In Strip - Only if not GHOST */}
+                        {!isGhost && (
+                            <div className="w-28 md:w-full shrink-0 snap-start aspect-video rounded-xl overflow-hidden shadow-sm border border-white/10">
+                                <LocalVideo
+                                    stream={localStream}
+                                    name={localUserName + " (Você)"}
+                                    role={currentRole}
+                                    micOff={!micOn}
+                                    cameraOff={!cameraOn}
+                                    handRaised={handRaised}
+                                    onPin={() => onSpeakerChange('local')}
+                                    isPinned={pinnedSpeakerId === 'local'}
+                                    showPinButton={true}
+                                />
+                            </div>
+                        )}
+
                         {otherItems.map(item => (
                             <div
                                 key={item.id}
@@ -222,7 +210,7 @@ export function VideoGrid({
                     </div>
                 </div>
             ) : (
-                // --- GALLERY VIEW (Default) ---
+                // --- GALLERY VIEW ---
                 <div className={cn(
                     "grid gap-2 md:gap-4 w-full h-full auto-rows-fr transition-all",
                     totalItems <= 1 ? "grid-cols-1" :
@@ -231,23 +219,36 @@ export function VideoGrid({
                                 totalItems === 4 ? "grid-cols-2 md:grid-cols-2" :
                                     "grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
                 )}>
-                    {/* Local Video - Always first? Or last? Let's put first for now */}
-                    <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative">
-                        <LocalVideo
-                            stream={localStream}
-                            name={localUserName + " (Você)"}
-                            role={currentRole}
-                            micOff={!micOn}
-                            cameraOff={!cameraOn}
-                            handRaised={handRaised}
-                            onPin={() => onSpeakerChange('local')}
-                            isPinned={pinnedSpeakerId === 'local'}
-                            showPinButton={true}
-                        />
-                    </motion.div>
+                    {/* Local Participant In Gallery - Only if not GHOST */}
+                    {!isGhost && (
+                        <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl aspect-video">
+                            <LocalVideo
+                                stream={localStream}
+                                name={localUserName + " (Você)"}
+                                role={currentRole}
+                                micOff={!micOn}
+                                cameraOff={!cameraOn}
+                                handRaised={handRaised}
+                                onPin={() => onSpeakerChange('local')}
+                                isPinned={pinnedSpeakerId === 'local'}
+                                showPinButton={true}
+                            />
+                            <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2 pointer-events-none">
+                                <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10">
+                                    {micOn ? <Mic className="h-3 w-3 text-cyan-400" /> : <MicOff className="h-3 w-3 text-red-500" />}
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">{localUserName} (Você)</span>
+                                </div>
+                                {handRaised && (
+                                    <div className="bg-yellow-500 text-black p-1.5 rounded-full animate-bounce shadow-lg shadow-yellow-500/20">
+                                        <Hand className="h-3 w-3 fill-current" />
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
 
                     <AnimatePresence>
-                        {displayItems.map(item => (
+                        {finalDisplayItems.map(item => (
                             <motion.div
                                 key={item.id}
                                 layout
@@ -255,8 +256,8 @@ export function VideoGrid({
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className={cn(
-                                    "relative transition-all",
-                                    pinnedSpeakerId === item.id ? "ring-2 ring-[#06b6d4] rounded-[2.5rem]" : ""
+                                    "relative transition-all aspect-video",
+                                    pinnedSpeakerId === item.id ? "ring-2 ring-[#06b6d4] rounded-2xl" : ""
                                 )}
                             >
                                 <RemoteVideo
@@ -287,5 +288,3 @@ export function VideoGrid({
         </div>
     )
 }
-
-

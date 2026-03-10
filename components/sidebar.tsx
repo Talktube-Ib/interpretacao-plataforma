@@ -36,7 +36,7 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
     const pathname = usePathname()
     const { t } = useLanguage()
 
-    const routes = [
+    const mainRoutes = [
         {
             label: t('sidebar.dashboard'),
             icon: LayoutDashboard,
@@ -47,18 +47,23 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
             icon: Calendar,
             href: '/dashboard/agenda',
         },
+    ]
+
+    const connectionRoutes = [
         {
             label: t('sidebar.messages'),
             icon: MessageSquare,
             href: '/dashboard/messages',
             badge: unreadMessagesCount
         },
+    ]
+
+    const configRoutes = [
         {
             label: t('sidebar.settings'),
             icon: Settings,
             href: '/dashboard/settings',
         },
-        // Added Help Link
         {
             label: 'Ajuda',
             icon: HelpCircle,
@@ -66,12 +71,7 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
         },
     ]
 
-    const adminRoutes = [
-        {
-            label: 'Visão Geral',
-            icon: Activity,
-            href: '/admin',
-        },
+    const adminManagementRoutes = [
         {
             label: t('sidebar.users'),
             icon: Users,
@@ -85,7 +85,15 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
         {
             label: t('sidebar.announcements'),
             icon: Megaphone,
-            href: '/admin/messages',
+            href: '/admin/announcements',
+        },
+    ]
+
+    const adminSystemRoutes = [
+        {
+            label: 'Monitoramento',
+            icon: Activity,
+            href: '/admin',
         },
         {
             label: t('sidebar.audit_logs'),
@@ -99,8 +107,59 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
         },
     ]
 
+    interface NavItem {
+        label: string
+        icon: any
+        href: string
+        badge?: number
+    }
+
+    interface NavGroupProps {
+        title?: string
+        items: NavItem[]
+        pathname: string
+    }
+
+    const NavGroup = ({ title, items, pathname }: NavGroupProps) => (
+        <div className="mb-6 last:mb-0">
+            {title && (
+                <h3 className="mb-2 px-4 text-[10px] font-black text-muted-foreground/60 dark:text-blue-300/60 uppercase tracking-[0.2em]">
+                    {title}
+                </h3>
+            )}
+            <div className="space-y-1">
+                {items.map((route) => {
+                    const isActive = pathname === route.href || (route.href.includes('?tab=') && pathname === route.href.split('?')[0])
+                    return (
+                        <Link
+                            key={route.href}
+                            href={route.href}
+                            suppressHydrationWarning
+                            className={cn(
+                                'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-xl transition-all relative',
+                                isActive
+                                    ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_-12px_rgba(6,182,212,0.5)] border border-cyan-500/10'
+                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white border border-transparent'
+                            )}
+                        >
+                            <div className="flex items-center flex-1">
+                                <route.icon className={cn('h-4 w-4 mr-3 transition-colors', isActive ? 'text-cyan-400' : 'text-zinc-500 group-hover:text-white')} />
+                                <span className={cn("flex-1 tracking-wide", isActive ? "font-bold text-xs uppercase" : "font-medium")}>{route.label}</span>
+                                {typeof route.badge === 'number' && route.badge > 0 && (
+                                    <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-md shadow-red-500/20">
+                                        {route.badge}
+                                    </span>
+                                )}
+                            </div>
+                        </Link>
+                    )
+                })}
+            </div>
+        </div>
+    )
+
     return (
-        <div className="flex flex-col h-full bg-card border-r border-border dark:bg-gradient-to-b dark:from-[#1e3a8a] dark:to-[#0f172a] shadow-xl transition-all duration-300">
+        <div className="flex flex-col h-full bg-black/40 backdrop-blur-3xl border-r border-white/5 shadow-2xl transition-all duration-300">
             {/* Branding Header */}
             <div className="flex items-center justify-center p-6 pb-2">
                 <Logo className="scale-125 transition-transform hover:scale-130 duration-300" />
@@ -111,79 +170,22 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
             </div>
 
             {/* Navigation */}
-            <div className="flex-1 px-4 overflow-y-auto no-scrollbar">
-                <div className="space-y-4">
-                    <div>
-                        <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground dark:text-blue-300/60 uppercase tracking-wider">
-                            {t('sidebar.main_menu')}
-                        </h3>
-                        <div className="space-y-1">
-                            {routes.map((route) => {
-                                const isActive = pathname === route.href || (route.href.includes('?tab=') && pathname === route.href.split('?')[0] && window?.location?.search?.includes(route.href.split('?')[1]))
-                                return (
-                                    <Link
-                                        key={route.href}
-                                        href={route.href}
-                                        className={cn(
-                                            'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-xl transition-all relative',
-                                            isActive
-                                                ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_-12px_rgba(6,182,212,0.5)] border border-cyan-500/10'
-                                                : 'text-muted-foreground hover:bg-white/5 hover:text-white border border-transparent'
-                                        )}
-                                    >
-                                        <div className="flex items-center flex-1">
-                                            <route.icon className={cn('h-4 w-4 mr-3 transition-colors', isActive ? 'text-cyan-400' : 'text-zinc-500 group-hover:text-white')} />
-                                            <span className={cn("flex-1 tracking-wide", isActive ? "font-bold" : "font-medium")}>{route.label}</span>
-                                            {/* Badge */}
-                                            {/* Force strict number check to avoid '0' rendering */}
-                                            {typeof route.badge === 'number' && route.badge > 0 && (
-                                                <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-md shadow-red-500/20">
-                                                    {route.badge}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </Link>
-                                )
-                            })}
-                        </div>
-                    </div>
+            <div className="flex-1 px-4 overflow-y-auto no-scrollbar py-4">
+                <NavGroup title={t('sidebar.main_menu')} items={mainRoutes} pathname={pathname} />
+                <NavGroup title="Conexões" items={connectionRoutes} pathname={pathname} />
 
-                    {userRole === 'admin' && (
-                        <div>
-                            <h3 className="mb-2 px-4 text-xs font-semibold text-muted-foreground dark:text-blue-300/60 uppercase tracking-wider mt-6">
-                                {t('sidebar.administration')}
-                            </h3>
-                            <div className="space-y-1">
-                                {adminRoutes.map((route) => {
-                                    const isActive = pathname === route.href
-                                    return (
-                                        <Link
-                                            key={route.href}
-                                            href={route.href}
-                                            className={cn(
-                                                'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-xl transition-all relative',
-                                                isActive
-                                                    ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_-12px_rgba(6,182,212,0.5)] border border-cyan-500/10'
-                                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white border border-transparent'
-                                            )}
-                                        >
-                                            <div className="flex items-center flex-1">
-                                                <route.icon className={cn('h-4 w-4 mr-3 transition-colors', isActive ? 'text-cyan-400' : 'text-zinc-500 group-hover:text-white')} />
-                                                <span className={cn("tracking-wide", isActive ? "font-bold" : "font-medium")}>
-                                                    {route.label}
-                                                </span>
-                                            </div>
-                                        </Link>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                {(userRole === 'admin' || userRole === 'MASTER') && (
+                    <>
+                        <NavGroup title={t('sidebar.administration')} items={adminManagementRoutes} pathname={pathname} />
+                        <NavGroup title="Sistema" items={adminSystemRoutes} pathname={pathname} />
+                    </>
+                )}
+
+                <NavGroup title="Ajustes" items={configRoutes} pathname={pathname} />
             </div>
 
             {/* Footer / User Profile */}
-            <div className="p-4 bg-muted/30 dark:bg-[#0f172a]/50 backdrop-blur-md border-t border-border dark:border-white/5 mx-4 mb-4 rounded-3xl mt-auto shadow-inner">
+            <div className="p-4 bg-white/[0.03] backdrop-blur-xl border-t border-white/5 mx-4 mb-4 rounded-3xl mt-auto shadow-2xl">
                 <div className="flex items-center gap-x-3 mb-4">
                     <Avatar className="h-10 w-10 border-2 border-background dark:border-white/10 shadow-lg shadow-cyan-500/20">
                         <AvatarImage src={userAvatar || ''} />
@@ -196,7 +198,7 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
                             {userName || user.email?.split('@')[0]}
                         </span>
                         <span className="text-[10px] text-muted-foreground dark:text-blue-300/80 font-bold uppercase tracking-wider">
-                            {userRole === 'admin' ? t('common.role_admin') : (userRole === 'interpreter' ? 'INTÉRPRETE' : t('common.role_user'))}
+                            {(userRole === 'admin' || userRole === 'MASTER') ? t('common.role_admin') : (userRole === 'interpreter' ? 'INTÉRPRETE' : t('common.role_user'))}
                         </span>
                     </div>
                 </div>

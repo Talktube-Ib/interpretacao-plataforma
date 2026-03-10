@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Calendar, Settings, Share2, Video, Clock, Sparkles } from 'lucide-react'
+import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import CreateMeetingModal from '@/components/create-meeting-modal'
@@ -11,18 +12,40 @@ import { InstantMeetingButton } from '@/components/dashboard/instant-meeting-but
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 import EditMeetingModal from '@/components/dashboard/edit-meeting-modal'
 import DeleteMeetingDialog from '@/components/dashboard/delete-meeting-dialog'
+import EndMeetingDialog from '@/components/dashboard/end-meeting-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
 import { NotificationsDropdown } from '@/components/notifications-dropdown'
 
+interface User {
+    id: string
+    email?: string
+}
+
+interface Profile {
+    full_name?: string
+    personal_meeting_id?: string
+    username?: string
+}
+
+interface Meeting {
+    id: string
+    title: string
+    status: 'active' | 'ended'
+    start_time: string
+    slug?: string
+}
+
 interface DashboardClientProps {
-    user: any
-    profile: any
-    meetings: any[] | null
+    user: User
+    profile: Profile | null
+    meetings: Meeting[] | null
     isDemo: boolean
 }
 
 export default function DashboardClient({ user, profile, meetings, isDemo }: DashboardClientProps) {
     const { t } = useLanguage()
+
+
     const personalRoomId = profile?.personal_meeting_id || user.id
 
     return (
@@ -31,15 +54,12 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
             {/* Minimal Transparent Header - Hidden on mobile as Layout provides global nav */}
             <div className="hidden md:flex py-4 md:py-6 px-4 md:px-10 border-b border-border/50 bg-background/50 backdrop-blur-md sticky top-0 z-50">
                 <div className="container mx-auto max-w-[1600px] flex justify-between items-center group">
-                    <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tighter flex items-center gap-2 md:gap-3">
-                        <span className="p-1.5 md:p-2 bg-cyan-600 rounded-xl shadow-lg shadow-cyan-600/20 group-hover:scale-110 transition-transform duration-500 hover:rotate-12">
-                            <Video className="h-4 w-4 md:h-5 md:w-5 text-white" />
-                        </span>
-                        TalkTube
-                        <span className="text-muted-foreground font-medium text-[10px] md:text-xs tracking-widest uppercase ml-1 md:ml-2 opacity-50 group-hover:opacity-100 transition-opacity hidden sm:inline">
+                    <div className="flex items-center gap-4">
+                        <Logo className="scale-75 md:scale-100 origin-left" />
+                        <span className="text-muted-foreground font-medium text-[10px] md:text-xs tracking-widest uppercase opacity-50 hidden sm:inline">
                             {t('common.video_conf_software')}
                         </span>
-                    </h1>
+                    </div>
 
                     {/* Notifications & User Menu Placeholder */}
                     <div className="flex items-center gap-4">
@@ -74,7 +94,7 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
 
                                 <div className="flex flex-col lg:flex-row gap-3 md:gap-4 items-center bg-slate-900/60 backdrop-blur-md p-2 md:p-2.5 pl-4 md:pl-8 rounded-[1.5rem] md:rounded-[2rem] border border-slate-800/50 group/input focus-within:border-cyan-500/30 transition-all duration-500 shadow-inner w-full">
                                     <span className="text-slate-500 font-mono text-xs md:text-sm truncate w-full flex-1 tracking-tight text-center lg:text-left">
-                                        talktube.io/room/{personalRoomId}
+                                        talktube.net/room/{personalRoomId}
                                     </span>
                                     <div className="flex gap-2 md:gap-3 w-full lg:w-auto">
                                         <ShareMeetingDialog
@@ -86,7 +106,7 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
                                                 </Button>
                                             }
                                         />
-                                        <Link href={`/room/${personalRoomId}`} className="flex-1 lg:flex-none w-full lg:w-auto">
+                                        <Link href={`/room/${personalRoomId}`} suppressHydrationWarning className="flex-1 lg:flex-none w-full lg:w-auto">
                                             <Button className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black uppercase tracking-widest text-[9px] md:text-[10px] h-10 md:h-12 px-6 md:px-10 rounded-xl md:rounded-2xl shadow-xl shadow-cyan-600/20 group-hover:scale-105 transition-all duration-500 flex items-center justify-center gap-1.5 md:gap-2">
                                                 <Video className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                                 {t('common.enter')}
@@ -95,7 +115,7 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
                                     </div>
                                 </div>
 
-                                <Link href="/dashboard/settings" className="mt-6 md:mt-10 inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-cyan-500 transition-colors group/link">
+                                <Link href="/dashboard/settings" suppressHydrationWarning className="mt-6 md:mt-10 inline-flex items-center gap-3 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-cyan-500 transition-colors group/link">
                                     <div className="p-2 bg-white/5 rounded-xl group-hover/link:bg-cyan-500/10 transition-colors">
                                         <Settings className="h-4 w-4 group-hover/link:rotate-90 transition-transform duration-500" />
                                     </div>
@@ -221,20 +241,8 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
 
                                                 {meeting.status === 'active' ? (
                                                     <div className="flex gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            className="h-8 px-3 text-red-500 hover:bg-red-500/10 rounded-lg font-black uppercase text-[10px]"
-                                                            onClick={async () => {
-                                                                if (confirm(t('room.end_meeting_confirm') || 'Encerrar reunião para todos?')) {
-                                                                    const { endMeeting } = await import('@/app/actions/meeting')
-                                                                    await endMeeting(meeting.id)
-                                                                    window.location.reload()
-                                                                }
-                                                            }}
-                                                        >
-                                                            {t('common.end') || 'Encerrar'}
-                                                        </Button>
-                                                        <Link href={`/room/${meeting.id}`}>
+                                                        <EndMeetingDialog meetingId={meeting.id} meetingTitle={meeting.title} />
+                                                        <Link href={`/room/${meeting.id}`} suppressHydrationWarning>
                                                             <Button variant="outline" className="h-8 px-4 border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-cyan-400 rounded-lg font-black uppercase tracking-widest text-[10px] transition-all">
                                                                 {t('common.enter')}
                                                             </Button>

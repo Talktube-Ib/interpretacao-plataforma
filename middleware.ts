@@ -34,12 +34,14 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/dashboard') ||
         pathname.startsWith('/admin') ||
         pathname.startsWith('/room') ||
-        pathname.startsWith('/update-password')
+        pathname.startsWith('/atualizar-senha')
 
     if (!isProtectedRoute) {
         // Apply security headers and return FAST (ZERO network calls)
         response.headers.set('X-Frame-Options', 'DENY')
         response.headers.set('X-Content-Type-Options', 'nosniff')
+        response.headers.set('X-XSS-Protection', '1; mode=block')
+        response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
         return response
     }
 
@@ -79,8 +81,9 @@ export async function middleware(request: NextRequest) {
             return ripResponse
         }
 
-        // Admin check
-        if (pathname.startsWith('/admin') && profile.role !== 'admin') {
+        // Admin check (Include MASTER as admin)
+        const isAdmin = profile.role === 'admin' || profile.role === 'MASTER'
+        if (pathname.startsWith('/admin') && !isAdmin) {
             return NextResponse.redirect(new URL('/dashboard', request.url))
         }
     } catch (err) {
@@ -93,14 +96,16 @@ export async function middleware(request: NextRequest) {
     }
 
     // 4. Force Password Reset
-    if (user.user_metadata?.must_reset_password && !pathname.startsWith('/update-password')) {
-        return NextResponse.redirect(new URL('/update-password', request.url))
+    if (user.user_metadata?.must_reset_password && !pathname.startsWith('/atualizar-senha')) {
+        return NextResponse.redirect(new URL('/atualizar-senha', request.url))
     }
 
 
     // 5. Security Headers for protected routes
     response.headers.set('X-Frame-Options', 'DENY')
     response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
     response.headers.set('Permissions-Policy', "camera=(self), microphone=(self), geolocation=()")
 
     return response

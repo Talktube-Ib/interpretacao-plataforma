@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { generateSlug } from '@/lib/utils'
 
 export async function ensureWelcomeMessage() {
     const supabase = await createClient()

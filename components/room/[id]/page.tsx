@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from 'next/link'
 
-// Imports updated
 import { RecorderControls } from '@/components/room/RecorderControls'
 import { createClient } from '@/lib/supabase/client'
 import { useWebRTC } from '@/hooks/use-webrtc'
@@ -36,7 +35,7 @@ import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
 import { LANGUAGES } from '@/lib/languages'
 import { checkAndEndMeeting, restartPersonalMeeting, endMeeting } from '@/app/actions/meeting'
 import { VideoGrid } from '@/components/room/video-grid'
-import { LayoutGrid, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutGrid, Maximize2, ChevronLeft, ChevronRight, Ghost } from 'lucide-react'
 import { PreCallLobby } from '@/components/room/pre-call-lobby'
 import { SettingsDialog } from '@/components/room/settings-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
@@ -59,6 +58,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [currentRole, setCurrentRole] = useState<string>('participant')
     const [isLoaded, setIsLoaded] = useState(false)
     const [showUpsell, setShowUpsell] = useState(false) // NEW STATE
+    const [isGhost, setIsGhost] = useState(false)
 
     // State declarations moved for hoisting
     const [micOn, setMicOn] = useState(true)
@@ -153,12 +153,26 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         setUserName(user?.user_metadata?.full_name || user.email?.split('@')[0] || t('room.participant_default'))
                         setCurrentRole(user?.user_metadata?.role || 'participant')
                     }
-                    // Check Meeting Interpreters (Item 1)
-                    const { data: meeting } = await supabase
+                    const { data: meeting, error: meetingError } = await supabase
                         .from('meetings')
-                        .select('settings, start_time, status, host_id')
+                        .select('id, settings, start_time, status, host_id')
                         .eq('id', roomId)
-                        .single()
+                        .maybeSingle()
+
+                    if (meetingError || !meeting) {
+                        // Check if it's a personal room ID
+                        const { data: profileData } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .eq('id', roomId)
+                            .maybeSingle()
+
+                        if (!profileData) {
+                            setError(t('room.meeting_not_found'))
+                            setLoading(false)
+                            return
+                        }
+                    }
 
                     // Check Expiration (Lazy Check)
                     if (meeting?.status === 'active' && meeting.start_time) {
@@ -218,9 +232,25 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         setActiveLanguages(meeting.settings.active_languages)
                     }
                 } else {
-                    // Guests also need to check expiration? Ideally yes, but server action is somewhat protected.
-                    // Let's do a client check first to fail fast.
-                    const { data: meeting } = await supabase.from('meetings').select('status, start_time, settings').eq('id', roomId).single()
+                    const { data: meeting } = await supabase
+                        .from('meetings')
+                        .select('id, status, start_time, settings')
+                        .eq('id', roomId)
+                        .maybeSingle()
+
+                    if (!meeting) {
+                        const { data: profileData } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .eq('id', roomId)
+                            .maybeSingle()
+
+                        if (!profileData) {
+                            setError(t('room.meeting_not_found'))
+                            setLoading(false)
+                            return
+                        }
+                    }
 
                     if (meeting?.status === 'ended') {
                         alert(t('room.meeting_ended_title'))
@@ -318,7 +348,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         lastError,
         setLastError,
         localScreenStream
-    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined)
+    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined, isGhost)
 
 
     const isGuest = userId.startsWith('guest-')
@@ -570,12 +600,23 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             <PreCallLobby
                 userName={userName}
                 isGuest={isGuest}
-                onJoin={(config: any) => {
+                onJoin={async (config: any) => {
                     setLobbyConfig(config)
                     setMicOn(config.micOn)
                     setCameraOn(config.cameraOn)
+                    setIsGhost(config.isGhost)
                     setUserName(config.name)
                     setIsJoined(true)
+
+                    if (config.isGhost) {
+                        const { logAdminAction } = await import('@/components/admin/actions')
+                        await logAdminAction({
+                            action: 'ROOM_GHOST_JOIN',
+                            targetResource: 'meeting',
+                            targetId: roomId,
+                            details: { name: config.name, role: currentRole }
+                        })
+                    }
                 }}
             />
         )
@@ -622,12 +663,15 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     </Button>
 
                     <div className={cn(
-                        "px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1",
-                        userCount > 1 ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50'
+                        "px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 transition-all",
+                        userCount > 1 ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50',
+                        isGhost && "border-purple-500/50 text-purple-400 bg-purple-500/10"
                     )}>
-                        <Users className="h-3 w-3" />
+                        {isGhost ? <Ghost className="h-3 w-3 shadow-[0_0_8px_rgba(168,85,247,0.5)]" /> : <Users className="h-3 w-3" />}
                         <span>{userCount}</span>
-                        <span className="hidden xs:inline ml-1">{t('room.online')}</span>
+                        <span className="hidden xs:inline ml-1 uppercase text-[8px] tracking-tighter">
+                            {isGhost ? "Modo Auditor" : t('room.online')}
+                        </span>
                     </div>
                 </div>
 
@@ -708,6 +752,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         localPeerVolumes={localPeerVolumes}
                         onLocalVolumeChange={handleSetLocalVolume}
                         localScreenStream={localScreenStream}
+                        isGhost={isGhost}
                     />
 
                     {/* Pagination Controls */}
@@ -770,15 +815,17 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             <div className="h-full w-full md:w-80">
                                 <ParticipantList
                                     peers={[
-                                        {
+                                        // Include self in participant list only if NOT ghost or if self is admin (admins see ghosts)
+                                        ...((!isGhost || currentRole === 'admin' || currentRole === 'MASTER') ? [{
                                             userId: userId,
-                                            name: `${userName} (Você)`,
+                                            name: `${userName} (Você${isGhost ? ' - Ghost' : ''})`,
                                             role: currentRole,
                                             micOn: micOn,
                                             cameraOn: cameraOn,
                                             handRaised: localHandRaised,
-                                            isHost: isHost
-                                        },
+                                            isHost: isHost,
+                                            isGhost: isGhost
+                                        }] : []),
                                         ...peers.map(p => ({
                                             ...p,
                                             name: p.name || 'Participante',
