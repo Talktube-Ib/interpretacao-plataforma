@@ -10,7 +10,7 @@ export async function checkAndEndMeeting(meetingId: string) {
         .from('meetings')
         .select('start_time, status, host_id')
         .eq('id', meetingId)
-        .single()
+        .maybeSingle()
 
     if (!meeting) return { error: 'Meeting not found' }
     if (meeting.status === 'ended') return { expired: true }
@@ -46,7 +46,7 @@ export async function restartPersonalMeeting(meetingId: string) {
         .from('meetings')
         .select('host_id')
         .eq('id', meetingId)
-        .single()
+        .maybeSingle()
 
     if (meeting?.host_id === user.id) {
         // It's their meeting. Restart it.
@@ -76,7 +76,7 @@ export async function endMeeting(meetingId: string) {
         .from('meetings')
         .select('host_id')
         .eq('id', meetingId)
-        .single()
+        .maybeSingle()
 
     if (!meeting || meeting.host_id !== user.id) {
         return { error: 'Only host can end meeting' }

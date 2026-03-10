@@ -23,7 +23,7 @@ export async function getAdminStats() {
         supabase.from('meetings').select('start_time, end_time').eq('status', 'ended').not('end_time', 'is', null),
 
         // Platform Settings
-        supabase.from('platform_settings').select('max_concurrent_meetings').eq('id', 1).single(),
+        supabase.from('platform_settings').select('max_concurrent_meetings').eq('id', 1).maybeSingle(),
 
         // Audit Logs
         supabase.from('audit_logs')

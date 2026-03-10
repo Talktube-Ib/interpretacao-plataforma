@@ -20,7 +20,7 @@ export default async function DashboardLayout({
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     return (
         <div className="h-full relative bg-[#020617] text-white">

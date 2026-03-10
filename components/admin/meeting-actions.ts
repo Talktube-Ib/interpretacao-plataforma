@@ -19,7 +19,7 @@ export async function forceEndMeeting(meetingId: string, reason: string = 'Inter
         })
         .eq('id', meetingId)
 
-    if (error) throw new Error(error.message)
+    if (error) return { success: false, error: error.message }
 
     await logAdminAction({
         action: 'MEETING_FORCE_END',

@@ -45,7 +45,7 @@ export async function createInstantMeeting() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) throw new Error('Unauthorized')
+    if (!user) return { success: false, error: 'Unauthorized' }
 
     const { data, error } = await supabase
         .from('meetings')
@@ -57,9 +57,9 @@ export async function createInstantMeeting() {
             allowed_languages: ['pt', 'en'] // Default languages
         })
         .select()
-        .single()
+        .maybeSingle()
 
-    if (error) throw new Error(error.message)
+    if (error || !data) return { success: false, error: error?.message || 'Falha ao criar reunião' }
 
     redirect(`/room/${data.id}`)
 }

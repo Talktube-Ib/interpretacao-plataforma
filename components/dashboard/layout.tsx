@@ -30,7 +30,7 @@ export default async function DashboardLayout({
         .from('profiles')
         .select('role, avatar_url, full_name, last_read_announcements_at')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     role = profile?.role || user.user_metadata?.role || 'participant'
     avatar = profile?.avatar_url

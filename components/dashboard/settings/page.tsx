@@ -13,7 +13,7 @@ export default async function SettingsPage(props: { searchParams: Promise<{ [key
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     return (
         <div className="p-8 max-w-4xl animate-in fade-in duration-500 bg-background text-foreground">

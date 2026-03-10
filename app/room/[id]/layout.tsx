@@ -18,7 +18,7 @@ export async function generateMetadata(
         .from('meetings')
         .select('name, host_id')
         .eq('id', roomId)
-        .single()
+        .maybeSingle()
 
     // Default values
     const title = meeting?.name || "Reunião TalkTube"

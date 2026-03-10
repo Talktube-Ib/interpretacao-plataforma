@@ -9,7 +9,7 @@ import { Settings, AlertTriangle, Save } from 'lucide-react'
 
 export default async function AdminSettingsPage() {
     const supabase = await createClient()
-    const { data: settings } = await supabase.from('platform_settings').select('*').single()
+    const { data: settings } = await supabase.from('platform_settings').select('*').maybeSingle()
 
     // Default connection if table is empty (should satisfy via schema default insert)
     const safeSettings = settings || {

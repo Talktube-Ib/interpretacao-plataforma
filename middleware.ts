@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
             .from('profiles')
             .select('status, role')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         if (error || !profile || profile.status !== 'active') {
             const redirectUrl = new URL('/login', request.url)

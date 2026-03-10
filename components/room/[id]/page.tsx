@@ -68,7 +68,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [volumeBalance, setVolumeBalance] = useState(20)
     const [myBroadcastLang, setMyBroadcastLang] = useState('floor')
     const [masterVolume, setMasterVolume] = useState(1) // 0 to 1
-    const [showLangMenu, setShowLangMenu] = useState(false)
     const [attentionToast, setAttentionToast] = useState<{ id: string, name: string } | null>(null)
     const [activeSidebar, setActiveSidebar] = useState<'chat' | 'participants' | null>(null)
     const [isSharing, setIsSharing] = useState(false)
@@ -140,7 +139,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         .from('profiles')
                         .select('role, full_name')
                         .eq('id', user.id)
-                        .single()
+                        .maybeSingle()
 
                     if (profileError) {
                         console.error('Error fetching profile:', profileError)
@@ -562,7 +561,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     const handleLangChange = (code: string) => {
         setSelectedLang(code)
-        setShowLangMenu(false)
         setVolumeBalance(code !== 'original' ? 80 : 0)
     }
 
@@ -916,21 +914,15 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             {/* Interpreter Console (Central Cockpit) */}
             {/* Interpreter Console (Central Cockpit) */}
 
-            {(currentRole.toLowerCase().includes('interpreter') || currentRole.toLowerCase().includes('admin')) && (
+            {/* Interpreter Console (Central Cockpit) */}
+            {currentRole.toLowerCase().includes('interpreter') && (
                 <>
                     <InterpreterSetupModal
-                        isOpen={isJoined && currentRole.toLowerCase().includes('interpreter') && assignedLanguages.length === 0 && myBroadcastLang === 'floor'} // Show if interpreter, joined, and hasn't picked non-floor language (unless pre-assigned restricted)
-                        // Logic refinement: If user has 'assignedLanguages' from DB, maybe we don't need modal? Or we do active selection from allowed?
-                        // Let's assume we force selection if myBroadcastLang is 'floor' (default).
-                        // We need a state to track "setup done" to avoid showing it if they genuinely want to be on 'floor' (unlikely for active interpreter).
-                        // Better: use explicit state [interpreterSetupDone, setInterpreterSetupDone]
-                        // But for now, let's use the local state I'll add below.
-
+                        isOpen={isJoined && assignedLanguages.length === 0 && myBroadcastLang === 'floor'}
                         availableLanguages={availableSystemLanguages}
                         occupiedLanguages={peers.filter(p => p.role?.includes('interpreter') && p.userId !== userId).map(p => p.language).filter(Boolean) as string[]}
                         onSelect={(lang: any) => {
                             setMyBroadcastLang(lang)
-                            // Trigger update metadata immediate
                             updateMetadata({ language: lang })
                         }}
                         userName={userName}
@@ -959,48 +951,11 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         localStream={localStream}
                         isActive={micOn}
                         onHandoverComplete={() => {
-                            // I accepted the handover, so I go ON AIR
                             if (!micOn) handleToggleMic()
                         }}
                     />
-
                 </>
             )}
-            {/* Language Menu (Moved to Root) */}
-            <AnimatePresence>
-                {showLangMenu && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="fixed bottom-32 left-1/2 -translate-x-1/2 w-80 bg-card/90 backdrop-blur-2xl border border-border rounded-[2.5rem] shadow-3xl p-4 z-[70]"
-                    >
-                        <div className="text-[10px] font-black text-muted-foreground px-4 py-2 uppercase tracking-[0.3em] mb-2">
-                            {t('room.translation_channels')}
-                        </div>
-                        <div className="max-h-[350px] overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-                            {ROOM_LANGUAGES.map((lang) => (
-                                <button
-                                    key={lang.code}
-                                    onClick={() => handleLangChange(lang.code)}
-                                    className={cn(
-                                        "w-full flex items-center p-4 rounded-2xl transition-all active:scale-[0.98]",
-                                        selectedLang === lang.code
-                                            ? 'bg-[#06b6d4]/10 text-[#06b6d4] ring-1 ring-[#06b6d4]/30'
-                                            : 'hover:bg-accent/50 text-muted-foreground'
-                                    )}
-                                >
-                                    <span className="text-2xl mr-4">{lang.flag}</span>
-                                    <span className="font-bold text-sm tracking-tight">{lang.name}</span>
-                                    {selectedLang === lang.code && (
-                                        <div className="ml-auto w-2 h-2 rounded-full bg-[#06b6d4]" />
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
             {/* Bottom Control Bar */}
             <div className="h-20 md:h-28 bg-card/85 backdrop-blur-3xl border-t border-border flex items-center justify-start md:justify-center gap-2 md:gap-4 relative z-[50] px-4 md:px-10 pb-safe transition-all w-full overflow-x-auto no-scrollbar">
@@ -1155,6 +1110,20 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         title={t('room.raise_hand')}
                     >
                         <Hand className={cn("h-5 w-5 md:h-6 md:w-6", localHandRaised && "animate-bounce")} />
+                    </Button>
+
+                    {/* Force Reconnect / Sync Button */}
+                    <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-12 w-12 md:h-14 md:w-14 rounded-lg md:rounded-2xl shadow-xl bg-accent/50 text-foreground hover:bg-accent border-0"
+                        onClick={() => {
+                            reconnect()
+                            alert(t('room.reconnecting') || 'Sincronizando áudio e vídeo...')
+                        }}
+                        title={t('room.refresh_connection') || 'Recarregar Conexão'}
+                    >
+                        <Wifi className="h-5 w-5 md:h-6 md:w-6" />
                     </Button>
 
                     {/* Reactions Menu - Desktop Only */}

@@ -112,12 +112,15 @@ export function VideoGrid({
     // Determine audio volume based on language selection and balance
     const getPeerVolume = (peer: any) => {
         if (localMutedPeers.has(peer.userId)) return 0
-        let vol = 1;
+        let vol = 1
+        const peerRole = peer.role?.toLowerCase() || 'participant'
+        const peerLang = peer.language || 'floor'
+
         if (selectedLang === 'original') {
             vol = 1
-        } else if (peer.language === selectedLang) {
+        } else if (peerLang === selectedLang) {
             vol = volumeBalance / 100
-        } else if (!peer.role.includes('interpreter') || peer.language === 'floor') {
+        } else if (!peerRole.includes('interpreter') || peerLang === 'floor') {
             vol = (100 - volumeBalance) / 100
         } else {
             vol = 0

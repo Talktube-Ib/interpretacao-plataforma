@@ -50,7 +50,7 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
             // Send Notifications
             for (const interpreter of data.interpreters) {
                 if (interpreter.email) {
-                    const { data: userData } = await supabase.from('profiles').select('id').eq('email', interpreter.email).single()
+                    const { data: userData } = await supabase.from('profiles').select('id').eq('email', interpreter.email).maybeSingle()
                     if (userData) {
                         await supabase.from('notifications').insert({
                             user_id: userData.id,

@@ -14,7 +14,7 @@ export async function inviteUser(formData: FormData) {
         .from('profiles')
         .select('role')
         .eq('id', currentUser.id)
-        .single()
+        .maybeSingle()
 
     if (profile?.role !== 'admin') {
         throw new Error('Apenas administradores podem convidar usuários.')
@@ -57,7 +57,7 @@ export async function deleteUser(userId: string | FormData) {
         .from('profiles')
         .select('role')
         .eq('id', currentUser.id)
-        .single()
+        .maybeSingle()
 
     if (profile?.role !== 'admin') {
         throw new Error('Apenas administradores podem excluir usuários.')

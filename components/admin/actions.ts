@@ -40,7 +40,7 @@ export async function updateUserRole(userId: string, newRole: string) {
         if (!user) return { success: false, error: 'Unauthorized' }
 
         // Get previous role for logging
-        const { data: oldProfile } = await supabase.from('profiles').select('role').eq('id', userId).single()
+        const { data: oldProfile } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle()
 
         const supabaseAdmin = await ensureAdminClient()
 
@@ -77,7 +77,7 @@ export async function adminUpdateUserPassword(userId: string, newPassword: strin
         if (!user) return { success: false, error: 'Unauthorized' }
 
         // Verify Admin
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
         if (profile?.role !== 'admin') return { success: false, error: 'Unauthorized' }
 
         if (!newPassword || newPassword.length < 6) {
@@ -113,7 +113,7 @@ export async function updateUserStatus(userId: string, status: 'active' | 'suspe
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'Unauthorized' }
 
-        const { data: oldProfile } = await supabase.from('profiles').select('status').eq('id', userId).single()
+        const { data: oldProfile } = await supabase.from('profiles').select('status').eq('id', userId).maybeSingle()
 
         const supabaseAdmin = await ensureAdminClient()
 
@@ -159,7 +159,7 @@ export async function deleteUser(userId: string) {
         if (!user) return { success: false, error: 'Unauthorized' }
 
         // Verify Admin
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
         if (profile?.role !== 'admin') return { success: false, error: 'Unauthorized' }
 
         const supabaseAdmin = await ensureAdminClient()
@@ -270,7 +270,7 @@ export async function createUser(formData: FormData) {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'Não autorizado' }
 
-        const { data: requesterProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        const { data: requesterProfile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
         if (requesterProfile?.role !== 'admin') return { success: false, error: 'Permissão negada' }
 
         // 2. Extract data
@@ -367,7 +367,7 @@ export async function cleanupExpiredMeetings() {
     }
 
     // Check if admin
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
     if (profile?.role !== 'admin') {
         console.error(`Cleanup failed: User ${user.id} is not admin`)
         return { success: false, error: 'Permissão negada (Não é admin).' }
@@ -421,7 +421,7 @@ export async function killAllActiveMeetings() {
     if (!user) return { success: false, error: 'Usuário não autenticado.' }
 
     // Check if admin
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
     if (profile?.role !== 'admin') return { success: false, error: 'Permissão negada.' }
 
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return { success: false, error: 'Chave de Serviço ausente.' }
@@ -462,7 +462,7 @@ export async function createAnnouncement(formData: FormData) {
         if (!user) return { success: false, error: 'Unauthorized' }
 
         // Verify Admin
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
         if (profile?.role !== 'admin') return { success: false, error: 'Unauthorized' }
 
         const rawTitle = formData.get('title') as string
@@ -509,7 +509,7 @@ export async function deleteAnnouncement(id: string) {
 
         if (!user) return { success: false, error: 'Unauthorized' }
 
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
         if (profile?.role !== 'admin') return { success: false, error: 'Unauthorized' }
 
         const supabaseAdmin = await ensureAdminClient()

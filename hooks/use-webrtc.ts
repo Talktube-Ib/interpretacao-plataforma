@@ -161,6 +161,10 @@ export function useWebRTC(
                 console.log('--- Screen Share Track Attached to Peer:', peerId, track.kind)
             } else {
                 const stream = existing.stream || new MediaStream()
+                // Remove existing track of same kind if already there to avoid duplicates
+                stream.getTracks().forEach(t => {
+                    if (t.kind === track.kind) stream.removeTrack(t)
+                })
                 stream.addTrack(track.mediaStreamTrack)
                 existing.stream = new MediaStream(stream.getTracks()) // Re-instantiate to trigger React effect
                 if (track.kind === Track.Kind.Video) existing.cameraOn = true
@@ -178,7 +182,7 @@ export function useWebRTC(
             publication: RemoteTrackPublication,
             participant: RemoteParticipant
         ) => {
-            console.log(`--- SFU Track Unsubscribed: ${track.kind} from ${participant.identity}`)
+            console.log(`Track unsubscribed: ${track.sid} from ${participant.identity}`)
             const peerId = participant.identity
             const existing = peersRef.current.get(peerId)
             if (existing) {
@@ -186,19 +190,24 @@ export function useWebRTC(
                 const stream = isScreen ? existing.screenStream : existing.stream
 
                 if (stream) {
+                    // Remove the specific track
                     stream.removeTrack(track.mediaStreamTrack)
-                    // Clean up if no tracks left
-                    if (stream.getTracks().length === 0) {
+
+                    // Re-instantiate the stream to trigger updates in components
+                    if (stream.getTracks().length > 0) {
+                        if (isScreen) {
+                            existing.screenStream = new MediaStream(stream.getTracks())
+                        } else {
+                            existing.stream = new MediaStream(stream.getTracks())
+                        }
+                    } else {
+                        // If no tracks left, clear the stream
                         if (isScreen) {
                             existing.screenStream = undefined
                             if (sharingUserId === participant.identity.split('_')[0]) setSharingUserId(null)
                         } else {
                             existing.stream = undefined
                         }
-                    } else {
-                        // Re-instantiate to trigger React effect if tracks still remain
-                        if (isScreen) existing.screenStream = new MediaStream(stream.getTracks())
-                        else existing.stream = new MediaStream(stream.getTracks())
                     }
                 }
 
@@ -206,7 +215,7 @@ export function useWebRTC(
                     if (track.kind === Track.Kind.Video) existing.cameraOn = false
                     if (track.kind === Track.Kind.Audio) existing.micOn = false
                 }
-
+                peersRef.current.set(peerId, existing) // Ensure the updated peer data is set back
                 syncToState()
             }
         }
@@ -332,11 +341,13 @@ export function useWebRTC(
             if (existing) {
                 let peerChanged = false
                 if (remoteData?.name && existing.name !== remoteData.name) { existing.name = remoteData.name; peerChanged = true }
-                if (existing.micOn !== remoteData?.micOn) { existing.micOn = remoteData?.micOn; peerChanged = true }
-                if (existing.cameraOn !== remoteData?.cameraOn) { existing.cameraOn = remoteData?.cameraOn; peerChanged = true }
+                if (existing.micOn !== remoteData?.micOn) { existing.micOn = !!remoteData?.micOn; peerChanged = true }
+                if (existing.cameraOn !== remoteData?.cameraOn) { existing.cameraOn = !!remoteData?.cameraOn; peerChanged = true }
                 if (existing.handRaised !== remoteData?.handRaised) { existing.handRaised = remoteData?.handRaised; peerChanged = true }
+                // Case-insensitive role check for compatibility
+                const remoteRole = remoteData?.role?.toLowerCase() || ''
+                if (existing.role !== remoteRole) { existing.role = remoteRole; peerChanged = true }
                 if (existing.language !== remoteData?.language) { existing.language = remoteData?.language; peerChanged = true }
-                if (existing.role !== remoteData?.role) { existing.role = remoteData?.role; peerChanged = true }
                 if (existing.isHost !== remoteData?.isHost) { existing.isHost = remoteData?.isHost; peerChanged = true }
                 if (existing.isGhost !== remoteData?.isGhost) { existing.isGhost = remoteData?.isGhost; peerChanged = true }
                 if (existing.audioBlocked !== remoteData?.audioBlocked) { existing.audioBlocked = remoteData?.audioBlocked; peerChanged = true }

@@ -22,7 +22,7 @@ export async function updateProfile(formData: FormData) {
             .from('profiles')
             .select('limits')
             .eq('id', user.id)
-            .single()
+            .maybeSingle()
 
         const currentLimits = profile?.limits || {}
 

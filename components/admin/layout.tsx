@@ -21,7 +21,7 @@ export default async function AdminLayout({
         .from('profiles')
         .select('role')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
 
     const role = profile?.role || user.user_metadata?.role || 'participant'
 

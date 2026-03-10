@@ -15,7 +15,7 @@ export default async function DashboardPage() {
             .from('profiles')
             .select('id, full_name, personal_meeting_id')
             .eq('id', user.id)
-            .single(),
+            .maybeSingle(),
         supabase
             .from('meetings')
             .select('*')
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
 
     return <DashboardClient
         user={user}
-        profile={profile || { id: user.id }}
+        profile={profile || { id: user.id, full_name: null, personal_meeting_id: null }}
         meetings={meetings || []}
         isDemo={false}
     />
