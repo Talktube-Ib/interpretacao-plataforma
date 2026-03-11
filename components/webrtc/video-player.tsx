@@ -166,10 +166,11 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
 
     return (
         <div className={cn(
-            "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500",
-            isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)]",
+            "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500 z-10",
+            isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)] z-20",
             (isPaused || isMutedAutoplay) && "ring-4 ring-amber-500" // Visual cue
         )}>
+
             {cameraOff || !stream ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 backdrop-blur-3xl">
                     <div className="relative">

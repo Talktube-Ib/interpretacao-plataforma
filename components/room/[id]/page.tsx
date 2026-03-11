@@ -736,7 +736,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                 <Maximize2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
                                 <span className="font-semibold text-xs md:text-sm">{t('room.fullscreen')}</span>
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10 md:hidden" />
+                            <DropdownMenuItem
+                                className="md:hidden rounded-lg p-2 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-[10px]"
+                            >
+                                FECHAR
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
+
                     </DropdownMenu>
                 </div>
             </div>
@@ -997,7 +1004,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                         )}
                                     </DropdownMenuItem>
                                 ))}
+                                <DropdownMenuSeparator className="bg-white/10 md:hidden" />
+                                <DropdownMenuItem
+                                    className="md:hidden rounded-xl py-3 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-xs"
+                                >
+                                    FECHAR
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
+
                         </DropdownMenu>
                     </div>
 
@@ -1034,7 +1048,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                         )}
                                     </DropdownMenuItem>
                                 ))}
+                                <DropdownMenuSeparator className="bg-white/10 md:hidden" />
+                                <DropdownMenuItem
+                                    className="md:hidden rounded-xl py-3 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-xs"
+                                >
+                                    FECHAR
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
+
                         </DropdownMenu>
                     </div>
 
@@ -1071,7 +1092,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                 <PlayCircle className="h-4 w-4" />
                                 {t('room.share_local_video')}
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10 md:hidden" />
+                            <DropdownMenuItem
+                                className="md:hidden rounded-xl py-3 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-xs"
+                            >
+                                FECHAR
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
+
                     </DropdownMenu>
 
 
@@ -1201,7 +1229,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                             <DropdownMenuItem onClick={() => setIsSettingsOpen(true)} className="rounded-xl py-3 flex items-center justify-between">
                                 <span className="flex items-center gap-2 text-xs font-medium"><Settings className="h-4 w-4" /> Configurações</span>
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuItem
+                                className="rounded-xl py-3 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-xs"
+                            >
+                                FECHAR OPÇÕES
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
+
                     </DropdownMenu>
                 </div >
 
@@ -1248,7 +1283,14 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                 {selectedLang === lang.code && <div className="h-2 w-2 rounded-full bg-[#06b6d4]" />}
                             </DropdownMenuItem>
                         ))}
+                        <DropdownMenuSeparator className="bg-white/10 md:hidden" />
+                        <DropdownMenuItem
+                            className="md:hidden rounded-xl p-3 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-xs"
+                        >
+                            FECHAR MENU
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
+
                 </DropdownMenu>
 
                 {
