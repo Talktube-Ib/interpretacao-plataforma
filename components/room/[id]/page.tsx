@@ -77,6 +77,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [assignedLanguages, setAssignedLanguages] = useState<string[]>([]) // For restricted interpreters
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
     const [liveKitToken, setLiveKitToken] = useState<string | null>(null)
+    const [hasClosedSetup, setHasClosedSetup] = useState(false)
+
 
     // Layout and Join States
     const [isJoined, setIsJoined] = useState(false)
@@ -918,15 +920,17 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             {currentRole.toLowerCase().includes('interpreter') && (
                 <>
                     <InterpreterSetupModal
-                        isOpen={isJoined && assignedLanguages.length === 0 && myBroadcastLang === 'floor'}
+                        isOpen={isJoined && assignedLanguages.length === 0 && myBroadcastLang === 'floor' && !hasClosedSetup}
                         availableLanguages={availableSystemLanguages}
                         occupiedLanguages={peers.filter(p => p.role?.includes('interpreter') && p.userId !== userId).map(p => p.language).filter(Boolean) as string[]}
                         onSelect={(lang: any) => {
                             setMyBroadcastLang(lang)
                             updateMetadata({ language: lang })
                         }}
+                        onClose={() => setHasClosedSetup(true)}
                         userName={userName}
                     />
+
 
                     <InterpreterConsole
                         active={micOn}

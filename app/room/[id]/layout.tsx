@@ -27,8 +27,12 @@ export async function generateMetadata(
     return {
         title: `${title} | TalkTube`,
         description: description,
+        other: {
+            google: 'notranslate',
+        },
         openGraph: {
             title: title,
+
             description: description,
             url: `https://talktube.net/room/${roomId}`, // Using talktube.net domain
             siteName: 'TalkTube',
