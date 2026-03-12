@@ -48,7 +48,7 @@ export function NotificationsDropdown({ userId }: { userId: string }) {
 
     // Real-time subscription
     useEffect(() => {
-        fetchNotifications()
+        const timer = setTimeout(() => fetchNotifications(), 0)
 
         const channel = supabase
             .channel('notifications_changes')
@@ -68,9 +68,10 @@ export function NotificationsDropdown({ userId }: { userId: string }) {
             .subscribe()
 
         return () => {
+            clearTimeout(timer)
             supabase.removeChannel(channel)
         }
-    }, [userId])
+    }, [userId, supabase])
 
     const markAsRead = async (id: string) => {
         await supabase

@@ -59,10 +59,13 @@ export function useGalleryLayout(containerRef: RefObject<HTMLElement | null>, pa
     }, [participantCount, containerRef])
 
     useEffect(() => {
-        calculateLayout()
+        const timer = setTimeout(() => calculateLayout(), 0)
         const resizeObserver = new ResizeObserver(() => calculateLayout())
         if (containerRef.current) resizeObserver.observe(containerRef.current)
-        return () => resizeObserver.disconnect()
+        return () => {
+            clearTimeout(timer)
+            resizeObserver.disconnect()
+        }
     }, [calculateLayout, containerRef])
 
     return layout

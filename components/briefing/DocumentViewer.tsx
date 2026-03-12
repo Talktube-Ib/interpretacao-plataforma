@@ -57,9 +57,9 @@ export function DocumentViewer({ url, type }: DocumentViewerProps) {
         }
     }, [color, mode])
 
-    const startDrawing = ({ nativeEvent }: any) => {
+    const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (mode === 'view') return
-        const { offsetX, offsetY } = nativeEvent
+        const { offsetX, offsetY } = e.nativeEvent
         contextRef.current?.beginPath()
         contextRef.current?.moveTo(offsetX, offsetY)
         isDrawing.current = true
@@ -70,9 +70,9 @@ export function DocumentViewer({ url, type }: DocumentViewerProps) {
         isDrawing.current = false
     }
 
-    const draw = ({ nativeEvent }: any) => {
+    const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!isDrawing.current || mode === 'view') return
-        const { offsetX, offsetY } = nativeEvent
+        const { offsetX, offsetY } = e.nativeEvent
         contextRef.current?.lineTo(offsetX, offsetY)
         contextRef.current?.stroke()
     }

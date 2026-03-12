@@ -25,7 +25,7 @@ export async function backfillUsernames() {
     for (const profile of profiles) {
         if (!profile.email) continue
 
-        let baseUsername = profile.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-')
+        const baseUsername = profile.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-')
         let username = baseUsername
         let counter = 0
 

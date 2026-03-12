@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 interface MobileSidebarProps {
-    user: any;
+    user: Record<string, unknown> & { id?: string }
     userRole: string;
     userAvatar?: string | null;
     userName?: string;

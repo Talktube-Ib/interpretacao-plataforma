@@ -55,8 +55,8 @@ export default function AvatarUpload({ uid, url, email, onUploadComplete }: Avat
 
             setAvatarUrl(publicUrl)
             onUploadComplete(publicUrl)
-        } catch (error: any) {
-            alert('Erro ao fazer upload da imagem: ' + error.message)
+        } catch (error) {
+            alert('Erro ao fazer upload da imagem: ' + (error as Error).message)
         } finally {
             setUploading(false)
         }

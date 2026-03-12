@@ -3,16 +3,16 @@ import { createClient } from '@/lib/supabase/client'
 import { RealtimeChannel } from '@supabase/supabase-js'
 
 export interface SignalingEvents {
-    onSignal: (payload: any) => void
-    onShareStarted: (payload: any) => void
-    onShareEnded: (payload: any) => void
-    onHostPromoted: (payload: any) => void
-    onReaction: (payload: any) => void
+    onSignal: (payload: Record<string, unknown>) => void
+    onShareStarted: (payload: { sender: string }) => void
+    onShareEnded: (payload: { sender: string }) => void
+    onHostPromoted: (payload: { hostId: string }) => void
+    onReaction: (payload: { emoji: string, sender: string }) => void
     onRoomEvent: (payload: any) => void
     onPresenceSync: (users: string[], state: any) => void
 }
 
-export function useSignaling(roomId: string, userId: string, metadata: any, events: SignalingEvents, enabled: boolean = true) {
+export function useSignaling(roomId: string, userId: string, metadata: Record<string, unknown>, events: SignalingEvents, enabled: boolean = true) {
     const [channel, setChannel] = useState<RealtimeChannel | null>(null)
     const channelRef = useRef<RealtimeChannel | null>(null)
     const supabase = createClient()
@@ -42,8 +42,10 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
         console.log("Connecting to Signaling Channel:", roomId)
         const newChannel = supabase.channel(`room:${roomId}`, { config: { presence: { key: userId } } })
         channelRef.current = newChannel
-        setChannel(newChannel)
-        setConnectionState('connecting')
+        const timer = setTimeout(() => {
+            setChannel(newChannel)
+            setConnectionState('connecting')
+        }, 0)
 
         newChannel
             .on('broadcast', { event: 'signal' }, (e) => eventsRef.current.onSignal(e.payload))
@@ -71,12 +73,13 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
 
         return () => {
             console.log("Disconnecting Signaling Channel")
+            clearTimeout(timer)
             newChannel.unsubscribe()
             setConnectionState('disconnected')
         }
-    }, [roomId, userId, enabled]) // Events ref is stable, no need to add
+    }, [roomId, userId, enabled, supabase]) // Events ref is stable, no need to add
 
-    const sendSignal = useCallback((payload: any) => {
+    const sendSignal = useCallback((payload: Record<string, unknown>) => {
         channelRef.current?.send({ type: 'broadcast', event: 'signal', payload })
     }, [])
 
@@ -84,11 +87,11 @@ export function useSignaling(roomId: string, userId: string, metadata: any, even
         channelRef.current?.send({ type: 'broadcast', event: 'reaction', payload: { emoji, sender: userId } })
     }, [userId])
 
-    const broadcastEvent = useCallback((event: string, payload: any) => {
+    const broadcastEvent = useCallback((event: string, payload: Record<string, unknown>) => {
         channelRef.current?.send({ type: 'broadcast', event, payload })
     }, [])
 
-    const trackMetadata = useCallback(async (newMetadata: any) => {
+    const trackMetadata = useCallback(async (newMetadata: Record<string, unknown>) => {
         if (channelRef.current) {
             await channelRef.current.track(newMetadata)
         }

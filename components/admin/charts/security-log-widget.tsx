@@ -8,7 +8,7 @@ interface Log {
     action: string
     created_at: string
     admin: { email: string }
-    details: any
+    details: Record<string, unknown>
 }
 
 interface SecurityLogWidgetProps {

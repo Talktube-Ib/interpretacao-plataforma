@@ -84,7 +84,7 @@ export function useVirtualBooth(
                 }
             })
             // Signaling for Handover
-            .on('broadcast', { event: 'handover-request' }, ({ payload }) => {
+            .on('broadcast', { event: 'handover-request' }, ({ payload }: { payload: { sender: string, deadline: number } }) => {
                 const { sender, deadline } = payload
                 if (sender !== userId) {
                     setState(s => ({
@@ -95,7 +95,7 @@ export function useVirtualBooth(
                     }))
                 }
             })
-            .on('broadcast', { event: 'handover-accept' }, ({ payload }) => {
+            .on('broadcast', { event: 'handover-accept' }, ({ payload }: { payload: { sender: string } }) => {
                 const { sender } = payload
                 if (sender !== userId) {
                     window.dispatchEvent(new CustomEvent('booth-handover-accepted'))

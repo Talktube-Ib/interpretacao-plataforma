@@ -6,8 +6,27 @@ import { LocalVideo, RemoteVideo } from '@/components/webrtc/video-player'
 import { cn } from '@/lib/utils'
 import { Mic, MicOff, Hand } from 'lucide-react'
 
+export interface Peer {
+    userId: string
+    id: string
+    name: string
+    role: string
+    language?: string
+    micOn: boolean
+    cameraOn: boolean
+    stream: MediaStream | null
+    screenStream?: MediaStream | null
+    isSpeaking?: boolean
+    handRaised?: boolean
+    connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected' | 'closed'
+}
+
+export interface DisplayItem extends Peer {
+    isScreen: boolean
+}
+
 interface VideoGridProps {
-    peers: any[]
+    peers: Peer[]
     localStream: MediaStream | null
     currentRole: string
     micOn: boolean
@@ -55,9 +74,9 @@ export function VideoGrid({
 }: VideoGridProps) {
 
     // Flatten peers to include Screen Shares as separate "Virtual Peers"
-    const displayItems = useMemo(() => {
+    const displayItems = useMemo<DisplayItem[]>(() => {
         return peers.flatMap(p => {
-            const items = [{ ...p, isScreen: false, id: p.userId }]
+            const items: DisplayItem[] = [{ ...p, isScreen: false, id: p.userId }]
             if (p.screenStream) {
                 items.push({
                     ...p,
@@ -86,8 +105,9 @@ export function VideoGrid({
                 isScreen: true,
                 micOn: false,
                 cameraOn: true,
-                role: currentRole
-            } as any
+                role: currentRole,
+                language: 'floor'
+            }
         ]
     }, [displayItems, localScreenStream, currentRole])
 
@@ -110,7 +130,7 @@ export function VideoGrid({
     const totalItems = finalDisplayItems.length + (isGhost ? 0 : 1) // +1 for Local UNLESS ghost
 
     // Determine audio volume based on language selection and balance
-    const getPeerVolume = (peer: any) => {
+    const getPeerVolume = (peer: DisplayItem) => {
         if (localMutedPeers.has(peer.userId)) return 0
         let vol = 1
         const peerRole = peer.role?.toLowerCase() || 'participant'

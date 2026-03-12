@@ -3,15 +3,20 @@ import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/dashboard-client'
 
 export default async function DashboardPage() {
+    let user;
+    let profile;
+    let meetings;
+
     try {
         const supabase = await createClient()
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        const { data: authData, error: authError } = await supabase.auth.getUser()
 
-        if (authError || !user) {
+        if (authError || !authData.user) {
             redirect('/login')
         }
+        user = authData.user
 
-        const [{ data: profile, error: profileError }, { data: meetings, error: meetingsError }] = await Promise.all([
+        const [{ data: profileData, error: profileError }, { data: meetingsData, error: meetingsError }] = await Promise.all([
             supabase
                 .from('profiles')
                 .select('id, full_name, personal_meeting_id')
@@ -25,18 +30,13 @@ export default async function DashboardPage() {
         ])
 
         if (profileError) console.error("Error fetching dashboard profile:", profileError)
-        if (meetingsError) console.error("Error fetching dashboard meetings:", meetingsError)
+        profile = profileData
 
-        return <DashboardClient
-            user={user}
-            profile={profile || { id: user.id, full_name: null, personal_meeting_id: null }}
-            meetings={meetings || []}
-            isDemo={false}
-        />
+        if (meetingsError) console.error("Error fetching dashboard meetings:", meetingsError)
+        meetings = meetingsData
+
     } catch (err) {
         console.error("CRITICAL ERROR IN DASHBOARD PAGE:", err)
-        // Redireciona para login ou mostra uma mensagem de erro controlada
-        // Para evitar loop de redirecionamento se o problema for no middleware:
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white p-6">
                 <div className="max-w-md w-full space-y-4 text-center">
@@ -47,4 +47,11 @@ export default async function DashboardPage() {
             </div>
         )
     }
+
+    return <DashboardClient
+        user={user}
+        profile={profile || { id: user.id, full_name: null, personal_meeting_id: null }}
+        meetings={meetings || []}
+        isDemo={false}
+    />
 }

@@ -171,11 +171,10 @@ export default async function AdminDashboard() {
                 <StatusChart data={statusData} />
             </div>
 
-            {/* Security Logs */}
             <div className="grid gap-6 grid-cols-1">
-                <SecurityLogWidget logs={logs?.map((l: any) => ({
+                <SecurityLogWidget logs={logs?.map((l: { id: string; action: string; created_at: string; admin: unknown; details: Record<string, unknown> }) => ({
                     ...l,
-                    admin: Array.isArray(l.admin) ? l.admin[0] : l.admin // Handle Supabase single relation join weirdness
+                    admin: Array.isArray(l.admin) ? l.admin[0] : (l.admin as { email: string }) // Handle Supabase single relation join weirdness
                 })) || []} />
             </div>
         </div>

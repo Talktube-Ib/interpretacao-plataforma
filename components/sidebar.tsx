@@ -28,14 +28,64 @@ interface SidebarProps {
     user: { email?: string }
     userRole: string
     userAvatar?: string | null
-    userName?: string // Added prop
+    userName?: string
     unreadMessagesCount?: number
 }
 
-export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCount = 0 }: SidebarProps) {
-    const pathname = usePathname()
-    const { t } = useLanguage()
+interface NavItem {
+    label: string
+    icon: any
+    href: string
+    badge?: number
+}
 
+interface NavGroupProps {
+    title?: string
+    items: NavItem[]
+    pathname: string
+}
+
+const NavGroup = ({ title, items, pathname }: NavGroupProps) => (
+    <div className="mb-6 last:mb-0">
+        {title && (
+            <h3 className="mb-2 px-4 text-[10px] font-black text-muted-foreground/60 dark:text-blue-300/60 uppercase tracking-[0.2em]">
+                {title}
+            </h3>
+        )}
+        <div className="space-y-1">
+            {items.map((route) => {
+                const isActive = pathname === route.href || (route.href.includes('?tab=') && pathname === route.href.split('?')[0])
+                return (
+                    <Link
+                        key={route.href}
+                        href={route.href}
+                        suppressHydrationWarning
+                        className={cn(
+                            'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-xl transition-all relative',
+                            isActive
+                                ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_-12px_rgba(6,182,212,0.5)] border border-cyan-500/10'
+                                : 'text-muted-foreground hover:bg-white/5 hover:text-white border border-transparent'
+                        )}
+                    >
+                        <div className="flex items-center flex-1">
+                            <route.icon className={cn('h-4 w-4 mr-3 transition-colors', isActive ? 'text-cyan-400' : 'text-zinc-500 group-hover:text-white')} />
+                            <span className={cn("flex-1 tracking-wide", isActive ? "font-bold text-xs uppercase" : "font-medium")}>{route.label}</span>
+                            {typeof route.badge === 'number' && route.badge > 0 && (
+                                <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-md shadow-red-500/20">
+                                    {route.badge}
+                                </span>
+                            )}
+                        </div>
+                    </Link>
+                )
+            })}
+        </div>
+    </div>
+)
+
+function useSidebarRoutes(unreadMessagesCount: number) {
+    const { t } = useLanguage()
+    
     const mainRoutes = [
         {
             label: t('sidebar.dashboard'),
@@ -107,60 +157,29 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
         },
     ]
 
-    interface NavItem {
-        label: string
-        icon: any
-        href: string
-        badge?: number
+    return {
+        mainRoutes,
+        connectionRoutes,
+        configRoutes,
+        adminManagementRoutes,
+        adminSystemRoutes,
+        t
     }
+}
 
-    interface NavGroupProps {
-        title?: string
-        items: NavItem[]
-        pathname: string
-    }
-
-    const NavGroup = ({ title, items, pathname }: NavGroupProps) => (
-        <div className="mb-6 last:mb-0">
-            {title && (
-                <h3 className="mb-2 px-4 text-[10px] font-black text-muted-foreground/60 dark:text-blue-300/60 uppercase tracking-[0.2em]">
-                    {title}
-                </h3>
-            )}
-            <div className="space-y-1">
-                {items.map((route) => {
-                    const isActive = pathname === route.href || (route.href.includes('?tab=') && pathname === route.href.split('?')[0])
-                    return (
-                        <Link
-                            key={route.href}
-                            href={route.href}
-                            suppressHydrationWarning
-                            className={cn(
-                                'text-sm group flex p-3 w-full justify-start font-medium cursor-pointer rounded-xl transition-all relative',
-                                isActive
-                                    ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_20px_-12px_rgba(6,182,212,0.5)] border border-cyan-500/10'
-                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white border border-transparent'
-                            )}
-                        >
-                            <div className="flex items-center flex-1">
-                                <route.icon className={cn('h-4 w-4 mr-3 transition-colors', isActive ? 'text-cyan-400' : 'text-zinc-500 group-hover:text-white')} />
-                                <span className={cn("flex-1 tracking-wide", isActive ? "font-bold text-xs uppercase" : "font-medium")}>{route.label}</span>
-                                {typeof route.badge === 'number' && route.badge > 0 && (
-                                    <span className="ml-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-md shadow-red-500/20">
-                                        {route.badge}
-                                    </span>
-                                )}
-                            </div>
-                        </Link>
-                    )
-                })}
-            </div>
-        </div>
-    )
+export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCount = 0 }: SidebarProps) {
+    const pathname = usePathname()
+    const { 
+        mainRoutes, 
+        connectionRoutes, 
+        configRoutes, 
+        adminManagementRoutes, 
+        adminSystemRoutes, 
+        t 
+    } = useSidebarRoutes(unreadMessagesCount)
 
     return (
         <div className="flex flex-col h-full bg-black/40 backdrop-blur-3xl border-r border-white/5 shadow-2xl transition-all duration-300">
-            {/* Branding Header */}
             <div className="flex items-center justify-center p-6 pb-2">
                 <Logo className="scale-125 transition-transform hover:scale-130 duration-300" />
             </div>
@@ -169,7 +188,6 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
                 {t('sidebar.video_conferencing')}
             </div>
 
-            {/* Navigation */}
             <div className="flex-1 px-4 overflow-y-auto no-scrollbar py-4">
                 <NavGroup title={t('sidebar.main_menu')} items={mainRoutes} pathname={pathname} />
                 <NavGroup title="Conexões" items={connectionRoutes} pathname={pathname} />
@@ -184,7 +202,6 @@ export function Sidebar({ user, userRole, userAvatar, userName, unreadMessagesCo
                 <NavGroup title="Ajustes" items={configRoutes} pathname={pathname} />
             </div>
 
-            {/* Footer / User Profile */}
             <div className="p-4 bg-white/[0.03] backdrop-blur-xl border-t border-white/5 mx-4 mb-4 rounded-3xl mt-auto shadow-2xl">
                 <div className="flex items-center gap-x-3 mb-4">
                     <Avatar className="h-10 w-10 border-2 border-background dark:border-white/10 shadow-lg shadow-cyan-500/20">

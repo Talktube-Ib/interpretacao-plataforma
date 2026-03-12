@@ -30,6 +30,7 @@ export function VirtualBooth({
     roomId,
     userId,
     userLanguage,
+    localStream,
     onHandoverComplete,
     isActive
 }: VirtualBoothProps) {
@@ -38,6 +39,7 @@ export function VirtualBooth({
             roomId={roomId}
             userId={userId}
             userLanguage={userLanguage}
+            localStream={localStream}
             onHandoverComplete={onHandoverComplete}
             isActive={isActive}
         />
@@ -138,7 +140,16 @@ function BoothVideo() {
     )
 }
 
-function HandoverControls({ isPending, deadline, onAccept, onCancel, onRequest, onComplete }: any) {
+interface HandoverControlsProps {
+    isPending: boolean
+    deadline: number | null
+    onAccept: () => void
+    onCancel: () => void
+    onRequest: () => void
+    onComplete: () => void
+}
+
+function HandoverControls({ isPending, deadline, onAccept, onCancel, onRequest, onComplete }: HandoverControlsProps) {
     const [timeLeft, setTimeLeft] = useState<number | null>(null)
 
     useEffect(() => {

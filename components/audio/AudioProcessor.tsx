@@ -43,10 +43,12 @@ export function AudioProcessor({ stream, isEnabled }: AudioProcessorProps) {
         if (!stream || !isEnabled) return
 
         if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+            const AudioCtx = window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+            if (AudioCtx) audioContextRef.current = new AudioCtx()
         }
 
         const ctx = audioContextRef.current
+        if (!ctx) return
         analyserRef.current = ctx.createAnalyser()
         analyserRef.current.fftSize = 256
 

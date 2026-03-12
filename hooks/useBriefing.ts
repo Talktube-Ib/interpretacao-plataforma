@@ -47,7 +47,7 @@ export function useBriefing(meetingId: string) {
         try {
             const supabase = createClient()
             const fileExt = file.name.split('.').pop()
-            const fileName = `${meetingId}/${Math.random().toString(36).substr(2, 9)}.${fileExt}`
+            const fileName = `${meetingId}/${Math.random().toString(36).substring(2, 11)}.${fileExt}`
 
             // Upload to Storage
             const { error: uploadError } = await supabase.storage

@@ -21,7 +21,7 @@ interface InterpreterConsoleProps {
     isListeningToFloor: boolean
     onListenToFloor: () => void
     onHandover: () => void
-    availableLanguages: any[]
+    availableLanguages: { code: string; name: string; flag: string }[]
     allowedLanguages?: string[] // If restricted
     occupiedLanguages?: string[] // To warn if channel busy
 }

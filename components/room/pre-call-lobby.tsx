@@ -39,11 +39,11 @@ export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLob
     const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
     const [selectedAudioId, setSelectedAudioId] = useState<string>('')
     const [selectedVideoId, setSelectedVideoId] = useState<string>('')
-    const isJoiningRef = useRef(false)
+    const [isJoining, setIsJoining] = useState(false)
 
     // Volume Meter State
     const [volumeLevel, setVolumeLevel] = useState(0)
-    const requestRef = useRef<number>()
+    const requestRef = useRef<number | undefined>(undefined)
     const analyserRef = useRef<AnalyserNode | null>(null)
 
     // Use our refactored hook
@@ -62,7 +62,8 @@ export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLob
         }
 
         try {
-            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+            const audioContext = new AudioContextClass()
             const analyser = audioContext.createAnalyser()
             const source = audioContext.createMediaStreamSource(stream)
             source.connect(analyser)
@@ -129,7 +130,7 @@ export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLob
 
     const handleJoin = () => {
         if (!name.trim()) return
-        isJoiningRef.current = true
+        setIsJoining(true)
         onJoin({
             micOn: isGhost ? false : micOn,
             cameraOn: isGhost ? false : cameraOn,
@@ -325,10 +326,10 @@ export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLob
                         ) : (
                             <Button
                                 onClick={handleJoin}
-                                disabled={!name.trim() || isJoiningRef.current}
+                                disabled={!name.trim() || isJoining}
                                 className="w-full h-16 text-lg font-bold rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 transition-all shadow-[0_0_40px_rgba(79,70,229,0.3)] hover:shadow-[0_0_60px_rgba(79,70,229,0.4)]"
                             >
-                                {isJoiningRef.current ? (
+                                {isJoining ? (
                                     <div className="flex items-center gap-2">
                                         <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                         <span>Entrando...</span>

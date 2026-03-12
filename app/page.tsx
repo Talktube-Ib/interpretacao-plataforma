@@ -9,12 +9,6 @@ import {
   Globe,
   CheckCircle2,
   ArrowRight,
-  Shield,
-  ShieldCheck,
-  Zap,
-  TrendingUp,
-  ChevronDown,
-  Headphones,
   User,
   Menu
 } from 'lucide-react'
@@ -45,7 +39,6 @@ import { GlobalConnectionGlobe } from '@/components/visual/global-connection-glo
 
 export default function LandingPage() {
   const { t } = useLanguage()
-  const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
 
   const { scrollYProgress } = useScroll({
@@ -119,11 +112,7 @@ export default function LandingPage() {
     }
   };
 
-  // Add hydration check to prevent useScroll issues during SSR/Pre-rendering
-  const [isMounted, setIsMounted] = useState(false)
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
+
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -478,10 +467,10 @@ export default function LandingPage() {
                     {step}
                   </div>
                   <h3 className="text-xl font-bold text-white mb-4">
-                    {t(`landing.step_${step}_title` as any)}
+                    {t(`landing.step_${step}_title`)}
                   </h3>
                   <p className="text-gray-400 leading-relaxed text-sm">
-                    {t(`landing.step_${step}_desc` as any)}
+                    {t(`landing.step_${step}_desc`)}
                   </p>
                 </motion.div>
               ))}
@@ -521,7 +510,7 @@ export default function LandingPage() {
                   {[1, 2, 3, 5, 6].map((i) => (
                     <div key={i} className="flex items-center gap-3 text-sm text-gray-300">
                       <CheckCircle2 className="w-5 h-5 text-cyan-500/70" />
-                      <span>{t(`landing.plan_feature_${i}` as any)}</span>
+                      <span>{t(`landing.plan_feature_${i}`)}</span>
                     </div>
                   ))}
                 </div>
@@ -560,7 +549,7 @@ export default function LandingPage() {
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                     <div key={i} className="flex items-center gap-3 text-sm text-white/90">
                       <CheckCircle2 className="w-5 h-5 text-cyan-400" />
-                      <span>{t(`landing.plan_feature_${i}` as any)}</span>
+                      <span>{t(`landing.plan_feature_${i}`)}</span>
                     </div>
                   ))}
                 </div>
@@ -591,7 +580,7 @@ export default function LandingPage() {
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                     <div key={i} className="flex items-center gap-3 text-sm text-gray-300">
                       <CheckCircle2 className="w-5 h-5 text-cyan-500/70" />
-                      <span>{t(`landing.plan_feature_${i}` as any)}</span>
+                      <span>{t(`landing.plan_feature_${i}`)}</span>
                     </div>
                   ))}
                 </div>

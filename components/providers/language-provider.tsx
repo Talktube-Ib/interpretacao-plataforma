@@ -22,7 +22,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         // Try to load from localStorage
         const saved = localStorage.getItem('app_language') as Locale
         if (saved && ['pt', 'en', 'es'].includes(saved)) {
-            setLanguageState(saved)
+            const timer = setTimeout(() => setLanguageState(saved), 0)
+            return () => clearTimeout(timer)
         }
     }, [])
 
@@ -35,21 +36,22 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     // Key format: 'category.key' e.g. 'sidebar.dashboard'
     const t = (key: string): string => {
         const keys = key.split('.')
-        let current: any = dictionaries[language]
+        let current: Record<string, unknown> | string = dictionaries[language] as Record<string, unknown>
 
         for (const k of keys) {
-            if (current[k] === undefined) {
+            const val = (current as Record<string, unknown>)[k]
+            if (typeof current === 'string' || val === undefined) {
                 console.warn(`Missing translation for key: ${key} in language: ${language}`)
                 return key // Fallback to key name
             }
-            current = current[k]
+            current = val as Record<string, unknown> | string
         }
 
         return typeof current === 'string' ? current : key
     }
 
     return (
-        <LanguageContext.Provider value={{ language, setLanguage, t, dictionary: dictionaries[language] }}>
+        <LanguageContext.Provider value={{ language, setLanguage, t, dictionary: dictionaries[language] as Dictionary }}>
             {children}
         </LanguageContext.Provider>
     )

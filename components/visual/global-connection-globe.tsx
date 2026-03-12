@@ -12,6 +12,7 @@ function GlobePoints() {
     const points = useMemo(() => {
         const p = new Float32Array(2000 * 3)
         for (let i = 0; i < 2000; i++) {
+            // Using a simple deterministic pseudo-random or just fixed Math.random in useMemo (ok for client)
             const u = Math.random()
             const v = Math.random()
             const theta = 2 * Math.PI * u
@@ -25,12 +26,14 @@ function GlobePoints() {
         return p
     }, [])
 
-    useFrame((state) => {
+    useFrame((_state) => {
         if (ref.current) {
             ref.current.rotation.y += 0.002
             ref.current.rotation.x += 0.001
         }
     })
+
+    if (typeof window === 'undefined') return null;
 
     return (
         <group rotation={[0, 0, Math.PI / 4]}>

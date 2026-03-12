@@ -63,7 +63,7 @@ export function UserActionsClient({ profile }: { profile: Profile }): React.Reac
             } else {
                 // Show server message if available (for debugging), or fall back to client successMsg
                 if ('message' in result) {
-                    toast.success((result as any).message)
+                    toast.success((result as { message: string }).message)
                 } else if (successMsg) {
                     toast.success(successMsg)
                 }

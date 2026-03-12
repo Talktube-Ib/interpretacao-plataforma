@@ -41,7 +41,8 @@ function LoginForm() {
             }, 0)
             return () => clearTimeout(timer)
         } else if (errorType === 'connection_timeout') {
-            setError('login_error_timeout')
+            const timer = setTimeout(() => setError('login_error_timeout'), 0)
+            return () => clearTimeout(timer)
         }
     }, [searchParams])
 
@@ -171,7 +172,7 @@ function LoginForm() {
                                     className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-red-400 text-xs font-medium"
                                 >
                                     <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                                    <span>{error.startsWith('login_error_') ? (t(`landing.${error}` as any)) : error}</span>
+                                    <span>{error.startsWith('login_error_') ? (t(`landing.${error}` as keyof typeof t)) : error}</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>

@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, use, useEffect, useRef, ChangeEvent } from 'react'
+import { useState, use, useEffect, useRef, ChangeEvent, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff, Check,
@@ -52,7 +52,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // User Identity Logic
     const [userId, setUserId] = useState('')
-    const sessionSuffix = useRef(Math.random().toString(36).substr(2, 4)).current
+    const sessionSuffix = useRef(Math.random().toString(36).substring(2, 6)).current
     const sessionUserId = userId ? `${userId}_${sessionSuffix}` : null
     const [userName, setUserName] = useState(t('room.participant_default'))
     const [currentRole, setCurrentRole] = useState<string>('participant')
@@ -78,6 +78,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
     const [liveKitToken, setLiveKitToken] = useState<string | null>(null)
     const [hasClosedSetup, setHasClosedSetup] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const [loading, setLoading] = useState(true)
 
 
     // Layout and Join States
@@ -100,21 +102,21 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [localMutedPeers, setLocalMutedPeers] = useState<Set<string>>(new Set())
     const [localPeerVolumes, setLocalPeerVolumes] = useState<Record<string, number>>({})
 
-    const handleToggleLocalMute = (targetId: string) => {
+    const handleToggleLocalMute = useCallback((targetId: string) => {
         setLocalMutedPeers(prev => {
             const next = new Set(prev)
             if (next.has(targetId)) next.delete(targetId)
             else next.add(targetId)
             return next
         })
-    }
+    }, [])
 
-    const handleSetLocalVolume = (targetId: string, volume: number) => {
+    const handleSetLocalVolume = useCallback((targetId: string, volume: number) => {
         setLocalPeerVolumes(prev => ({
             ...prev,
             [targetId]: volume
         }))
-    }
+    }, [])
 
 
     useEffect(() => {
@@ -221,7 +223,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     // Check Meeting Interpreters (Item 1)
                     if (meeting?.settings?.interpreters) {
                         const interpreterConfig = meeting.settings.interpreters.find(
-                            (i: any) => i.email?.toLowerCase() === user.email?.toLowerCase()
+                            (i: { email: string; lang?: string; langs?: string[] }) => i.email?.toLowerCase() === user.email?.toLowerCase()
                         )
 
                         if (interpreterConfig) {
@@ -288,7 +290,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         setActiveLanguages(meeting.settings.active_languages)
                     }
 
-                    const guestId = 'guest-' + Math.random().toString(36).substr(2, 9)
+                    const guestId = 'guest-' + Math.random().toString(36).substring(2, 11)
                     setUserId(guestId)
                     setUserName(t('room.guest_default'))
                     setCurrentRole('participant')
@@ -300,7 +302,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             }
         }
         initUser()
-    }, [roomId])
+    }, [roomId, t])
 
     // Fetch LiveKit Token for main room
     useEffect(() => {
@@ -324,7 +326,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             }
         }
         fetchToken()
-    }, [isJoined, userId, roomId])
+    }, [isJoined, sessionUserId, roomId, setLastError])
 
     // State declarations previously here were moved up to fix 'used before declaration' errors
     // State declarations previously here were moved up to fix 'used before declaration' errors
@@ -395,7 +397,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [lastInteraction, setLastInteraction] = useState(Date.now())
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const handleVideoFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const handleVideoFileChange = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
             setIsSharing(true)
@@ -403,7 +405,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             setIsSharing(false)
             if (fileInputRef.current) fileInputRef.current.value = ''
         }
-    }
+    }, [shareVideoFile])
 
     useEffect(() => {
         const handleActivity = () => {
@@ -479,19 +481,20 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
     // Listen for Admin Language Updates
     useEffect(() => {
-        const handleLangUpdate = (e: CustomEvent<string[]>) => {
-            console.log("Admin updated my languages:", e.detail)
-            setAssignedLanguages(e.detail)
+        const handleLangUpdate = (e: Event) => {
+            const detail = (e as CustomEvent<string[]>).detail
+            console.log("Admin updated my languages:", detail)
+            setAssignedLanguages(detail)
             // If my current broadcast lang is not in the new allowed list, reset to floor or first allowed
-            if (e.detail.length > 0 && !e.detail.includes(myBroadcastLang)) {
-                setMyBroadcastLang(e.detail[0])
-            } else if (e.detail.length === 0) {
+            if (detail.length > 0 && !detail.includes(myBroadcastLang)) {
+                setMyBroadcastLang(detail[0])
+            } else if (detail.length === 0) {
                 // If no languages allowed, maybe force floor?
                 setMyBroadcastLang('floor')
             }
         }
-        window.addEventListener('admin-update-languages' as any, handleLangUpdate as any)
-        return () => window.removeEventListener('admin-update-languages' as any, handleLangUpdate as any)
+        window.addEventListener('admin-update-languages', handleLangUpdate)
+        return () => window.removeEventListener('admin-update-languages', handleLangUpdate)
     }, [myBroadcastLang])
 
 
@@ -513,11 +516,13 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
 
 
-    const handleToggleMic = () => {
-        const newState = !micOn
-        setMicOn(newState)
-        hookToggleMic(newState)
-    }
+    const handleToggleMic = useCallback(() => {
+        setMicOn(prev => {
+            const newState = !prev
+            hookToggleMic(newState)
+            return newState
+        })
+    }, [hookToggleMic])
 
     // Listen for Handover Acceptance (I requested it, partner accepted -> I go off air)
     // Moved here to avoid 'used before declaration' lint error
@@ -531,13 +536,15 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         return () => window.removeEventListener('booth-handover-accepted', handleHandoverAccepted)
     }, [micOn, handleToggleMic])
 
-    const handleToggleCamera = () => {
-        const newState = !cameraOn
-        setCameraOn(newState)
-        hookToggleCamera(newState)
-    }
+    const handleToggleCamera = useCallback(() => {
+        setCameraOn(prev => {
+            const newState = !prev
+            hookToggleCamera(newState)
+            return newState
+        })
+    }, [hookToggleCamera])
 
-    const handleToggleShare = async () => {
+    const handleToggleShare = useCallback(async () => {
         try {
             if (isSharing) {
                 await stopScreenShare()
@@ -550,7 +557,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             console.error("Screen share toggle failed:", err)
             setIsSharing(false)
         }
-    }
+    }, [isSharing, shareScreen, stopScreenShare])
 
     const availableSystemLanguages = activeLanguages.length > 0
         ? LANGUAGES.filter(l => activeLanguages.includes(l.code))
@@ -561,26 +568,26 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         ...availableSystemLanguages
     ]
 
-    const handleLangChange = (code: string) => {
+    const handleLangChange = useCallback((code: string) => {
         setSelectedLang(code)
         setVolumeBalance(code !== 'original' ? 80 : 0)
-    }
+    }, [])
 
     // Automatic Speaker Detection
-    const handlePeerSpeaking = (id: string, isSpeaking: boolean) => {
+    const handlePeerSpeaking = useCallback((id: string, isSpeaking: boolean) => {
         if (isSpeaking && !pinnedSpeakerId) {
             setActiveSpeakerId(id)
         }
-    }
+    }, [pinnedSpeakerId])
 
-    const handleSpeakerChange = (id: string) => {
+    const handleSpeakerChange = useCallback((id: string) => {
         if (pinnedSpeakerId === id) {
             setPinnedSpeakerId(null) // Unpin if clicking same
         } else {
             setPinnedSpeakerId(id)
             setViewMode('speaker') // Auto switch to speaker mode when pinning
         }
-    }
+    }, [pinnedSpeakerId])
 
     // Network Status Monitoring
     const [isOnline, setIsOnline] = useState(true)
@@ -600,11 +607,18 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
 
 
-    if (!isLoaded) {
+    if (!isLoaded || loading && !isJoined) {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center bg-[#020817] text-white gap-4">
                 <div className="h-8 w-8 border-4 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
-                <p className="text-zinc-400 text-sm animate-pulse">{t('room.connecting') || 'Carregando...'}</p>
+                <p className="text-zinc-400 text-sm animate-pulse">
+                    {error || t('room.connecting') || 'Carregando...'}
+                </p>
+                {error && (
+                    <Button variant="outline" onClick={() => window.location.reload()}>
+                        Tentar novamente
+                    </Button>
+                )}
             </div>
         )
     }
@@ -614,13 +628,22 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
             <PreCallLobby
                 userName={userName}
                 isGuest={isGuest}
-                onJoin={async (config: any) => {
+                onJoin={async (config: {
+                    micOn: boolean,
+                    cameraOn: boolean,
+                    audioDeviceId: string,
+                    videoDeviceId: string,
+                    isGhost: boolean,
+                    name: string,
+                    stream?: MediaStream
+                }) => {
                     setLobbyConfig(config)
                     setMicOn(config.micOn)
                     setCameraOn(config.cameraOn)
                     setIsGhost(config.isGhost)
                     setUserName(config.name)
                     setIsJoined(true)
+                    setLoading(false)
 
                     if (config.isGhost) {
                         const { logAdminAction } = await import('@/components/admin/actions')
@@ -930,7 +953,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         isOpen={isJoined && assignedLanguages.length === 0 && myBroadcastLang === 'floor' && !hasClosedSetup}
                         availableLanguages={availableSystemLanguages}
                         occupiedLanguages={peers.filter(p => p.role?.includes('interpreter') && p.userId !== userId).map(p => p.language).filter(Boolean) as string[]}
-                        onSelect={(lang: any) => {
+                        onSelect={(lang: string) => {
                             setMyBroadcastLang(lang)
                             updateMetadata({ language: lang })
                         }}
@@ -943,7 +966,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         active={micOn}
                         onToggleActive={handleToggleMic}
                         currentLanguage={myBroadcastLang}
-                        onLanguageChange={(lang: any) => {
+                    onLanguageChange={(lang: string) => {
                             setMyBroadcastLang(lang)
                             updateMetadata({ language: lang })
                         }}

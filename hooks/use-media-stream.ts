@@ -59,8 +59,8 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
 
                 setStream(activeStream)
                 setError(null)
-            } catch (err: any) {
-                if (mounted) setError(err.message)
+            } catch (err) {
+                if (mounted) setError(err instanceof Error ? err.message : String(err))
             }
         }
 

@@ -7,7 +7,7 @@ import { Sidebar } from './sidebar'
 import { cn } from '@/lib/utils'
 
 interface MobileNavProps {
-    user: any
+    user: Record<string, unknown> & { id?: string }
     userRole: string
     userAvatar?: string | null
     userName?: string

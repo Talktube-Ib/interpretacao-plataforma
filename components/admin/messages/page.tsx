@@ -12,9 +12,17 @@ import { createClient } from '@/lib/supabase/client'
 import { useEffect } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
+interface Announcement {
+    id: string
+    title: string
+    content: string
+    created_at: string
+    type: string
+}
+
 export default function AdminMessagesPage() {
     const [loading, setLoading] = useState(false)
-    const [messages, setMessages] = useState<any[]>([])
+    const [messages, setMessages] = useState<Announcement[]>([])
 
     useEffect(() => {
         const fetchMessages = async () => {

@@ -20,7 +20,7 @@ interface Message {
 interface ChatPanelProps {
     messages: Message[]
     userId: string
-    peers: any[] // We really only need this for mentions/private in future
+    peers: { id: string; name?: string }[]
     onSendMessage: (text: string) => void
     onClose: () => void
 }

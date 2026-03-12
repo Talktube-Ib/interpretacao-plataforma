@@ -13,10 +13,10 @@ export interface Message {
 
 function playNotificationSound() {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
+        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioContextClass) return;
 
-        const ctx = new AudioContext();
+        const ctx = new AudioContextClass();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 
@@ -43,7 +43,7 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
     const [isActive, setIsActive] = useState(false)
     const isActiveRef = useRef(false)
     const supabase = createClient()
-    const channelRef = useRef<any>(null)
+    const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
     const seenMessagesRef = useRef<Set<string>>(new Set())
 
     // Helper to parse message content
@@ -77,7 +77,7 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
                 .order('created_at', { ascending: true })
 
             if (data) {
-                const mapped: Message[] = data.map((d: any) => {
+                const mapped: Message[] = (data as { id: string, sender_id: string, sender_name: string, content: string, created_at: string, role: string }[]).map((d) => {
                     const { text, recipientId } = parseContent(d.content)
 
                     const msg = {
@@ -93,7 +93,7 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
                     // Also add a fuzzy key for history
                     seenMessagesRef.current.add(`${msg.sender}:${msg.text}:${Math.floor(msg.timestamp / 2000)}`)
                     return msg
-                }).filter((msg: any) => {
+                }).filter((msg) => {
                     // Filter history: Show if Public OR (Private AND (I am sender OR I am recipient))
                     if (!msg.recipientId) return true
                     return msg.sender === userId || msg.recipientId === userId
@@ -142,7 +142,7 @@ export function useChat(roomId: string, userId: string, userRole: string, userNa
                     filter: `room_id=eq.${roomId}`
                 },
                 (payload) => {
-                    const newMsg = payload.new as any
+                    const newMsg = payload.new as { id: string, sender_id: string, sender_name: string, content: string, created_at: string, role: string }
                     if (!newMsg) return
 
                     const { text, recipientId } = parseContent(newMsg.content)

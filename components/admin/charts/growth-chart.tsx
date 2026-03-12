@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { TrendingUp } from 'lucide-react'
 
 interface GrowthChartProps {
-    data: any[]
+    data: { date: string; users: number; meetings: number }[]
 }
 
 export function GrowthChart({ data }: GrowthChartProps) {

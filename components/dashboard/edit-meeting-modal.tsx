@@ -9,7 +9,7 @@ import { useLanguage } from '@/components/providers/language-provider'
 import { MeetingForm, MeetingFormData } from './meeting-form'
 
 interface EditMeetingModalProps {
-    meeting: any
+    meeting: { id: string; title: string; start_time: string; settings?: { interpreters?: { languages: string[] }[] } }
     trigger?: React.ReactNode
 }
 

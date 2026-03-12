@@ -98,7 +98,7 @@ export function CreateUserDialog() {
                     icon: <CheckCircle2 className="h-5 w-5 text-green-500" />
                 })
             } else {
-                toast.error('Erro ao criar usuário: ' + (result as any).error)
+                toast.error('Erro ao criar usuário: ' + (result as { error?: string }).error)
             }
         } catch (error) {
             console.error(error)

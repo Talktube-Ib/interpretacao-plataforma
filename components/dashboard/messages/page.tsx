@@ -7,17 +7,25 @@ import { Megaphone, Bell, Zap, Wrench, Info, Star, Calendar } from 'lucide-react
 import { format, differenceInDays } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { useLanguage } from '@/components/providers/language-provider'
+import { Locale } from 'date-fns'
 import { enUS, es, ptBR } from 'date-fns/locale'
 
-const locales: Record<string, any> = {
+const locales: Record<string, Locale> = {
     en: enUS,
     pt: ptBR,
     es: es
 }
 
+interface Announcement {
+    id: string
+    title: string
+    content: string
+    created_at: string
+}
+
 export default function MessagesPage() {
     const { t, language } = useLanguage()
-    const [messages, setMessages] = useState<any[]>([])
+    const [messages, setMessages] = useState<Announcement[]>([])
     const [loading, setLoading] = useState(true)
 
     const getIconForTitle = (title: string) => {

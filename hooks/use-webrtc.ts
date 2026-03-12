@@ -30,9 +30,22 @@ interface PeerData {
     name?: string
     isPresentation?: boolean
     isHost?: boolean
-    connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected'
+    connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected' | 'closed'
     audioBlocked?: boolean
     joinedAt?: number
+}
+
+interface UserMetadata {
+    [key: string]: any
+    name: string
+    role: string
+    micOn: boolean
+    cameraOn: boolean
+    handRaised: boolean
+    language: string
+    audioBlocked: boolean
+    isHost: boolean
+    isGhost: boolean
 }
 
 export function useWebRTC(
@@ -68,7 +81,7 @@ export function useWebRTC(
     const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null)
 
     const roomRef = useRef<Room | null>(null)
-    const metadataRef = useRef<any>({
+    const metadataRef = useRef<UserMetadata>({
         name: userName,
         role: userRole,
         micOn: initialConfig.micOn !== false,
@@ -285,7 +298,7 @@ export function useWebRTC(
     }, [isJoined, liveKitToken, roomId, sessionUserId])
 
     // --- Signaling & Presence Logic (Metadata) ---
-    const handleRoomEvent = useCallback((event: any) => {
+    const handleRoomEvent = useCallback((event: { created_by: string; type: string; payload: Record<string, any> }) => {
         if (event.created_by === userId) return
         const type = event.type
         const data = event.payload || {}
@@ -316,7 +329,7 @@ export function useWebRTC(
         }
     }, [userId, toggleMicStream])
 
-    const handlePresenceSync = useCallback((users: string[], state: any) => {
+    const handlePresenceSync = useCallback((users: string[], state: Record<string, UserMetadata[]>) => {
         console.log('Presence Sync. Users in room:', users)
         let changed = false
 
@@ -400,10 +413,10 @@ export function useWebRTC(
         onSignal: () => { }, // P2P Signaling no longer needed
         onShareStarted: (payload) => setSharingUserId(payload.sender),
         onShareEnded: () => setSharingUserId(null),
-        onHostPromoted: (payload) => setHostId(payload.newHostId),
+        onHostPromoted: (payload) => setHostId(payload.hostId),
         onReaction: (payload) => {
             const { emoji, sender } = payload
-            const id = Math.random().toString(36).substr(2, 9)
+            const id = Math.random().toString(36).substring(2, 11)
             setReactions(prev => [...prev, { id, emoji, userId: sender }])
             setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 5000)
         },
@@ -411,7 +424,7 @@ export function useWebRTC(
         onPresenceSync: handlePresenceSync
     }, isJoined)
 
-    const updateMetadata = useCallback((patch: any) => {
+    const updateMetadata = useCallback((patch: Partial<UserMetadata>) => {
         metadataRef.current = { ...metadataRef.current, ...patch }
         signaling?.trackMetadata(metadataRef.current)
     }, [signaling])
@@ -489,8 +502,8 @@ export function useWebRTC(
         // 2. Switch in LiveKit Room if connected
         if (roomRef.current && roomRef.current.state === 'connected') {
             try {
-                const lkKind = kind === 'audio' ? 'audioinput' : 'videoinput'
-                await roomRef.current.switchActiveDevice(lkKind as any, deviceId)
+                const lkKind: 'audioinput' | 'videoinput' = kind === 'audio' ? 'audioinput' : 'videoinput'
+                await roomRef.current.switchActiveDevice(lkKind, deviceId)
                 console.log(`LiveKit switched ${kind} device to:`, deviceId)
             } catch (err) {
                 console.error(`LiveKit failed to switch ${kind} device:`, err)
@@ -526,7 +539,7 @@ export function useWebRTC(
         sharingUserId,
         isAnySharing: !!sharingUserId,
         channel: signaling?.channel,
-        switchDevice,
+        switchDevice: handleSwitchDevice,
         sendEmoji,
         toggleHand,
         updateMetadata,
