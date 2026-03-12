@@ -109,13 +109,15 @@ export function useWebRTC(
             adaptiveStream: true,
             dynacast: true,
             publishDefaults: {
+                simulcast: true, // Correct property name for Simulcast
+                videoCodec: 'vp8',
                 videoEncoding: {
-                    maxBitrate: 1_500_000,
-                    maxFramerate: 30,
+                    maxBitrate: 800_000, // Reduced from 1.5Mbps to 800kbps for 10+ users
+                    maxFramerate: 24,    // Slightly reduced for stability
                 },
                 screenShareEncoding: {
-                    maxBitrate: 3_000_000,
-                    maxFramerate: 30,
+                    maxBitrate: 2_500_000,
+                    maxFramerate: 15,    // Smooth but efficient
                 }
             }
         })

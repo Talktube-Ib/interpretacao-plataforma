@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+    console.log(`[Middleware] Path: ${request.nextUrl.pathname}`)
     let response = NextResponse.next({
         request: {
             headers: request.headers,
@@ -36,6 +37,7 @@ export async function middleware(request: NextRequest) {
         pathname.startsWith('/atualizar-senha')
 
     if (!isProtectedRoute) {
+        console.log(`[Middleware] Public route, bypassing checks`)
         // Apply security headers and return FAST (ZERO network calls)
         response.headers.set('X-Frame-Options', 'DENY')
         response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -86,11 +88,16 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard', request.url))
         }
     } catch (err) {
-        console.error("Middleware profile check error:", err)
-        // If DB is down but user is authed, we might want to allow dashboard read-only or 
-        // redirect to a "temporarily unavailable" page. For now, let's redirect to login with a timeout error.
+        console.error("CRITICAL MIDDLEWARE ERROR:", err)
+        // Check if it's a Supabase connection error
+        const errorMessage = err instanceof Error ? err.message : String(err)
+        
         const errorUrl = new URL('/login', request.url)
-        errorUrl.searchParams.set('error', 'connection_timeout')
+        if (errorMessage.includes('fetch failed') || errorMessage.includes('network')) {
+            errorUrl.searchParams.set('error', 'connection_timeout')
+        } else {
+            errorUrl.searchParams.set('error', 'internal_server_error')
+        }
         return NextResponse.redirect(errorUrl)
     }
 
