@@ -38,7 +38,7 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
                         video: config.cameraOn !== false
                             ? (config.videoDeviceId
                                 ? { deviceId: { exact: config.videoDeviceId } }
-                                : { facingMode: 'user' })
+                                : { facingMode: { ideal: 'user' } })
                             : false
                     }
                     console.log('--- Requesting UserMedia with constraints:', constraints)

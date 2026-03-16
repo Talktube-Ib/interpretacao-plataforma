@@ -746,12 +746,6 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                                </div>
 
                 <div className="flex items-center gap-2 pointer-events-auto">
-                    {/* Botão de Debug de ALTA VISIBILIDADE */}
-                    <div className="flex items-center gap-2 bg-red-600/20 border border-red-500/50 rounded-full px-2 py-1 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-                         <DebugLogs logs={systemLogs} />
-                         <span className="text-[9px] font-bold text-red-500 pr-1 animate-pulse hidden xs:inline">DEBUG ACTIVE</span>
-                    </div>
-                    
                     {/* View Mode Controls - Zoom style - Hidden on mobile to prevent overflow */}
                     <div className="hidden md:flex bg-card/40 backdrop-blur-md p-0.5 md:p-1 rounded-xl md:rounded-2xl border border-border pointer-events-auto shadow-xl gap-1 md:gap-2">
                         <DropdownMenu>
@@ -1478,6 +1472,12 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
 
             {/* Floating Reactions Overlay */}
             <FloatingReactions reactions={reactions} />
+
+            {/* BOTÃO DE DEBUG FIXO (Independente de UI Auto-Hide) */}
+            <div className="fixed top-2 right-2 md:top-6 md:right-6 z-[100] flex items-center gap-2 bg-black/60 backdrop-blur-xl border border-red-500/50 rounded-full px-3 py-1.5 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:scale-105 transition-transform cursor-pointer">
+                <DebugLogs logs={systemLogs} />
+                <span className="text-[9px] font-black text-red-500 pr-1 animate-pulse hidden sm:inline tracking-widest">DIAGNOSTICS</span>
+            </div>
         </div>
     )
 }

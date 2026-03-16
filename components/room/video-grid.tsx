@@ -252,12 +252,14 @@ export function VideoGrid({
                         totalItems === 1 ? "max-w-4xl aspect-video" : "w-full h-full"
                     )}
                     style={{
-                        gridTemplateColumns: `repeat(auto-fit, minmax(${
-                            totalItems <= 1 ? '100%' :
-                            totalItems <= 2 ? '45%' :
-                            totalItems <= 4 ? '45%' :
-                            totalItems <= 9 ? '30%' : '22%'
-                        }, 1fr))`,
+                        gridTemplateColumns: typeof window !== 'undefined' && window.innerWidth < 768 
+                            ? '1fr' 
+                            : `repeat(auto-fit, minmax(${
+                                totalItems <= 1 ? '100%' :
+                                totalItems <= 2 ? '45%' :
+                                totalItems <= 4 ? '45%' :
+                                totalItems <= 9 ? '30%' : '22%'
+                            }, 1fr))`,
                         alignContent: 'center',
                         justifyContent: 'center'
                     }}
