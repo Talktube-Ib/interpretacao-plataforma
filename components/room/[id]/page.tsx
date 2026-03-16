@@ -743,66 +743,72 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                         <span className="hidden xs:inline ml-1 uppercase text-[8px] tracking-tighter">
                             {isGhost ? "Modo Auditor" : t('room.online')}
                         </span>
+                               </div>
+
+                <div className="flex items-center gap-2 pointer-events-auto">
+                    {/* Botão de Debug de ALTA VISIBILIDADE */}
+                    <div className="flex items-center gap-2 bg-red-600/20 border border-red-500/50 rounded-full px-2 py-1 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                         <DebugLogs logs={systemLogs} />
+                         <span className="text-[9px] font-bold text-red-500 pr-1 animate-pulse hidden xs:inline">DEBUG ACTIVE</span>
                     </div>
-                </div>
-
-                {/* View Mode Controls - Zoom style - Hidden on mobile to prevent overflow */}
-                <div className="hidden md:flex bg-card/40 backdrop-blur-md p-0.5 md:p-1 rounded-xl md:rounded-2xl border border-border pointer-events-auto shadow-xl gap-1 md:gap-2">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="flex items-center gap-1.5 md:gap-2 px-2 md:px-4 h-8 md:h-10 font-bold text-[10px] md:text-sm rounded-lg md:rounded-xl hover:bg-white/10">
-                                <Maximize2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                <span className="hidden lg:inline">{t('room.view_mode')}</span>
-                                <ChevronUp className="h-3 w-3 opacity-50 rotate-180" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent side="bottom" align="end" className="w-48 md:w-56 mt-2 rounded-xl md:rounded-2xl bg-black/95 backdrop-blur-3xl border-white/10 p-1 md:p-2 shadow-2xl z-[100]">
-                            <DropdownMenuItem
-                                onClick={() => setViewMode('gallery')}
-                                className={cn("rounded-lg md:rounded-xl p-2 md:p-3 flex items-center justify-between cursor-pointer", viewMode === 'gallery' && "bg-[#06b6d4]/20 text-[#06b6d4]")}
-                            >
-                                <div className="flex items-center gap-2 md:gap-3">
-                                    <LayoutGrid className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                    <span className="font-semibold text-xs md:text-sm">{t('room.gallery_view')}</span>
-                                </div>
-                                {viewMode === 'gallery' && <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-[#06b6d4]" />}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={() => setViewMode('speaker')}
-                                className={cn("rounded-lg md:rounded-xl p-2 md:p-3 flex items-center justify-between cursor-pointer", viewMode === 'speaker' && "bg-[#06b6d4]/20 text-[#06b6d4]")}
-                            >
-                                <div className="flex items-center gap-2 md:gap-3">
-                                    <Users className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                    <span className="font-semibold text-xs md:text-sm">{t('room.speaker_view')}</span>
-                                </div>
-                                {viewMode === 'speaker' && <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-[#06b6d4]" />}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-white/10" />
-                            <DropdownMenuItem
-                                onClick={() => {
-                                    if (typeof document !== 'undefined') {
-                                        if (!document.fullscreenElement) {
-                                            document.documentElement.requestFullscreen()
-                                        } else {
-                                            document.exitFullscreen()
+                    
+                    {/* View Mode Controls - Zoom style - Hidden on mobile to prevent overflow */}
+                    <div className="hidden md:flex bg-card/40 backdrop-blur-md p-0.5 md:p-1 rounded-xl md:rounded-2xl border border-border pointer-events-auto shadow-xl gap-1 md:gap-2">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="flex items-center gap-1.5 md:gap-2 px-2 md:px-4 h-8 md:h-10 font-bold text-[10px] md:text-sm rounded-lg md:rounded-xl hover:bg-white/10">
+                                    <Maximize2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                    <span className="hidden lg:inline">{t('room.view_mode')}</span>
+                                    <ChevronUp className="h-3 w-3 opacity-50 rotate-180" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent side="bottom" align="end" className="w-48 md:w-56 mt-2 rounded-xl md:rounded-2xl bg-black/95 backdrop-blur-3xl border-white/10 p-1 md:p-2 shadow-2xl z-[100]">
+                                <DropdownMenuItem
+                                    onClick={() => setViewMode('gallery')}
+                                    className={cn("rounded-lg md:rounded-xl p-2 md:p-3 flex items-center justify-between cursor-pointer", viewMode === 'gallery' && "bg-[#06b6d4]/20 text-[#06b6d4]")}
+                                >
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                        <LayoutGrid className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                        <span className="font-semibold text-xs md:text-sm">{t('room.gallery_view')}</span>
+                                    </div>
+                                    {viewMode === 'gallery' && <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-[#06b6d4]" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                    onClick={() => setViewMode('speaker')}
+                                    className={cn("rounded-lg md:rounded-xl p-2 md:p-3 flex items-center justify-between cursor-pointer", viewMode === 'speaker' && "bg-[#06b6d4]/20 text-[#06b6d4]")}
+                                >
+                                    <div className="flex items-center gap-2 md:gap-3">
+                                        <Users className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                        <span className="font-semibold text-xs md:text-sm">{t('room.speaker_view')}</span>
+                                    </div>
+                                    {viewMode === 'speaker' && <div className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-[#06b6d4]" />}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-white/10" />
+                                <DropdownMenuItem
+                                    onClick={() => {
+                                        if (typeof document !== 'undefined') {
+                                            if (!document.fullscreenElement) {
+                                                document.documentElement.requestFullscreen()
+                                            } else {
+                                                document.exitFullscreen()
+                                            }
                                         }
-                                    }
-                                }}
-                                className="rounded-lg md:rounded-xl p-2 md:p-3 flex items-center gap-2 md:gap-3 cursor-pointer"
-                            >
-                                <Maximize2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                                <span className="font-semibold text-xs md:text-sm">{t('room.fullscreen')}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-white/10 md:hidden" />
-                            <DropdownMenuItem
-                                className="md:hidden rounded-lg p-2 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-[10px]"
-                            >
-                                FECHAR
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-
-                    </DropdownMenu>
-                </div>
+                                    }}
+                                    className="rounded-lg md:rounded-xl p-2 md:p-3 flex items-center gap-2 md:gap-3 cursor-pointer"
+                                >
+                                    <Maximize2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                    <span className="font-semibold text-xs md:text-sm">{t('room.fullscreen')}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-white/10 md:hidden" />
+                                <DropdownMenuItem
+                                    className="md:hidden rounded-lg p-2 flex items-center justify-center text-red-400 focus:text-red-400 focus:bg-red-500/10 cursor-pointer font-bold text-[10px]"
+                                >
+                                    FECHAR
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>       </div>
             </div>
 
             {/* Main Layout (Flex Row) */}
