@@ -16,9 +16,9 @@ export function DebugLogs({ logs }: DebugLogsProps) {
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="hidden md:flex gap-2 text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" className="flex gap-2 text-muted-foreground hover:text-foreground">
                     <Bug className="h-4 w-4" />
-                    <span className="text-xs">Logs</span>
+                    <span className="text-xs hidden sm:inline">Logs</span>
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl h-[80vh]">

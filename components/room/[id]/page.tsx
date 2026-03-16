@@ -98,6 +98,37 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 49
 
+    const [systemLogs, setSystemLogs] = useState<string[]>([])
+
+    // Capture logs for debugging
+    useEffect(() => {
+        const originalLog = console.log
+        const originalError = console.error
+        
+        const formatLog = (args: any[]) => {
+            return `[${new Date().toLocaleTimeString()}] ` + args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+            ).join(' ')
+        }
+
+        console.log = (...args) => {
+            const msg = formatLog(args)
+            setSystemLogs(prev => [msg, ...prev].slice(0, 100))
+            originalLog(...args)
+        }
+        
+        console.error = (...args) => {
+            const msg = `ERROR: ${formatLog(args)}`
+            setSystemLogs(prev => [msg, ...prev].slice(0, 100))
+            originalError(...args)
+        }
+
+        return () => {
+            console.log = originalLog
+            console.error = originalError
+        }
+    }, [])
+
     // Local Mute State
     const [localMutedPeers, setLocalMutedPeers] = useState<Set<string>>(new Set())
     const [localPeerVolumes, setLocalPeerVolumes] = useState<Record<string, number>>({})
