@@ -1,60 +1,114 @@
 import { AccessToken } from 'livekit-server-sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Tipos de cargo suportados
+type ParticipantRole = 'admin' | 'interpreter' | 'participant' | 'guest'
+
+// Permissões por cargo
+const ROLE_GRANTS: Record<ParticipantRole, any> = {
+  admin: {
+    roomJoin: true,
+    roomCreate: true,
+    roomAdmin: true,
+    canPublish: true,
+    canSubscribe: true,
+    canPublishData: true,
+    canUpdateOwnMetadata: true,
+  },
+  interpreter: {
+    roomJoin: true,
+    canPublish: true,
+    canSubscribe: true,
+    canPublishData: true,
+    canUpdateOwnMetadata: true,
+  },
+  participant: {
+    roomJoin: true,
+    canPublish: true,
+    canSubscribe: true,
+    canPublishData: false,
+    canUpdateOwnMetadata: false,
+  },
+  guest: {
+    roomJoin: true,
+    canPublish: false,   // Convidado só assiste
+    canSubscribe: true,
+    canPublishData: false,
+    canUpdateOwnMetadata: false,
+  },
+}
+
+// TTL por cargo (em segundos)
+const ROLE_TTL: Record<ParticipantRole, number> = {
+  admin:       60 * 60 * 8,  // 8 horas
+  interpreter: 60 * 60 * 6,  // 6 horas (sessões longas de interpretação)
+  participant: 60 * 60 * 4,  // 4 horas
+  guest:       60 * 60 * 2,  // 2 horas
+}
+
 export async function GET(req: NextRequest) {
-    const room = req.nextUrl.searchParams.get('room')
-    const username = req.nextUrl.searchParams.get('username')
+  const { searchParams } = req.nextUrl
+  const room     = searchParams.get('room')
+  const username = searchParams.get('username')
+  const role     = (searchParams.get('role') ?? 'participant') as ParticipantRole
 
-    if (!room) {
-        return NextResponse.json({ error: 'Missing "room" query parameter' }, { status: 400 })
-    } else if (!username) {
-        return NextResponse.json({ error: 'Missing "username" query parameter' }, { status: 400 })
-    }
+  // Validações de entrada
+  if (!room) {
+    return NextResponse.json({ error: 'Missing "room" query parameter' }, { status: 400 })
+  }
+  if (!username) {
+    return NextResponse.json({ error: 'Missing "username" query parameter' }, { status: 400 })
+  }
+  if (!Object.keys(ROLE_GRANTS).includes(role)) {
+    return NextResponse.json({ error: `Invalid role. Valid roles: ${Object.keys(ROLE_GRANTS).join(', ')}` }, { status: 400 })
+  }
 
-    const apiKey = process.env.LIVEKIT_API_KEY
-    const apiSecret = process.env.LIVEKIT_API_SECRET
-    const wsUrl = process.env.NEXT_PUBLIC_LIVEKIT_URL
+  const apiKey   = process.env.LIVEKIT_API_KEY
+  const apiSecret = process.env.LIVEKIT_API_SECRET
+  const wsUrl    = process.env.NEXT_PUBLIC_LIVEKIT_URL
 
-    // Diagnostic logs (safe, only lengths)
-    console.log('Generating LiveKit token - Meta:', {
-        apiKeyLength: apiKey?.length,
-        apiSecretLength: apiSecret?.length,
-        hasWsUrl: !!wsUrl,
-        room,
-        username
+  // Log seguro (só para servidor, nunca exposto no response)
+  console.log('[LiveKit] Token request:', {
+    room,
+    username,
+    role,
+    hasApiKey: !!apiKey,
+    hasApiSecret: !!apiSecret,
+    hasWsUrl: !!wsUrl,
+  })
+
+  if (!apiKey || !apiSecret || !wsUrl) {
+    // Log detalhado apenas no servidor
+    console.error('[LiveKit] ERRO: Variáveis de ambiente ausentes:', {
+      LIVEKIT_API_KEY: !!apiKey,
+      LIVEKIT_API_SECRET: !!apiSecret,
+      NEXT_PUBLIC_LIVEKIT_URL: !!wsUrl,
+    })
+    // Response limpo para o cliente, sem vazar detalhes
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
+
+  try {
+    const ttl    = ROLE_TTL[role]
+    const grants = ROLE_GRANTS[role]
+
+    const at = new AccessToken(apiKey, apiSecret, {
+      identity: username,
+      ttl,       // ← TTL explícito por cargo
+      // Metadata útil para o console do intérprete e health monitor
+      metadata: JSON.stringify({ role }),
     })
 
-    if (!apiKey || !apiSecret || !wsUrl) {
-        console.error('LIVEKIT CONFIG ERROR: Missing environment variables')
-        return NextResponse.json({
-            error: 'Server misconfigured',
-            details: `Missing: ${[!apiKey && 'API_KEY', !apiSecret && 'API_SECRET', !wsUrl && 'WS_URL'].filter(Boolean).join(', ')}`,
-            config: {
-                apiKeyLength: apiKey?.length || 0,
-                apiSecretLength: apiSecret?.length || 0,
-                hasWsUrl: !!wsUrl
-            }
-        }, { status: 500 })
-    }
+    at.addGrant({ ...grants, room })
 
-    try {
-        const at = new AccessToken(apiKey, apiSecret, { identity: username })
-        at.addGrant({ roomJoin: true, room: room })
-        const token = await at.toJwt()
-        return NextResponse.json({
-            token,
-            serverInfo: {
-                apiKeyLength: apiKey.length,
-                apiSecretLength: apiSecret.length
-            }
-        })
-    } catch (error) {
-        console.error('Error generating LiveKit token:', error)
-        return NextResponse.json({
-            error: 'Failed to generate token',
-            details: error instanceof Error ? error.message : String(error),
-            apiKeyLength: apiKey?.length || 0,
-            apiSecretLength: apiSecret?.length || 0
-        }, { status: 500 })
-    }
+    const token = await at.toJwt()
+
+    console.log('[LiveKit] Token gerado com sucesso:', { room, username, role, ttl })
+
+    return NextResponse.json({ token, url: wsUrl })
+    //                                   ↑ url já embutido facilita o cliente
+  } catch (error) {
+    console.error('[LiveKit] Erro ao gerar token:', error)
+    return NextResponse.json({ error: 'Failed to generate token' }, { status: 500 })
+  }
 }

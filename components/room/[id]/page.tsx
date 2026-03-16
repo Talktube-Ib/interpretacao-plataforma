@@ -374,7 +374,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                     const guestId = 'guest-' + Math.random().toString(36).substring(2, 11)
                     setUserId(guestId)
                     setUserName(t('room.guest_default'))
-                    setCurrentRole('participant')
+                    setCurrentRole('guest')
                 }
             } catch (error) {
                 console.error("Critical error in initUser:", error)
@@ -392,7 +392,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
 
         const fetchToken = async () => {
             try {
-                const resp = await fetch(`/api/livekit/token?room=${roomId}&username=${sessionUserId}`)
+                const resp = await fetch(`/api/livekit/token?room=${roomId}&username=${sessionUserId}&role=${currentRole}`)
                 const data = await resp.json()
                 if (data.token) {
                     setLiveKitToken(data.token)
