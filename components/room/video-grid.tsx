@@ -249,17 +249,13 @@ export function VideoGrid({
                 >
                     <div className={cn(
                         "grid gap-3 w-full max-h-full transition-all duration-500 ease-in-out",
-                        totalItems === 1 ? "max-w-4xl aspect-video" : "w-full h-full"
+                        "grid-cols-1", // Default to vertical stack (mobile)
+                        totalItems > 1 && "md:grid-cols-2", // 2 columns for tablet/desktop with 2+ items
+                        totalItems > 4 && "lg:grid-cols-3", // 3 columns for larger screens
+                        totalItems > 9 && "xl:grid-cols-4", // 4 columns for very large screens
+                        totalItems === 1 ? "max-w-4xl aspect-video mx-auto" : "w-full h-full"
                     )}
                     style={{
-                        gridTemplateColumns: typeof window !== 'undefined' && window.innerWidth < 768 
-                            ? '1fr' 
-                            : `repeat(auto-fit, minmax(${
-                                totalItems <= 1 ? '100%' :
-                                totalItems <= 2 ? '45%' :
-                                totalItems <= 4 ? '45%' :
-                                totalItems <= 9 ? '30%' : '22%'
-                            }, 1fr))`,
                         alignContent: 'center',
                         justifyContent: 'center'
                     }}

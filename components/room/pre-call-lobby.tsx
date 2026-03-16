@@ -105,11 +105,16 @@ export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLob
 
                 // Set initial selection if empty (use defaults or first found)
                 if (!selectedAudioId) {
-                    const audio = devices.find(d => d.kind === 'audioinput')
+                    const audio = devices.find(d => d.kind === 'audioinput' && d.deviceId !== 'default') || devices.find(d => d.kind === 'audioinput')
                     if (audio) setSelectedAudioId(audio.deviceId)
                 }
                 if (!selectedVideoId) {
-                    const video = devices.find(d => d.kind === 'videoinput')
+                    // Try to find front camera first
+                    const frontCam = devices.find(d => 
+                        d.kind === 'videoinput' && 
+                        (d.label.toLowerCase().includes('front') || d.label.toLowerCase().includes('frontal') || d.label.toLowerCase().includes('user'))
+                    )
+                    const video = frontCam || devices.find(d => d.kind === 'videoinput' && d.deviceId !== 'default') || devices.find(d => d.kind === 'videoinput')
                     if (video) setSelectedVideoId(video.deviceId)
                 }
             } catch (e) {
