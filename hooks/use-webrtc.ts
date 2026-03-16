@@ -291,6 +291,13 @@ export function useWebRTC(
         const handleReconnected = async () => {
             console.log('[LK] Reconnected — re-publishing local tracks')
             setMediaStatus('connected')
+
+            const canPublish = !['guest', 'viewer'].includes(userRole.toLowerCase())
+            if (!canPublish) {
+                console.log(`[LK] Cargo "${userRole}" — re-publicação de tracks ignorada na reconexão`)
+                return // guest não re-publica
+            }
+
             try {
                 const micEnabled = metadataRef.current.micOn
                 const camEnabled = metadataRef.current.cameraOn
@@ -332,7 +339,7 @@ export function useWebRTC(
 
         const connect = async () => {
             try {
-                console.log('[LK] Connecting...', { roomId, sessionUserId })
+                console.log('[LK] Connecting...', { roomId, sessionUserId, role: userRole })
                 if (cancelled) return
                 setMediaStatus('connecting')
 
@@ -346,21 +353,29 @@ export function useWebRTC(
                 setMediaStatus('connected')
                 setLastError(null)
 
-                const micEnabled = initialConfig.micOn !== false
-                const camEnabled = initialConfig.cameraOn !== false
+                // FIX: só publica tracks se o cargo permite
+                // guest e viewer não publicam — evita erro de permissão do LiveKit
+                const canPublish = !['guest', 'viewer'].includes(userRole.toLowerCase())
 
-                const results = await Promise.allSettled([
-                    room.localParticipant.setMicrophoneEnabled(micEnabled, { deviceId: lastAudioDeviceId.current }),
-                    room.localParticipant.setCameraEnabled(camEnabled, { deviceId: lastVideoDeviceId.current }),
-                ])
+                if (canPublish) {
+                    const micEnabled = initialConfig.micOn !== false
+                    const camEnabled = initialConfig.cameraOn !== false
 
-                if (cancelled) return
+                    const results = await Promise.allSettled([
+                        room.localParticipant.setMicrophoneEnabled(micEnabled, { deviceId: lastAudioDeviceId.current }),
+                        room.localParticipant.setCameraEnabled(camEnabled, { deviceId: lastVideoDeviceId.current }),
+                    ])
 
-                results.forEach((r, i) => {
-                    if (r.status === 'rejected') {
-                        console.error(`[LK] Publish falhou (${i === 0 ? 'mic' : 'cam'}):`, r.reason)
-                    }
-                })
+                    if (cancelled) return
+
+                    results.forEach((r, i) => {
+                        if (r.status === 'rejected') {
+                            console.error(`[LK] Publish falhou (${i === 0 ? 'mic' : 'cam'}):`, r.reason)
+                        }
+                    })
+                } else {
+                    console.log(`[LK] Cargo "${userRole}" — publicação de tracks desabilitada`)
+                }
 
                 setUserCount(room.remoteParticipants.size + 1)
             } catch (error) {
