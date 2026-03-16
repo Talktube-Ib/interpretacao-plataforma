@@ -39,7 +39,7 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
                             ? (config.videoDeviceId && config.videoDeviceId !== 'default'
                                 ? { deviceId: { exact: config.videoDeviceId } }
                                 : { 
-                                    facingMode: { ideal: 'user' },
+                                    facingMode: 'user',
                                     width: { ideal: 1280 },
                                     height: { ideal: 720 }
                                   })
@@ -96,8 +96,8 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
 
         try {
             const constraints = kind === 'audio'
-                ? { audio: { deviceId: { exact: deviceId } } }
-                : { video: { deviceId: { exact: deviceId } } }
+                ? { audio: (deviceId && deviceId !== 'default') ? { deviceId: { exact: deviceId } } : true }
+                : { video: (deviceId && deviceId !== 'default') ? { deviceId: { exact: deviceId } } : { facingMode: 'user' } }
 
             const newStream = await navigator.mediaDevices.getUserMedia(constraints)
             const newTrack = kind === 'audio' ? newStream.getAudioTracks()[0] : newStream.getVideoTracks()[0]

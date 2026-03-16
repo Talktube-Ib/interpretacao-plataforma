@@ -7,7 +7,7 @@ export default async function Page(props: {
     try {
         const resolvedParams = await props.params
         const resolvedSearchParams = await props.searchParams
-        return <RoomPage params={Promise.resolve(resolvedParams)} searchParams={Promise.resolve(resolvedSearchParams)} />
+        return <RoomPage roomId={resolvedParams.id} searchRole={resolvedSearchParams.role as string} />
     } catch (err: any) {
         return (
             <div className="min-h-screen bg-black text-red-500 p-10 font-mono">

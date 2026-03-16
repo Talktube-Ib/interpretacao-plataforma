@@ -44,10 +44,13 @@ import { VolumeControl } from '@/components/room/volume-control'
 import { UpsellModal } from '@/components/marketing/upsell-modal'
 import { VirtualBooth } from '@/components/VirtualBooth'
 
-export default function RoomPage({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ role?: string }> }) {
-    // ... preceding state remains ...
-    const { id: roomId } = use(params)
-    const { role } = use(searchParams)
+interface RoomPageProps {
+    roomId: string
+    searchRole?: string
+}
+
+export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
+    const role = searchRole || 'participant'
     const { t } = useLanguage()
 
     // User Identity Logic
@@ -106,9 +109,21 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         const originalError = console.error
         
         const formatLog = (args: any[]) => {
-            return `[${new Date().toLocaleTimeString()}] ` + args.map(arg => 
-                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-            ).join(' ')
+            try {
+                return `[${new Date().toLocaleTimeString()}] ` + args.map(arg => {
+                    if (arg instanceof Error) return `${arg.name}: ${arg.message}`
+                    if (typeof arg === 'object' && arg !== null) {
+                        try {
+                            return JSON.stringify(arg)
+                        } catch (e) {
+                            return `[Object ${arg.constructor?.name || 'Complex'}]`
+                        }
+                    }
+                    return String(arg)
+                }).join(' ')
+            } catch (e) {
+                return `[Log Error] ${String(e)}`
+            }
         }
 
         console.log = (...args) => {
