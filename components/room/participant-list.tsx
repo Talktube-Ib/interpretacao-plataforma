@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X, User, Shield, Video, Mic, MoreVertical, Wifi, Volume2, Ghost } from 'lucide-react'
+import { X, User, Shield, Video, Mic, MoreVertical, Wifi, Volume2, Ghost, Globe } from 'lucide-react'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 
 interface Peer {
+    id?: string
     userId: string
     name: string
     role: string
@@ -125,23 +126,31 @@ export function ParticipantList({
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex flex-col min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-bold text-sm text-slate-200 truncate max-w-[120px]">
-                                                {peer.name || 'Usuário'}
-                                            </span>
-                                            {/* Status Icons */}
-                                            <div className="flex items-center gap-1 opacity-50">
-                                                {!peer.micOn && <Mic className="h-3 w-3 text-red-400" />}
-                                                {peer.audioBlocked && <Mic className="h-3 w-3 text-red-600 animate-pulse" />}
-                                                {!peer.cameraOn && <Video className="h-3 w-3 text-red-400" />}
-                                                {localMutedPeers?.has(peer.userId) && <Volume2 className="h-3 w-3 text-amber-500" />}
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <span className="font-bold text-sm text-slate-200 truncate">
+                                                    {peer.name || 'Usuário'}
+                                                </span>
+                                                {/* Status Icons */}
+                                                <div className="flex items-center gap-1 opacity-50 flex-shrink-0">
+                                                    {!peer.micOn && <Mic className="h-3 w-3 text-red-400" />}
+                                                    {peer.audioBlocked && <Mic className="h-3 w-3 text-red-600 animate-pulse" />}
+                                                    {!peer.cameraOn && <Video className="h-3 w-3 text-red-400" />}
+                                                    {localMutedPeers?.has(peer.userId) && <Volume2 className="h-3 w-3 text-amber-500" />}
+                                                </div>
                                             </div>
+                                            {/* Role indicator on the right for cleaner look */}
+                                            <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest bg-slate-900/50 px-1.5 py-0.5 rounded border border-white/5">
+                                                {isPeerHost ? 'HOST' : isInterpreter ? 'INT' : 'PART'}
+                                            </span>
                                         </div>
-                                        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                                            {isPeerHost ? 'Anfitrião' : isInterpreter ? 'Intérprete' : 'Participante'}
-                                            {peer.isGhost && <span className="ml-1 text-[8px] bg-purple-500/30 text-purple-300 px-1 rounded border border-purple-500/20">GHOST</span>}
-                                        </span>
+                                        {peer.language && isInterpreter && (
+                                            <div className="text-[10px] text-[#06b6d4] font-bold flex items-center gap-1 mt-0.5">
+                                                <Globe className="h-2.5 w-2.5" />
+                                                {peer.language.toUpperCase()}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

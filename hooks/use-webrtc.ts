@@ -122,20 +122,34 @@ export function useWebRTC(
             adaptiveStream: true,
             dynacast: true,
             publishDefaults: {
-                simulcast: true, // Correct property name for Simulcast
+                simulcast: true,
                 videoCodec: 'vp8',
                 videoEncoding: {
-                    maxBitrate: 800_000, // Reduced from 1.5Mbps to 800kbps for 10+ users
-                    maxFramerate: 24,    // Slightly reduced for stability
+                    maxBitrate: 800_000,
+                    maxFramerate: 24,
                 },
                 screenShareEncoding: {
                     maxBitrate: 2_500_000,
-                    maxFramerate: 15,    // Smooth but efficient
+                    maxFramerate: 15,
                 }
             }
         })
 
         roomRef.current = room
+
+        // --- HEALTH MONITOR (Google Meet Resiliency) ---
+        const healthCheckInterval = setInterval(() => {
+            if (room.state !== 'connected') return
+
+            const presencePeerCount = Array.from(peersRef.current.keys()).filter(id => !id.endsWith('-presentation')).length
+            const lkPeerCount = room.remoteParticipants.size
+
+            // If we have people in presence but NO ONE in LiveKit for > 10s, something is wrong with the SFU connection
+            if (presencePeerCount > 0 && lkPeerCount === 0) {
+                console.warn('Health Monitor: Presence/LiveKit mismatch detected. Potential SFU isolation.')
+                // We don't force reload immediately, but we could trigger a "silent reconnect"
+            }
+        }, 10000)
 
         const handleParticipantConnected = (participant: RemoteParticipant) => {
             console.log('--- SFU Event: Participant connected:', participant.identity)
@@ -293,6 +307,7 @@ export function useWebRTC(
 
         return () => {
             console.log('Cleaning up LiveKit room connection')
+            clearInterval(healthCheckInterval)
             room.disconnect()
         }
     }, [isJoined, liveKitToken, roomId, sessionUserId])

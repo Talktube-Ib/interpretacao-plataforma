@@ -95,7 +95,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     const [viewMode, setViewMode] = useState<'gallery' | 'speaker'>('gallery')
     const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null)
     const [pinnedSpeakerId, setPinnedSpeakerId] = useState<string | null>(null)
-    const [currentPage, setCurrentPage] = useState(0)
+    const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 49
 
     // Local Mute State
@@ -118,6 +118,41 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
         }))
     }, [])
 
+    const {
+        localStream,
+        peers,
+        toggleMic: hookToggleMic,
+        toggleCamera: hookToggleCamera,
+        shareScreen,
+        stopScreenShare,
+        userCount,
+        mediaError,
+        channel,
+        updateMetadata,
+        switchDevice: switchDeviceWebRTC,
+        sendEmoji,
+        shareVideoFile,
+        toggleHand,
+        localHandRaised,
+        isHost,
+        sharingUserId,
+        isAnySharing,
+        reactions,
+        promoteToHost,
+        kickUser,
+        updateUserRole,
+
+        updateUserLanguages,
+        muteUser,
+        blockUserAudio,
+        unblockUserAudio,
+        reconnect,
+        mediaStatus,
+        signalingStatus,
+        lastError,
+        setLastError,
+        localScreenStream
+    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined, isGhost, hostId)
 
     useEffect(() => {
         // Only show upsell to guests (users not logged in)
@@ -299,6 +334,7 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                 console.error("Critical error in initUser:", error)
             } finally {
                 setIsLoaded(true)
+                setLoading(false)
             }
         }
         initUser()
@@ -331,41 +367,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
     // State declarations previously here were moved up to fix 'used before declaration' errors
     // State declarations previously here were moved up to fix 'used before declaration' errors
 
-    const {
-        localStream,
-        peers,
-        toggleMic: hookToggleMic,
-        toggleCamera: hookToggleCamera,
-        shareScreen,
-        stopScreenShare,
-        userCount,
-        mediaError,
-        channel,
-        updateMetadata,
-        switchDevice: switchDeviceWebRTC,
-        sendEmoji,
-        shareVideoFile,
-        toggleHand,
-        localHandRaised,
-        isHost,
-        sharingUserId,
-        isAnySharing,
-        reactions,
-        promoteToHost,
-        kickUser,
-        updateUserRole,
-
-        updateUserLanguages,
-        muteUser,
-        blockUserAudio,
-        unblockUserAudio,
-        reconnect,
-        mediaStatus,
-        signalingStatus,
-        lastError,
-        setLastError,
-        localScreenStream
-    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined, isGhost, hostId)
+    // State declarations previously here were moved up to fix 'used before declaration' errors
+    // State declarations previously here were moved up to fix 'used before declaration' errors
 
 
     const isGuest = userId.startsWith('guest-')
@@ -1406,20 +1409,24 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     size="lg"
                     className="h-14 px-8 rounded-2xl font-black shadow-xl shadow-red-900/20 active:scale-95 border-0 bg-red-500 hover:bg-red-600"
                     onClick={async () => {
+                        const isLastParticipant = userCount <= 1;
+
                         if (currentRole === 'interpreter') {
-                            // Interpreters just leave
-                            const supabase = createClient()
-                            await supabase.auth.signOut() // Optional: sign out if guest? 
+                            if (isLastParticipant) {
+                                await endMeeting(roomId, true)
+                            }
                             window.location.href = '/dashboard'
                             return
                         }
 
-                        // Check if host
                         if (isHost) {
-                            if (confirm(t('room.host_leave_confirm'))) {
+                            if (confirm(t('room.host_leave_confirm') || 'Deseja encerrar a reunião para todos?')) {
                                 await endMeeting(roomId)
                                 window.location.href = '/dashboard'
                             }
+                        } else if (isLastParticipant) {
+                            await endMeeting(roomId, true)
+                            window.location.href = '/dashboard'
                         } else {
                             window.location.href = '/dashboard'
                         }

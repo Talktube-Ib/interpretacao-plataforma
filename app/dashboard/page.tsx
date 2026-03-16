@@ -19,7 +19,7 @@ export default async function DashboardPage() {
         const [{ data: profileData, error: profileError }, { data: meetingsData, error: meetingsError }] = await Promise.all([
             supabase
                 .from('profiles')
-                .select('id, full_name, personal_meeting_id')
+                .select('id, full_name')
                 .eq('id', user.id)
                 .maybeSingle(),
             supabase

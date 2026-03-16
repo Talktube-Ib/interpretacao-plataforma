@@ -132,19 +132,29 @@ export function VideoGrid({
     // Determine audio volume based on language selection and balance
     const getPeerVolume = (peer: DisplayItem) => {
         if (localMutedPeers.has(peer.userId)) return 0
+        
         let vol = 1
         const peerRole = peer.role?.toLowerCase() || 'participant'
         const peerLang = peer.language || 'floor'
+        const isInterpreter = peerRole.includes('interpreter')
 
         if (selectedLang === 'original') {
-            vol = 1
-        } else if (peerLang === selectedLang) {
-            vol = volumeBalance / 100
-        } else if (!peerRole.includes('interpreter') || peerLang === 'floor') {
-            vol = (100 - volumeBalance) / 100
+            // No translation selected: Everyone at full volume if they are on 'floor'
+            vol = (peerLang === 'floor' || !isInterpreter) ? 1 : 0
         } else {
-            vol = 0
+            // Translation selected
+            if (isInterpreter && peerLang === selectedLang) {
+                // This is the chosen interpreter: prioritize
+                vol = volumeBalance / 100
+            } else if (!isInterpreter || peerLang === 'floor') {
+                // This is original audio: apply ducking
+                vol = (100 - volumeBalance) / 100
+            } else {
+                // Other interpreter channels: mute
+                vol = 0
+            }
         }
+
         const individualVol = localPeerVolumes[peer.userId] ?? 1
         return vol * masterVolume * individualVol
     }
@@ -233,15 +243,26 @@ export function VideoGrid({
                     </div>
                 </div>
             ) : (
-                // --- GALLERY VIEW ---
-                <div className={cn(
-                    "grid gap-2 md:gap-4 w-full h-full auto-rows-fr transition-all",
-                    totalItems <= 1 ? "grid-cols-1" :
-                        totalItems === 2 ? "grid-cols-1 sm:grid-cols-2" :
-                            totalItems === 3 ? "grid-cols-2 lg:grid-cols-3" :
-                                totalItems === 4 ? "grid-cols-2 md:grid-cols-2" :
-                                    "grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
-                )}>
+                // --- GALLERY VIEW (Google Meet Style) ---
+                <div 
+                    className="w-full h-full flex items-center justify-center p-2"
+                >
+                    <div className={cn(
+                        "grid gap-3 w-full max-h-full transition-all duration-500 ease-in-out",
+                        totalItems === 1 ? "max-w-4xl aspect-video" : "w-full h-full"
+                    )}
+                    style={{
+                        gridTemplateColumns: `repeat(auto-fit, minmax(${
+                            totalItems <= 1 ? '100%' :
+                            totalItems <= 2 ? '45%' :
+                            totalItems <= 4 ? '45%' :
+                            totalItems <= 9 ? '30%' : '22%'
+                        }, 1fr))`,
+                        alignContent: 'center',
+                        justifyContent: 'center'
+                    }}
+                    >
+                        <AnimatePresence mode="popLayout">
                     {/* Local Participant In Gallery - Only if not GHOST */}
                     {!isGhost && (
                         <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl aspect-video">
@@ -270,7 +291,6 @@ export function VideoGrid({
                         </motion.div>
                     )}
 
-                    <AnimatePresence>
                         {finalDisplayItems.map(item => (
                             <motion.div
                                 key={item.id}
@@ -305,7 +325,8 @@ export function VideoGrid({
                                 />
                             </motion.div>
                         ))}
-                    </AnimatePresence>
+                        </AnimatePresence>
+                    </div>
                 </div>
             )}
         </div>

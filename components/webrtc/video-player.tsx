@@ -108,27 +108,38 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
             const hasZeroRes = videoEl.videoWidth === 0 || videoEl.videoHeight === 0
             const isStuck = videoEl.currentTime > 0 && videoEl.currentTime === lastTimeRef.current && !videoEl.paused
 
+            // Watchdog Recovery Logic (More aggressive for Meet-style stability)
             if (hasZeroRes || isStuck) {
                 stuckFrameCountRef.current++
-                console.log(`Video Watchdog: Suspicious state (${stuckFrameCountRef.current}/10) - Res: ${videoEl.videoWidth}x${videoEl.videoHeight}, Time: ${videoEl.currentTime}`)
+                if (stuckFrameCountRef.current % 4 === 0) {
+                    console.log(`Video Watchdog: Suspicious state (${stuckFrameCountRef.current}/12) - Res: ${videoEl.videoWidth}x${videoEl.videoHeight}, Time: ${videoEl.currentTime}`)
+                }
             } else {
                 stuckFrameCountRef.current = 0
             }
 
             lastTimeRef.current = videoEl.currentTime
 
-            // Trigger Recovery if stuck for ~5 seconds
-            if (stuckFrameCountRef.current > 10) {
-                console.warn("Video Watchdog: TRIGGERING RECOVERY")
+            // Trigger Recovery if stuck for ~6 seconds
+            if (stuckFrameCountRef.current > 12) {
+                console.warn("Video Watchdog: TRIGGERING SILENT RECOVERY - Native Stream Re-attachment")
                 stuckFrameCountRef.current = 0
 
-                // Force Reset
+                // Attempt recovery by re-assigning srcObject
                 const currentStream = videoEl.srcObject
-                videoEl.srcObject = null
-                setTimeout(() => {
-                    videoEl.srcObject = currentStream
-                    videoEl.play().catch(e => console.error("Watchdog recovery play failed:", e))
-                }, 100)
+                if (currentStream) {
+                    videoEl.srcObject = null
+                    // Small delay to allow browser to release hardware
+                    setTimeout(() => {
+                        if (videoEl && currentStream) {
+                            videoEl.srcObject = currentStream
+                            videoEl.play().catch(e => {
+                                console.error("Watchdog recovery play failed:", e)
+                                setIsPaused(true)
+                            })
+                        }
+                    }, 50)
+                }
             }
 
         }, 500)

@@ -81,7 +81,7 @@ export async function restartPersonalMeeting(meetingId: string) {
     }
 }
 
-export async function endMeeting(meetingId: string) {
+export async function endMeeting(meetingId: string, force: boolean = false) {
     try {
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
@@ -97,7 +97,7 @@ export async function endMeeting(meetingId: string) {
 
         if (fetchError) throw fetchError
 
-        if (!meeting || meeting.host_id !== user.id) {
+        if (!force && (!meeting || meeting.host_id !== user.id)) {
             return { error: 'Only host can end meeting' }
         }
 
