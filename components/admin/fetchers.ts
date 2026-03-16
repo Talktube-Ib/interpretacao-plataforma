@@ -6,9 +6,9 @@ export async function getAdminStats() {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
     return await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }), // Total Users
-        supabase.from('meetings').select('*', { count: 'exact', head: true }), // Total Meetings
-        supabase.from('meetings').select('*', { count: 'exact', head: true }).eq('status', 'active'), // Active Meetings
+        supabase.from('profiles').select('id', { count: 'exact', head: true }), // Total Users
+        supabase.from('meetings').select('id', { count: 'exact', head: true }), // Total Meetings
+        supabase.from('meetings').select('id', { count: 'exact', head: true }).eq('status', 'active'), // Active Meetings
 
         // Recent Users (7 Days) - For stat card
         supabase.from('profiles').select('created_at').gte('created_at', sevenDaysAgo),

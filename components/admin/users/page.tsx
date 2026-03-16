@@ -27,7 +27,7 @@ export default async function AdminUsersPage({
 
     let dbQuery = supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, email, role, status, limits, avatar_url, created_at')
 
     if (query) {
         dbQuery = dbQuery.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
