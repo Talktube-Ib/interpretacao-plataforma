@@ -646,9 +646,6 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         }
     }, [isSharing, shareScreen, stopScreenShare])
 
-    const availableSystemLanguages = activeLanguages.length > 0
-        ? LANGUAGES.filter(l => activeLanguages.includes(l.code))
-        : LANGUAGES
 
     const ROOM_LANGUAGES = [
         { code: 'original', name: t('room.original_audio'), flag: '🏳️' },
@@ -676,21 +673,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         }
     }, [pinnedSpeakerId])
 
-    // Network Status Monitoring
-    const [isOnline, setIsOnline] = useState(true)
 
-    useEffect(() => {
-        const handleOnline = () => setIsOnline(true)
-        const handleOffline = () => setIsOnline(false)
-        window.addEventListener('online', handleOnline)
-        window.addEventListener('offline', handleOffline)
-        return () => {
-            window.removeEventListener('online', handleOnline)
-            window.removeEventListener('offline', handleOffline)
-        }
-    }, [])
-
-    const isSignalingConnected = signalingStatus === 'SUBSCRIBED'
 
 
 
