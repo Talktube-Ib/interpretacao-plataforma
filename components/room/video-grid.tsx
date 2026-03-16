@@ -249,10 +249,10 @@ export function VideoGrid({
                 >
                     <div className={cn(
                         "grid gap-3 w-full max-h-full transition-all duration-500 ease-in-out",
-                        "grid-cols-1", // Default to vertical stack (mobile)
-                        totalItems > 1 && "md:grid-cols-2", // 2 columns for tablet/desktop with 2+ items
-                        totalItems > 4 && "lg:grid-cols-3", // 3 columns for larger screens
-                        totalItems > 9 && "xl:grid-cols-4", // 4 columns for very large screens
+                        "grid-cols-1", // 1 tile vertical on mobile
+                        totalItems === 2 && "sm:grid-cols-2", // 2 tiles side-by-side on tablet
+                        totalItems >= 3 && "sm:grid-cols-2 lg:grid-cols-3", // 3+ tiles balance
+                        totalItems > 6 && "xl:grid-cols-4",
                         totalItems === 1 ? "max-w-4xl aspect-video mx-auto" : "w-full h-full"
                     )}
                     style={{

@@ -199,8 +199,8 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         playsInline
                         controls={false}
                         className={cn(
-                            "w-full h-full object-contain bg-zinc-950",
-                            isPresentation ? "object-contain" : "object-contain"
+                            "w-full h-full bg-zinc-950",
+                            isPresentation ? "object-contain" : "object-cover"
                         )}
                         onLoadedMetadata={(e) => {
                             // Initial play attempt handled by effect, but this is a backup
@@ -481,7 +481,7 @@ export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, 
                     playsInline
                     muted
                     controls={false}
-                    className="w-full h-full object-contain bg-zinc-950 mirror"
+                    className="w-full h-full object-cover bg-zinc-950 mirror"
                 />
             )}
 
