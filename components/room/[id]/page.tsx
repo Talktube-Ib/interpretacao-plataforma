@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, use, useEffect, useRef, ChangeEvent, useCallback, useMemo } from 'react'
+import { useState, use, useEffect, useRef, ChangeEvent, useCallback, useMemo, startTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff, Check,
@@ -390,11 +390,13 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                     if (meeting?.settings?.active_languages) {
                         setActiveLanguages(meeting.settings.active_languages)
                     }
-
+                    
                     const guestId = 'guest-' + Math.random().toString(36).substring(2, 11)
-                    setUserId(guestId)
-                    setUserName(t('room.guest_default'))
-                    setCurrentRole('guest')
+                    startTransition(() => {
+                        setUserId(guestId)
+                        setUserName(t('room.guest_default'))
+                        setCurrentRole('guest')
+                    })
                 }
             } catch (error) {
                 console.error("Critical error in initUser:", error)
@@ -407,31 +409,61 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     }, [roomId, t])
 
     useEffect(() => {
-        // Trava crítica: isLoaded garante que initUser terminou e sessionUserId está estável
-        if (!isJoined || !isLoaded || !sessionUserId || !roomId) return
+        // Guard triplo:
+        // 1. precisa ter entrado na sala
+        // 2. sessionUserId precisa estar resolvido (userId.length > 4 cobre guest-xxx)
+        // 3. não rebusca se já tem token válido
+        if (!isJoined || !sessionUserId || !roomId) return
+        if (liveKitToken) return // já tem token, não rebusca
 
         let cancelled = false
+
         const fetchToken = async () => {
             try {
+                console.log('[Token] Buscando para:', { sessionUserId, role: currentRole })
+
                 const resp = await fetch(
-                    `/api/livekit/token?room=${encodeURIComponent(roomId)}&username=${encodeURIComponent(sessionUserId)}&role=${currentRole}`
+                    `/api/livekit/token?` +
+                    `room=${encodeURIComponent(roomId)}` +
+                    `&username=${encodeURIComponent(sessionUserId)}` +
+                    `&role=${encodeURIComponent(currentRole)}`
                 )
+
                 if (cancelled) return
+
+                if (!resp.ok) {
+                    const text = await resp.text()
+                    console.error('[Token] HTTP error:', resp.status, text)
+                    setLastError(`Token HTTP ${resp.status}`)
+                    return
+                }
+
                 const data = await resp.json()
+
                 if (data.token) {
                     setLiveKitToken(data.token)
                     setTokenReady(true)
                     setLastError(null)
+                    console.log('[Token] OK para cargo:', currentRole)
                 } else {
-                    setLastError(`Token Error: ${data.error || 'Unknown'}`)
+                    console.error('[Token] API retornou sem token:', data)
+                    setLastError(`Token Error: ${data.error || 'Resposta inválida'}`)
                 }
             } catch (err) {
-                if (!cancelled) setLastError(`Network Error: ${err instanceof Error ? err.message : String(err)}`)
+                if (cancelled) return
+                console.error('[Token] Falha de rede:', err)
+                setLastError(
+                    `Falha ao conectar: ${err instanceof Error ? err.message : String(err)}`
+                )
             }
         }
+
         fetchToken()
         return () => { cancelled = true }
-    }, [isJoined, isLoaded, sessionUserId, roomId, currentRole])
+
+        // liveKitToken NÃO está nas deps — evita loop se o token mudar
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isJoined, sessionUserId, roomId, currentRole])
 
     // Refresh do token 30min antes de expirar
     useEffect(() => {
@@ -677,12 +709,14 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
 
 
 
-    if (!isLoaded || (loading && !isJoined)) {
+    if (!isLoaded || (loading && !isJoined) || (isJoined && !tokenReady)) {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center bg-[#020817] text-white gap-4">
                 <div className="h-8 w-8 border-4 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
                 <p className="text-zinc-400 text-sm animate-pulse">
-                    {error || t('room.connecting') || 'Carregando...'}
+                    {isJoined && !tokenReady
+                        ? 'Autenticando conexão...'  // mensagem específica para aguardar token
+                        : error || t('room.connecting') || 'Carregando...'}
                 </p>
                 {error && (
                     <Button variant="outline" onClick={() => window.location.reload()}>
