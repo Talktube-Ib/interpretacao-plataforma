@@ -23,7 +23,6 @@ interface User {
 
 interface Profile {
     full_name?: string
-    personal_meeting_id?: string
     username?: string
 }
 
@@ -46,7 +45,7 @@ export default function DashboardClient({ user, profile, meetings, isDemo }: Das
     const { t } = useLanguage()
 
 
-    const personalRoomId = profile?.personal_meeting_id || user.id
+    const personalRoomId = user.id
 
     return (
         <div className="min-h-screen bg-background text-foreground selection:bg-cyan-500/30 overflow-x-hidden">

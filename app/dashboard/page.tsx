@@ -50,7 +50,7 @@ export default async function DashboardPage() {
 
     return <DashboardClient
         user={user}
-        profile={profile || { id: user.id, full_name: null, personal_meeting_id: null }}
+        profile={profile || { id: user.id, full_name: null }}
         meetings={meetings || []}
         isDemo={false}
     />

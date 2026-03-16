@@ -11,7 +11,7 @@ export default async function SettingsPage(props: { searchParams: Promise<{ [key
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, role, avatar_url, job_title, company, bio, languages, status')
         .eq('id', user.id)
         .maybeSingle()
 
