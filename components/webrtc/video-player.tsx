@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MicOff, VideoOff, Maximize2, Loader2, User, Hand, WifiOff, VolumeX, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -24,7 +24,12 @@ interface VideoPlayerProps {
     showPinButton?: boolean
 }
 
-export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer, isLocalMuted, individualVolume = 1, onIndividualVolumeChange, onPin, isPinned, showPinButton = true }: VideoPlayerProps) {
+export const RemoteVideo = memo(function RemoteVideo({ 
+    stream, name, role, micOff, cameraOff, handRaised, isSpeaking, volume = 1, 
+    connectionState = 'connected', onSpeakingChange, isPresentation, onMutePeer, 
+    isLocalMuted, individualVolume = 1, onIndividualVolumeChange, onPin, isPinned, 
+    showPinButton = true 
+}: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
@@ -39,15 +44,9 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         const videoEl = videoRef.current
         if (videoEl && stream) {
             videoEl.srcObject = stream
-
-            // Critical: Ensure playsInline is set
             videoEl.playsInline = true
-
-            // Attempt 1: Play with Audio
             videoEl.play().catch(e => {
                 console.warn("Autoplay with audio failed, trying muted:", e)
-
-                // Attempt 2: Play Muted
                 videoEl.muted = true
                 videoEl.play().then(() => {
                     setIsMutedAutoplay(true)
@@ -60,7 +59,6 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         }
     }, [stream])
 
-    // Sync Volume
     useEffect(() => {
         if (videoRef.current) {
             const vol = Math.max(0, Math.min(1, volume))
@@ -70,7 +68,6 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         }
     }, [volume, isMutedAutoplay])
 
-    // Monitor Playback Health & Watchdog
     useEffect(() => {
         const videoEl = videoRef.current
         if (!videoEl || !stream) return
@@ -83,7 +80,6 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         const handlePause = () => !isBuffering && setIsPaused(true)
         const handleError = (e: any) => {
             console.error("Video Error:", e)
-            // Try to recover
             setTimeout(() => {
                 if (videoEl) {
                     videoEl.load()
@@ -98,50 +94,35 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
         videoEl.addEventListener('pause', handlePause)
         videoEl.addEventListener('error', handleError)
 
-        // WATCHDOG: Check for frozen video or 0x0 resolution
         const watchdogInterval = setInterval(() => {
             if (!videoEl || !stream) return
-
             const vTrack = stream.getVideoTracks()[0]
             if (!vTrack || vTrack.readyState !== 'live') return
 
             const hasZeroRes = videoEl.videoWidth === 0 || videoEl.videoHeight === 0
             const isStuck = videoEl.currentTime > 0 && videoEl.currentTime === lastTimeRef.current && !videoEl.paused
 
-            // Watchdog Recovery Logic (More aggressive for Meet-style stability)
             if (hasZeroRes || isStuck) {
                 stuckFrameCountRef.current++
-                if (stuckFrameCountRef.current % 4 === 0) {
-                    console.log(`Video Watchdog: Suspicious state (${stuckFrameCountRef.current}/12) - Res: ${videoEl.videoWidth}x${videoEl.videoHeight}, Time: ${videoEl.currentTime}`)
-                }
             } else {
                 stuckFrameCountRef.current = 0
             }
-
             lastTimeRef.current = videoEl.currentTime
 
-            // Trigger Recovery if stuck for ~6 seconds
             if (stuckFrameCountRef.current > 12) {
-                console.warn("Video Watchdog: TRIGGERING SILENT RECOVERY - Native Stream Re-attachment")
+                console.warn("Video Watchdog: TRIGGERING SILENT RECOVERY")
                 stuckFrameCountRef.current = 0
-
-                // Attempt recovery by re-assigning srcObject
                 const currentStream = videoEl.srcObject
                 if (currentStream) {
                     videoEl.srcObject = null
-                    // Small delay to allow browser to release hardware
                     setTimeout(() => {
                         if (videoEl && currentStream) {
                             videoEl.srcObject = currentStream
-                            videoEl.play().catch(e => {
-                                console.error("Watchdog recovery play failed:", e)
-                                setIsPaused(true)
-                            })
+                            videoEl.play().catch(() => setIsPaused(true))
                         }
                     }, 50)
                 }
             }
-
         }, 500)
 
         return () => {
@@ -156,40 +137,18 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
 
     const isConnecting = connectionState === 'connecting'
 
-    const handleUnmute = () => {
-        if (videoRef.current) {
-            videoRef.current.muted = false
-            setIsMutedAutoplay(false)
-        }
-    }
-
-    const handleManualPlay = () => {
-        if (videoRef.current) {
-            videoRef.current.muted = false // Try to unmute on manual interaction
-            videoRef.current.play()
-                .then(() => {
-                    setIsPaused(false)
-                    setIsMutedAutoplay(false)
-                })
-                .catch(console.error)
-        }
-    }
-
     return (
         <div className={cn(
             "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500 z-10",
             isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)] z-20",
-            (isPaused || isMutedAutoplay) && "ring-4 ring-amber-500" // Visual cue
+            (isPaused || isMutedAutoplay) && "ring-4 ring-amber-500"
         )}>
-
             {cameraOff || !stream ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 backdrop-blur-3xl">
-                    <div className="relative">
-                        <div className="h-16 w-16 md:h-24 md:w-24 rounded-full bg-zinc-800/50 flex items-center justify-center border border-white/5">
-                            <User className="h-8 w-8 md:h-12 md:w-12 text-zinc-600" />
-                        </div>
+                    <div className="h-16 w-16 md:h-24 md:w-24 rounded-full bg-zinc-800/50 flex items-center justify-center border border-white/5">
+                        <User className="h-8 w-8 md:h-12 md:w-12 text-zinc-600" />
                     </div>
-                    <span className="mt-2 md:mt-4 text-zinc-400 font-medium tracking-tight text-xs md:text-base">{name}</span>
+                    <span className="mt-2 md:mt-4 text-zinc-400 font-medium text-xs md:text-base">{name}</span>
                 </div>
             ) : (
                 <>
@@ -198,74 +157,30 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                         autoPlay
                         playsInline
                         controls={false}
-                        className={cn(
-                            "w-full h-full bg-zinc-950",
-                            isPresentation ? "object-contain" : "object-cover"
-                        )}
-                        onLoadedMetadata={(e) => {
-                            // Initial play attempt handled by effect, but this is a backup
-                        }}
+                        className={cn("w-full h-full bg-zinc-950", isPresentation ? "object-contain" : "object-cover")}
                         onPause={() => setIsPaused(true)}
                         onPlay={() => setIsPaused(false)}
                     />
-
-                    {/* OVERLAYS FOR INTERACTION */}
                     {(isPaused || isMutedAutoplay) && (
                         <div className="absolute inset-0 flex items-center justify-center z-[50] pointer-events-none">
-                            {/* Buffering/Stalled Indicator */}
                             {(isBuffering && !isPaused) && (
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2">
-                                        <Loader2 className="h-4 w-4 text-white animate-spin" />
-                                        <span className="text-white text-xs font-bold">Carregando vídeo...</span>
-                                    </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            // Force re-attach
-                                            if (videoRef.current && stream) {
-                                                const s = stream
-                                                videoRef.current.srcObject = null
-                                                setTimeout(() => {
-                                                    if (videoRef.current) {
-                                                        videoRef.current.srcObject = s
-                                                        videoRef.current.play().catch(console.error)
-                                                        setIsBuffering(false)
-                                                    }
-                                                }, 200)
-                                            }
-                                        }}
-                                        className="bg-red-500/80 hover:bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full pointer-events-auto transition-colors"
-                                    >
-                                        Forçar Recarregamento
-                                    </button>
+                                <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 text-white animate-spin" />
+                                    <span className="text-white text-xs font-bold">Carregando...</span>
                                 </div>
                             )}
                         </div>
                     )}
-
                     {isPaused && (
-                        <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/40 backdrop-blur-sm transition-all">
-                            <button
-                                onClick={handleManualPlay}
-                                className="group/play flex flex-col items-center gap-3 transition-transform hover:scale-105 active:scale-95 cursor-pointer pointer-events-auto"
-                            >
-                                <div className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover/play:bg-white/20 transition-all shadow-xl">
-                                    <Maximize2 className="h-6 w-6 text-white translate-x-0.5" />
-                                </div>
-                                <div className="flex flex-col items-center">
-                                    <span className="text-white font-medium text-sm tracking-wide shadow-black drop-shadow-md">Clique para ativar o vídeo</span>
-                                </div>
+                        <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/40 backdrop-blur-sm">
+                            <button onClick={() => videoRef.current?.play()} className="h-16 w-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all pointer-events-auto">
+                                <Maximize2 className="h-6 w-6 text-white translate-x-0.5" />
                             </button>
                         </div>
                     )}
-
                     {!isPaused && isMutedAutoplay && (
                         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto">
-                            <button
-                                onClick={handleUnmute}
-                                className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white font-medium rounded-full px-6 py-2 shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center gap-2 cursor-pointer"
-                            >
+                            <button onClick={() => { if (videoRef.current) { videoRef.current.muted = false; setIsMutedAutoplay(false) } }} className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 text-white font-medium rounded-full px-6 py-2 flex items-center gap-2">
                                 <MicOff className="h-4 w-4" />
                                 <span>Ativar Áudio</span>
                             </button>
@@ -274,186 +189,51 @@ export function RemoteVideo({ stream, name, role, micOff, cameraOff, handRaised,
                 </>
             )}
 
-            {/* Volume Control Overlay (Fishbone + Slider) */}
             {onIndividualVolumeChange && (
-                <div
-                    onClick={(e) => e.stopPropagation()} // Prevent grid maximize click
-                    className={cn(
-                        "absolute top-3 left-3 z-[110] flex flex-col gap-2 transition-all duration-300 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 pointer-events-auto",
-                        (isSpeaking || individualVolume < 1 || showSlider) ? "opacity-100" : "opacity-40 group-hover:opacity-100",
-                        showSlider ? "w-32" : "w-fit"
-                    )}
-                >
+                <div className="absolute top-3 left-3 z-[110] flex flex-col gap-2 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 pointer-events-auto">
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                setShowSlider(!showSlider)
-                            }}
-                            className={cn(
-                                "p-1.5 rounded-lg transition-colors overflow-hidden",
-                                individualVolume === 0 ? "text-red-500 bg-red-500/10" : "text-white hover:bg-white/10"
-                            )}
-                            title={showSlider ? "Esconder Controle" : "Ajustar Volume"}
-                        >
+                        <button onClick={() => setShowSlider(!showSlider)} className={cn("p-1.5 rounded-lg", individualVolume === 0 ? "text-red-500 bg-red-500/10" : "text-white hover:bg-white/10")}>
                             {individualVolume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                         </button>
-
-                        <div
-                            className="flex items-end gap-[3px] h-4 px-1 cursor-pointer"
-                            onClick={() => setShowSlider(!showSlider)}
-                        >
-                            {[1, 2, 3, 4, 5].map((level) => {
-                                const threshold = level * 0.2
-                                const isActive = individualVolume >= (threshold - 0.1)
-                                const height = `${level * 20}%`
-
-                                return (
-                                    <div
-                                        key={level}
-                                        className={cn(
-                                            "w-[3px] rounded-full transition-all hover:scale-y-125",
-                                            isActive ? "bg-[#06b6d4]" : "bg-white/20",
-                                            isSpeaking && isActive && "animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.5)]"
-                                        )}
-                                        style={{ height }}
-                                    />
-                                )
-                            })}
-                        </div>
+                        <input type="range" min="0" max="1" step="0.01" value={individualVolume} onChange={(e) => onIndividualVolumeChange(parseFloat(e.target.value))} className={cn("h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#06b6d4]", showSlider ? "w-20" : "w-0 opacity-0")} />
                     </div>
-
-                    {/* Volume Slider ("Bolinha") - Subtle/Hidden */}
-                    <AnimatePresence>
-                        {showSlider && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="px-1.5 pb-1 overflow-hidden"
-                            >
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="1"
-                                    step="0.01"
-                                    value={individualVolume}
-                                    onChange={(e) => onIndividualVolumeChange(parseFloat(e.target.value))}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="w-full h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#06b6d4] hover:accent-[#06b6d4]/80"
-                                    style={{
-                                        background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${individualVolume * 100}%, rgba(255,255,255,0.2) ${individualVolume * 100}%, rgba(255,255,255,0.2) 100%)`
-                                    }}
-                                />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
                 </div>
             )}
 
-            {/* Pin / Maximize Button */}
             {onPin && showPinButton && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onPin()
-                        }}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-white font-bold text-xs uppercase tracking-widest transition-all",
-                            isPinned ? "bg-[#06b6d4] border-[#06b6d4]/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]" : "bg-black/40 hover:bg-black/60 active:scale-95"
-                        )}
-                    >
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); onPin() }} className={cn("flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-white font-bold text-xs uppercase tracking-widest", isPinned ? "bg-[#06b6d4]" : "bg-black/40 hover:bg-black/60")}>
                         <Maximize2 className="h-3.5 w-3.5" />
                         {isPinned ? "Desafixar" : "Fixar Vídeo"}
                     </button>
                 </div>
             )}
 
-            {/* Mute Peer Button (Host Only or Local Mute) */}
-            {onMutePeer && (
-                <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute top-3 right-3 z-[110] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-auto"
-                >
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onMutePeer()
-                        }}
-                        className={cn(
-                            "p-2 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95",
-                            isLocalMuted
-                                ? "bg-red-500 text-white border border-red-500/50"
-                                : "bg-zinc-800/80 backdrop-blur-md text-white hover:bg-red-600 border border-white/10"
-                        )}
-                        title={isLocalMuted ? "Ouvir Usuário" : "Mutar Usuário (Local)"}
-                    >
-                        {isLocalMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                    </button>
-                </div>
-            )}
-
-            {/* OVERLAYS */}
             <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 right-3 md:right-6 flex items-center justify-between pointer-events-none z-10">
-                <div className="flex items-center gap-2 md:gap-3 bg-black/40 backdrop-blur-xl px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl border border-white/10">
-                    <span className="text-white text-[10px] md:text-sm font-bold tracking-tight">{name}</span>
-                    {(role?.toLowerCase().includes('interpreter') || role?.toLowerCase().includes('admin')) && (
-                        <div className="bg-[#06b6d4] h-1 w-1 md:h-1.5 md:w-1.5 rounded-full animate-pulse" />
-                    )}
+                <div className="bg-black/40 backdrop-blur-xl px-2.5 py-1.5 rounded-xl border border-white/10">
+                    <span className="text-white text-[10px] md:text-sm font-bold">{name}</span>
                 </div>
-
-                <div className="flex gap-1.5 md:gap-2">
-                    {handRaised && (
-                        <div className="bg-amber-500/20 backdrop-blur-xl border border-amber-500/30 p-1.5 md:p-2.5 rounded-xl md:rounded-2xl">
-                            <Hand className="h-3.5 w-3.5 md:h-4 md:w-4 text-amber-500 animate-bounce" />
-                        </div>
-                    )}
-                    {micOff && (
-                        <div className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 p-1.5 md:p-2.5 rounded-xl md:rounded-2xl">
-                            <MicOff className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-500" />
-                        </div>
-                    )}
+                <div className="flex gap-1.5">
+                    {handRaised && <Hand className="h-4 w-4 text-amber-500 animate-bounce" />}
+                    {micOff && <MicOff className="h-4 w-4 text-red-500" />}
                 </div>
             </div>
 
-            {/* CONNECTING OVERLAY */}
             <AnimatePresence>
                 {isConnecting && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 rounded-[2.5rem]"
-                    >
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 rounded-[2.5rem]">
                         <Loader2 className="h-8 w-8 text-[#06b6d4] animate-spin mb-4" />
-                        <span className="text-zinc-400 text-sm font-medium">Conectando...</span>
-                    </motion.div>
-                )}
-                {connectionState === 'failed' && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-red-950/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 rounded-[2.5rem]"
-                    >
-                        <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
-                            <WifiOff className="h-6 w-6 text-red-500" />
-                        </div>
-                        <span className="text-red-200 text-sm font-medium text-center px-4">
-                            Falha na Conexão<br />
-                            <span className="text-red-500/50 text-xs mt-1 block">Verifique sua conexão ou Firewall</span>
-                        </span>
+                        <span className="text-zinc-400 text-sm">Conectando...</span>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* DEBUG OVERLAY REMOVED */}
         </div>
     )
-}
+})
 
-export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onSpeakingChange, onPin, isPinned, showPinButton = true }: VideoPlayerProps) {
+export const LocalVideo = memo(function LocalVideo({ 
+    stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onPin, isPinned, showPinButton = true 
+}: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
@@ -469,65 +249,35 @@ export function LocalVideo({ stream, name, role, micOff, cameraOff, handRaised, 
         )}>
             {cameraOff || !stream ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900">
-                    <div className="h-14 w-14 md:h-20 md:w-20 rounded-full bg-zinc-800 flex items-center justify-center">
-                        <User className="h-7 w-7 md:h-10 md:w-10 text-zinc-600" />
+                    <div className="h-14 w-14 rounded-full bg-zinc-800 flex items-center justify-center">
+                        <User className="h-7 w-7 text-zinc-600" />
                     </div>
-                    <span className="mt-2 md:mt-3 text-zinc-400 text-xs md:text-sm font-medium tracking-tight">Você</span>
+                    <span className="mt-2 text-zinc-400 text-xs font-medium">Você</span>
                 </div>
             ) : (
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    controls={false}
-                    className="w-full h-full object-cover bg-zinc-950 mirror"
-                />
+                <video ref={videoRef} autoPlay playsInline muted controls={false} className="w-full h-full object-cover bg-zinc-950 mirror" />
             )}
 
-            {/* Pin / Maximize Button */}
             {onPin && showPinButton && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onPin()
-                        }}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-white font-bold text-xs uppercase tracking-widest transition-all",
-                            isPinned ? "bg-[#06b6d4] border-[#06b6d4]/50 shadow-[0_0_20px_rgba(6,182,212,0.3)]" : "bg-black/40 hover:bg-black/60 active:scale-95"
-                        )}
-                    >
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={(e) => { e.stopPropagation(); onPin() }} className={cn("flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-white font-bold text-xs uppercase", isPinned ? "bg-[#06b6d4]" : "bg-black/40")}>
                         <Maximize2 className="h-3.5 w-3.5" />
                         {isPinned ? "Desafixar" : "Fixar Vídeo"}
                     </button>
                 </div>
             )}
 
-            <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 right-3 md:right-6 flex items-center justify-between pointer-events-none">
-                <div className="flex items-center gap-2 md:gap-3 bg-black/40 backdrop-blur-xl px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl border border-white/10">
-                    <span className="text-white text-[9px] md:text-sm font-bold tracking-tight">Você</span>
-                    {(role?.toLowerCase().includes('interpreter') || role?.toLowerCase().includes('admin')) && (
-                        <div className="bg-[#06b6d4] h-1 w-1 md:h-1.5 md:w-1.5 rounded-full animate-pulse" />
-                    )}
+            <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 flex items-center justify-between right-3 pointer-events-none">
+                <div className="bg-black/40 backdrop-blur-xl px-2.5 py-1.5 rounded-xl border border-white/10">
+                    <span className="text-white text-[9px] md:text-sm font-bold">Você</span>
                 </div>
-                <div className="flex gap-1 md:gap-2">
-                    {handRaised && (
-                        <div className="bg-amber-500/20 backdrop-blur-xl border border-amber-500/30 p-1 md:p-2.5 rounded-lg md:rounded-2xl">
-                            <Hand className="h-3 md:h-4 w-3 md:w-4 text-amber-500 animate-bounce" />
-                        </div>
-                    )}
-                    {micOff && (
-                        <div className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 p-1 md:p-2.5 rounded-lg md:rounded-2xl">
-                            <MicOff className="h-3 md:h-4 w-3 md:w-4 text-red-500" />
-                        </div>
-                    )}
+                <div className="flex gap-1">
+                    {handRaised && <Hand className="h-3 w-3 text-amber-500 animate-bounce" />}
+                    {micOff && <MicOff className="h-3 w-3 text-red-500" />}
                 </div>
             </div>
 
-            <style jsx>{`
-                .mirror { transform: scaleX(-1); }
-            `}</style>
+            <style jsx>{` .mirror { transform: scaleX(-1); } `}</style>
         </div>
     )
-}
+})

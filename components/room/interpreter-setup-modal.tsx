@@ -8,6 +8,8 @@ interface InterpreterSetupModalProps {
     onClose: () => void
     onSelect: (langCode: string) => void
     availableLanguages: { code: string; name: string; flag: string }[]
+    occupiedLanguages?: string[]
+    userName?: string
 }
 
 export function InterpreterSetupModal({ isOpen, onClose, onSelect, availableLanguages }: InterpreterSetupModalProps) {

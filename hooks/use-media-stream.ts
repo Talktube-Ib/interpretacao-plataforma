@@ -18,7 +18,7 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
 
     // Initialize stream
     useEffect(() => {
-        let mounted = true
+        const controller = new AbortController()
         let activeStream: MediaStream | null = null
 
         const init = async () => {
@@ -41,15 +41,20 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
                                 : { 
                                     facingMode: 'user',
                                     width: { ideal: 1280 },
-                                    height: { ideal: 720 }
+                                    height: { ideal: 720 },
+                                    aspectRatio: { ideal: 1.7777777778 } // 16:9 ideal
                                   })
                             : false
                     }
                     console.log('--- Requesting UserMedia with constraints:', constraints)
+                    
+                    // Check if already aborted before calling
+                    if (controller.signal.aborted) return
+                    
                     activeStream = await navigator.mediaDevices.getUserMedia(constraints)
                 }
 
-                if (!mounted) {
+                if (controller.signal.aborted) {
                     activeStream.getTracks().forEach(t => t.stop())
                     return
                 }
@@ -64,14 +69,16 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
                 setStream(activeStream)
                 setError(null)
             } catch (err) {
-                if (mounted) setError(err instanceof Error ? err.message : String(err))
+                if (!controller.signal.aborted) {
+                    setError(err instanceof Error ? err.message : String(err))
+                }
             }
         }
 
         init()
 
         return () => {
-            mounted = false
+            controller.abort()
             // Only stop tracks if we created the stream (not passed in config)
             if (activeStream && !config.stream) {
                 activeStream.getTracks().forEach(t => t.stop())

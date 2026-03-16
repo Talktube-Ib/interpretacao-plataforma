@@ -62,7 +62,12 @@ export function useSignaling(roomId: string, userId: string, metadata: Record<st
             .on('presence', { event: 'sync' }, () => {
                 const state = newChannel.presenceState()
                 const users = Object.keys(state)
-                eventsRef.current.onPresenceSync(users, state)
+                
+                // Debounce simple sync events to avoid render thrashing during mass joins/leaves
+                if ((window as any)._presenceSyncTimer) clearTimeout((window as any)._presenceSyncTimer);
+                (window as any)._presenceSyncTimer = setTimeout(() => {
+                    eventsRef.current.onPresenceSync(users, state)
+                }, 100)
             })
             .subscribe(async (status) => {
                 setConnectionState(status)

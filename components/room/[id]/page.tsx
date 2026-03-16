@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState, use, useEffect, useRef, ChangeEvent, useCallback } from 'react'
+import { useState, use, useEffect, useRef, ChangeEvent, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff, Check,
@@ -56,7 +56,9 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     // User Identity Logic
     const [userId, setUserId] = useState('')
     const sessionSuffix = useRef(Math.random().toString(36).substring(2, 6)).current
-    const sessionUserId = userId ? `${userId}_${sessionSuffix}` : null
+    const sessionUserId = userId.length > 4   // guest-xxx tem pelo menos 10 chars
+        ? `${userId}_${sessionSuffix}`
+        : null
     const [userName, setUserName] = useState(t('room.participant_default'))
     const [currentRole, setCurrentRole] = useState<string>('participant')
     const [isLoaded, setIsLoaded] = useState(false)
@@ -80,9 +82,23 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     const [assignedLanguages, setAssignedLanguages] = useState<string[]>([]) // For restricted interpreters
     const [isSettingsOpen, setIsSettingsOpen] = useState(false) // Added for mobile menu control
     const [liveKitToken, setLiveKitToken] = useState<string | null>(null)
-    const [hasClosedSetup, setHasClosedSetup] = useState(false)
+    const [tokenReady, setTokenReady] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(true)
+    const [isOnline, setIsOnline] = useState(true)
+    const [hasClosedSetup, setHasClosedSetup] = useState(false)
+
+    // Online/Offline Listeners
+    useEffect(() => {
+        const handleOnline = () => setIsOnline(true)
+        const handleOffline = () => setIsOnline(false)
+        window.addEventListener('online', handleOnline)
+        window.addEventListener('offline', handleOffline)
+        return () => {
+            window.removeEventListener('online', handleOnline)
+            window.removeEventListener('offline', handleOffline)
+        }
+    }, [])
 
 
     // Layout and Join States
@@ -101,46 +117,33 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 49
 
+    const systemLogsRef = useRef<string[]>([])
     const [systemLogs, setSystemLogs] = useState<string[]>([])
+    const handleOpenDebug = useCallback(() => {
+        setSystemLogs([...systemLogsRef.current])
+    }, [])
 
-    // Capture logs for debugging
     useEffect(() => {
-        const originalLog = console.log
-        const originalError = console.error
-        
-        const formatLog = (args: any[]) => {
-            try {
-                return `[${new Date().toLocaleTimeString()}] ` + args.map(arg => {
-                    if (arg instanceof Error) return `${arg.name}: ${arg.message}`
-                    if (typeof arg === 'object' && arg !== null) {
-                        try {
-                            return JSON.stringify(arg)
-                        } catch (e) {
-                            return `[Object ${arg.constructor?.name || 'Complex'}]`
-                        }
-                    }
-                    return String(arg)
-                }).join(' ')
-            } catch (e) {
-                return `[Log Error] ${String(e)}`
-            }
-        }
+        const orig = { log: console.log, error: console.error }
+        const fmt = (prefix: string, args: any[]) =>
+            `[${new Date().toLocaleTimeString()}] ${prefix}` +
+            args.map(a => {
+                if (a instanceof Error) return `${a.name}: ${a.message}`
+                try { return typeof a === 'object' && a ? JSON.stringify(a) : String(a) }
+                catch { return '[Object]' }
+            }).join(' ')
 
-        console.log = (...args) => {
-            const msg = formatLog(args)
-            setSystemLogs(prev => [msg, ...prev].slice(0, 100))
-            originalLog(...args)
+        console.log   = (...args) => { 
+            systemLogsRef.current = [fmt('', args), ...systemLogsRef.current].slice(0, 200)
+            orig.log(...args) 
         }
-        
-        console.error = (...args) => {
-            const msg = `ERROR: ${formatLog(args)}`
-            setSystemLogs(prev => [msg, ...prev].slice(0, 100))
-            originalError(...args)
+        console.error = (...args) => { 
+            systemLogsRef.current = [fmt('ERR: ', args), ...systemLogsRef.current].slice(0, 200)
+            orig.error(...args) 
         }
-
-        return () => {
-            console.log = originalLog
-            console.error = originalError
+        return () => { 
+            console.log = orig.log
+            console.error = orig.error 
         }
     }, [])
 
@@ -194,11 +197,28 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         unblockUserAudio,
         reconnect,
         mediaStatus,
-        signalingStatus,
         lastError,
         setLastError,
-        localScreenStream
-    } = useWebRTC(roomId, sessionUserId || '', currentRole, lobbyConfig || {}, isJoined, userName, liveKitToken || undefined, isGhost, hostId)
+        localScreenStream,
+        signalingStatus
+    } = useWebRTC(
+        roomId, 
+        sessionUserId || '', 
+        currentRole, 
+        lobbyConfig || {}, 
+        isJoined && tokenReady, 
+        userName, 
+        liveKitToken || undefined, 
+        isGhost, 
+        hostId
+    )
+
+    const isSignalingConnected = signalingStatus === 'SUBSCRIBED' || signalingStatus === 'joined'
+
+    const availableSystemLanguages = useMemo(() => {
+        const codes = activeLanguages.length > 0 ? activeLanguages : LANGUAGES.map(l => l.code)
+        return codes.map(code => LANGUAGES.find(l => l.code === code)).filter(Boolean) as Language[]
+    }, [activeLanguages])
 
     useEffect(() => {
         // Only show upsell to guests (users not logged in)
@@ -386,29 +406,49 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         initUser()
     }, [roomId, t])
 
-    // Fetch LiveKit Token for main room
     useEffect(() => {
-        if (!isJoined || !sessionUserId || !roomId) return
+        // Trava crítica: isLoaded garante que initUser terminou e sessionUserId está estável
+        if (!isJoined || !isLoaded || !sessionUserId || !roomId) return
 
+        let cancelled = false
         const fetchToken = async () => {
             try {
-                const resp = await fetch(`/api/livekit/token?room=${roomId}&username=${sessionUserId}&role=${currentRole}`)
+                const resp = await fetch(
+                    `/api/livekit/token?room=${encodeURIComponent(roomId)}&username=${encodeURIComponent(sessionUserId)}&role=${currentRole}`
+                )
+                if (cancelled) return
                 const data = await resp.json()
                 if (data.token) {
                     setLiveKitToken(data.token)
-                    console.log('--- Token Metadata ---', data.serverInfo)
-                    setLastError(null) // Clear any token errors
+                    setTokenReady(true)
+                    setLastError(null)
                 } else {
-                    console.error("Token API Error:", data)
-                    setLastError(`Token Error: ${data.details || data.error} (API Key Len: ${data.apiKeyLength || 0})`)
+                    setLastError(`Token Error: ${data.error || 'Unknown'}`)
                 }
-            } catch (error) {
-                console.error("Failed to fetch LiveKit token for main room:", error)
-                setLastError(`Network Error fetching token: ${error instanceof Error ? error.message : String(error)}`)
+            } catch (err) {
+                if (!cancelled) setLastError(`Network Error: ${err instanceof Error ? err.message : String(err)}`)
             }
         }
         fetchToken()
-    }, [isJoined, sessionUserId, roomId, setLastError])
+        return () => { cancelled = true }
+    }, [isJoined, isLoaded, sessionUserId, roomId, currentRole])
+
+    // Refresh do token 30min antes de expirar
+    useEffect(() => {
+        if (!tokenReady || !sessionUserId || !roomId) return
+        const REFRESH_MS = (4 * 60 - 30) * 60 * 1000 // 3h30 (token dura 4h)
+        const timer = setTimeout(async () => {
+            try {
+                const resp = await fetch(`/api/livekit/token?room=${encodeURIComponent(roomId)}&username=${encodeURIComponent(sessionUserId)}&role=${currentRole}`)
+                const data = await resp.json()
+                if (data.token) { 
+                    setLiveKitToken(data.token)
+                    console.log('[Token] Refreshed') 
+                }
+            } catch (err) { console.error('[Token] Refresh failed:', err) }
+        }, REFRESH_MS)
+        return () => clearTimeout(timer)
+    }, [tokenReady, sessionUserId, roomId, currentRole])
 
     // State declarations previously here were moved up to fix 'used before declaration' errors
     // State declarations previously here were moved up to fix 'used before declaration' errors
@@ -461,20 +501,18 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
             setShowUI(true)
             setLastInteraction(Date.now())
         }
-        window.addEventListener('mousemove', handleActivity)
-        window.addEventListener('mousedown', handleActivity)
-        window.addEventListener('keydown', handleActivity)
-        window.addEventListener('touchstart', handleActivity)
+        
+        const events = ['mousemove', 'mousedown', 'keydown', 'touchstart']
+        events.forEach(e => window.addEventListener(e, handleActivity))
+        
         const interval = setInterval(() => {
             if (Date.now() - lastInteraction > 3000 && !activeSidebar) {
                 setShowUI(false)
             }
         }, 1000)
+        
         return () => {
-            window.removeEventListener('mousemove', handleActivity)
-            window.removeEventListener('mousedown', handleActivity)
-            window.removeEventListener('keydown', handleActivity)
-            window.removeEventListener('touchstart', handleActivity)
+            events.forEach(e => window.removeEventListener(e, handleActivity))
             clearInterval(interval)
         }
     }, [activeSidebar, lastInteraction])
@@ -656,7 +694,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
 
 
 
-    if (!isLoaded || loading && !isJoined) {
+    if (!isLoaded || (loading && !isJoined)) {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center bg-[#020817] text-white gap-4">
                 <div className="h-8 w-8 border-4 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
@@ -709,6 +747,15 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     }
 
 
+
+    const screenSharePeer = peers.find(p => !!p.screenStream)
+    const effectiveSpeakerId = pinnedSpeakerId ?? activeSpeakerId ?? peers[0]?.userId ?? null
+
+    const computedViewMode: 'gallery' | 'speaker' = (() => {
+        if (pinnedSpeakerId) return 'speaker'
+        if (screenSharePeer || isSharing) return 'speaker'
+        return viewMode
+    })()
 
     return (
         <div className="h-screen bg-[#020817] flex flex-col relative overflow-hidden text-foreground transition-colors duration-500">
@@ -830,8 +877,8 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                         currentRole={currentRole}
                         micOn={micOn}
                         cameraOn={cameraOn}
-                        mode={viewMode}
-                        activeSpeakerId={activeSpeakerId}
+                        mode={computedViewMode}
+                        activeSpeakerId={effectiveSpeakerId}
                         pinnedSpeakerId={pinnedSpeakerId}
                         onSpeakerChange={handleSpeakerChange}
                         onPeerSpeaking={handlePeerSpeaking}
@@ -1489,7 +1536,10 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
             <FloatingReactions reactions={reactions} />
 
             {/* BOTÃO DE DEBUG FIXO (Independente de UI Auto-Hide) */}
-            <div className="fixed top-2 right-2 md:top-6 md:right-6 z-[100] flex items-center gap-2 bg-black/60 backdrop-blur-xl border border-red-500/50 rounded-full px-3 py-1.5 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:scale-105 transition-transform cursor-pointer">
+            <div 
+                className="fixed top-2 right-2 md:top-6 md:right-6 z-[100] flex items-center gap-2 bg-black/60 backdrop-blur-xl border border-red-500/50 rounded-full px-3 py-1.5 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:scale-105 transition-transform cursor-pointer"
+                onClick={handleOpenDebug}
+            >
                 <DebugLogs logs={systemLogs} />
                 <span className="text-[9px] font-black text-red-500 pr-1 animate-pulse hidden sm:inline tracking-widest">DIAGNOSTICS</span>
             </div>

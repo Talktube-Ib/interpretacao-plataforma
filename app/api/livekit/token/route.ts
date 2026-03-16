@@ -1,5 +1,6 @@
 import { AccessToken } from 'livekit-server-sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 // Tipos de cargo suportados
 type ParticipantRole = 'admin' | 'interpreter' | 'participant' | 'guest'
@@ -51,6 +52,24 @@ export async function GET(req: NextRequest) {
   const room     = searchParams.get('room')
   const username = searchParams.get('username')
   const role     = (searchParams.get('role') ?? 'participant') as ParticipantRole
+
+  // 1. Verificação de Segurança (Supabase Session)
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const isGuest = username?.startsWith('guest-')
+
+  // Se não for um guest válido e não tiver sessão, bloqueia
+  if (!user && !isGuest) {
+      console.warn('[Security] Unauthorized token request blocked:', { room, username, role })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Se for adm ou interpreter, OBRIGATÓRIO ter sessão válida no banco
+  if ((role === 'admin' || role === 'interpreter') && !user) {
+      console.warn('[Security] Privileged role requested without session:', { room, username, role })
+      return NextResponse.json({ error: 'Unauthorized: Session required for this role' }, { status: 401 })
+  }
 
   // Validações de entrada
   if (!room) {
