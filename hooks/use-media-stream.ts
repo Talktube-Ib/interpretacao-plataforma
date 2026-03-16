@@ -30,15 +30,15 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
                 } else {
                     const constraints = {
                         audio: config.micOn !== false ? {
-                            deviceId: config.audioDeviceId ? { exact: config.audioDeviceId } : undefined,
+                            deviceId: (config.audioDeviceId && config.audioDeviceId !== 'default') ? { exact: config.audioDeviceId } : undefined,
                             echoCancellation: true,
                             noiseSuppression: true,
                             autoGainControl: true
                         } : false,
                         video: config.cameraOn !== false
-                            ? (config.videoDeviceId
+                            ? (config.videoDeviceId && config.videoDeviceId !== 'default'
                                 ? { deviceId: { exact: config.videoDeviceId } }
-                                : { facingMode: { ideal: 'user' } })
+                                : { facingMode: 'user' })
                             : false
                     }
                     console.log('--- Requesting UserMedia with constraints:', constraints)

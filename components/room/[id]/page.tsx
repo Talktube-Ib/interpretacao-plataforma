@@ -1177,8 +1177,8 @@ export default function RoomPage({ params, searchParams }: { params: Promise<{ i
                     <SettingsDialog
                         audioDevices={audioInputs}
                         videoDevices={videoInputs}
-                        currentAudioId={localStorage.getItem('preferredAudioDevice') || undefined}
-                        currentVideoId={localStorage.getItem('preferredVideoDevice') || undefined}
+                        currentAudioId={typeof window !== 'undefined' ? (localStorage.getItem('preferredAudioDevice') || undefined) : undefined}
+                        currentVideoId={typeof window !== 'undefined' ? (localStorage.getItem('preferredVideoDevice') || undefined) : undefined}
                         localStream={localStream}
                         onSwitch={switchDeviceWebRTC}
                         open={isSettingsOpen}
