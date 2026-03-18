@@ -192,6 +192,11 @@ export function useWebRTC(
 
         const handleParticipantConnected = (participant: RemoteParticipant) => {
             console.log('[LK] Participant connected:', participant.identity)
+            const existing = peersRef.current.get(participant.identity)
+            if (existing) {
+                existing.connectionState = 'connected'
+                syncToState()
+            }
             setUserCount(room.remoteParticipants.size + 1)
         }
 
@@ -476,6 +481,7 @@ export function useWebRTC(
                     if (existing.role !== remoteRole) { existing.role = remoteRole; peerChanged = true }
                     if (peerChanged) changed = true
                 } else {
+                    const isAlreadyInLK = roomRef.current?.remoteParticipants.has(remoteSessionId)
                     const newPeer: PeerData = {
                         userId: remoteId,
                         id: remoteSessionId,
@@ -488,7 +494,7 @@ export function useWebRTC(
                         isHost: !!remoteData?.isHost,
                         isGhost: !!remoteData?.isGhost,
                         audioBlocked: !!remoteData?.audioBlocked,
-                        connectionState: 'connecting',
+                        connectionState: isAlreadyInLK ? 'connected' : 'connecting',
                         joinedAt: Date.now(),
                         stream: null,
                         screenStream: null
