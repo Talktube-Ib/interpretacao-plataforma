@@ -52,8 +52,15 @@ export const RemoteVideo = memo(function RemoteVideo({
             return
         }
         const checkTracks = () => {
-            setHasVideoTrack(stream.getVideoTracks().length > 0)
-            setHasAudioTrack(stream.getAudioTracks().length > 0)
+            const vTracks = stream.getVideoTracks()
+            const aTracks = stream.getAudioTracks()
+            console.log(`[VP] ${name} — stream tracks:`, { 
+                video: vTracks.map(t => ({ readyState: t.readyState, enabled: t.enabled })),
+                audio: aTracks.map(t => ({ readyState: t.readyState, enabled: t.enabled })),
+                cameraOff
+            })
+            setHasVideoTrack(vTracks.length > 0)
+            setHasAudioTrack(aTracks.length > 0)
         }
         checkTracks()
         stream.onaddtrack = checkTracks
@@ -62,7 +69,7 @@ export const RemoteVideo = memo(function RemoteVideo({
             stream.onaddtrack = null
             stream.onremovetrack = null
         }
-    }, [stream])
+    }, [stream, cameraOff, name])
 
     // Video Sync
     useEffect(() => {
