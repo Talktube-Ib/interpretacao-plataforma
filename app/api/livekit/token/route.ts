@@ -5,10 +5,10 @@ import { createClient } from '@/lib/supabase/server'
 export const maxDuration = 30; // 30 seconds
 
 // Tipos de cargo suportados
-type ParticipantRole = 'admin' | 'interpreter' | 'participant' | 'guest'
+type ParticipantRole = 'admin' | 'interpreter' | 'participant'
 
 // Permissões por cargo
-const ROLE_GRANTS: Record<ParticipantRole, any> = {
+const ROLE_CONFIGS: Record<ParticipantRole, any> = {
   admin: {
     roomJoin: true,
     roomCreate: true,
@@ -17,6 +17,7 @@ const ROLE_GRANTS: Record<ParticipantRole, any> = {
     canSubscribe: true,
     canPublishData: true,
     canUpdateOwnMetadata: true,
+    ttl: 60 * 60 * 8,  // 8 horas
   },
   interpreter: {
     roomJoin: true,
@@ -24,7 +25,7 @@ const ROLE_GRANTS: Record<ParticipantRole, any> = {
     canSubscribe: true,
     canPublishData: true,
     canUpdateOwnMetadata: true,
-    ttl: 60 * 60 * 6,  // 6 horas (sessões longas de interpretação)
+    ttl: 60 * 60 * 6,  // 6 horas
   },
   participant: {
     roomJoin: true,
