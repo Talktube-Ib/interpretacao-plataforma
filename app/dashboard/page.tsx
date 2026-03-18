@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/dashboard-client'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
     let user;
     let profile;

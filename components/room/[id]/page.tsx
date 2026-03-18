@@ -454,7 +454,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                     setLiveKitToken(data.token)
                     setTokenReady(true)
                     setLastError(null)
-                    console.log('[Token] OK para cargo:', currentRole)
+                    console.log('[Token] OK para cargo:', currentRole, 'Conectando em:', data.url || 'URL não fornecida')
                 } else {
                     console.error('[Token] API retornou sem token:', data)
                     setLastError(`Token Error: ${data.error || 'Resposta inválida'}`)
