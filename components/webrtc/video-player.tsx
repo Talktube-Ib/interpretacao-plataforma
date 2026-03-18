@@ -31,40 +31,77 @@ export const RemoteVideo = memo(function RemoteVideo({
     showPinButton = true 
 }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
+    const audioRef = useRef<HTMLAudioElement>(null)
     const [isPaused, setIsPaused] = useState(false)
     const [isMutedAutoplay, setIsMutedAutoplay] = useState(false)
     const [isBuffering, setIsBuffering] = useState(false)
     const [showSlider, setShowSlider] = useState(false)
+    const [hasVideoTrack, setHasVideoTrack] = useState(false)
+    const [hasAudioTrack, setHasAudioTrack] = useState(false)
 
     // Watchdog State
     const stuckFrameCountRef = useRef(0)
     const lastTimeRef = useRef(0)
 
+    // Monitor de Tracks
+    useEffect(() => {
+        if (!stream) {
+            setHasVideoTrack(false)
+            setHasAudioTrack(false)
+            return
+        }
+        const checkTracks = () => {
+            setHasVideoTrack(stream.getVideoTracks().length > 0)
+            setHasAudioTrack(stream.getAudioTracks().length > 0)
+        }
+        checkTracks()
+        stream.onaddtrack = checkTracks
+        stream.onremovetrack = checkTracks
+        return () => {
+            stream.onaddtrack = null
+            stream.onremovetrack = null
+        }
+    }, [stream])
+
+    // Video Sync
     useEffect(() => {
         const videoEl = videoRef.current
-        if (videoEl && stream) {
+        if (videoEl && stream && hasVideoTrack) {
             videoEl.srcObject = stream
             videoEl.playsInline = true
             videoEl.play().catch(e => {
-                console.warn("Autoplay with audio failed, trying muted:", e)
+                console.warn("[Video] Autoplay failed:", e)
                 videoEl.muted = true
-                videoEl.play().then(() => {
+                videoEl.play().catch(e2 => console.error("[Video] Final play failure:", e2))
+            })
+        }
+    }, [stream, hasVideoTrack])
+
+    // Audio Sync (Dedicado para evitar corte quando troca pra avatar)
+    useEffect(() => {
+        const audioEl = audioRef.current
+        if (audioEl && stream && hasAudioTrack) {
+            audioEl.srcObject = stream
+            audioEl.play().catch(e => {
+                console.warn("[Audio] Autoplay failed, trying muted for permission:", e)
+                audioEl.muted = true
+                audioEl.play().then(() => {
                     setIsMutedAutoplay(true)
-                    setIsPaused(false)
-                }).catch(e2 => {
-                    console.error("Autoplay muted also failed:", e2)
-                    setIsPaused(true)
                 })
             })
         }
-    }, [stream])
+    }, [stream, hasAudioTrack])
 
     useEffect(() => {
         if (videoRef.current) {
             const vol = Math.max(0, Math.min(1, volume))
             videoRef.current.volume = vol
-            if (vol === 0) videoRef.current.muted = true
-            else if (!isMutedAutoplay) videoRef.current.muted = false
+        }
+        if (audioRef.current) {
+            const vol = Math.max(0, Math.min(1, volume))
+            audioRef.current.volume = vol
+            if (vol === 0) audioRef.current.muted = true
+            else if (!isMutedAutoplay) audioRef.current.muted = false
         }
     }, [volume, isMutedAutoplay])
 
@@ -143,12 +180,20 @@ export const RemoteVideo = memo(function RemoteVideo({
             isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)] z-20",
             (isPaused || isMutedAutoplay) && "ring-4 ring-amber-500"
         )}>
-            {cameraOff || !stream ? (
+            {/* Elemento de áudio persistente */}
+            <audio ref={audioRef} autoPlay playsInline />
+
+            {cameraOff || !stream || !hasVideoTrack ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 backdrop-blur-3xl">
                     <div className="h-16 w-16 md:h-24 md:w-24 rounded-full bg-zinc-800/50 flex items-center justify-center border border-white/5">
                         <User className="h-8 w-8 md:h-12 md:w-12 text-zinc-600" />
                     </div>
-                    <span className="mt-2 md:mt-4 text-zinc-400 font-medium text-xs md:text-base">{name}</span>
+                    <div className="mt-2 md:mt-4 flex flex-col items-center gap-1">
+                        <span className="text-zinc-400 font-medium text-xs md:text-base">{name}</span>
+                        {!hasVideoTrack && stream && (
+                            <span className="text-[10px] text-zinc-500 uppercase tracking-tighter">Apenas Áudio</span>
+                        )}
+                    </div>
                 </div>
             ) : (
                 <>
