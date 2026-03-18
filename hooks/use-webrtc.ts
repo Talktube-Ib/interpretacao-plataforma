@@ -75,7 +75,8 @@ export function useWebRTC(
     userName: string = 'Participante',
     liveKitToken?: string,
     isGhostMode: boolean = false,
-    initialHostId?: string
+    initialHostId?: string,
+    iceServers?: RTCIceServer[]
 ) {
     const sessionUserId = userId
 
@@ -184,7 +185,11 @@ export function useWebRTC(
             const lkPeerCount = room.remoteParticipants.size
             if (presencePeerCount > 0 && lkPeerCount === 0) {
                 console.warn('[Health] Presence/LiveKit mismatch. Tentando reconectar SFU...')
-                room.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL!, liveKitTokenRef.current!).catch(
+                room.connect(
+                    process.env.NEXT_PUBLIC_LIVEKIT_URL!, 
+                    liveKitTokenRef.current!,
+                    { rtcConfig: { iceServers } }
+                ).catch(
                     err => console.error('[Health] Reconexão silenciosa falhou:', err)
                 )
             }
@@ -348,7 +353,11 @@ export function useWebRTC(
                 if (cancelled) return
                 setMediaStatus('connecting')
 
-                await room.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL!, liveKitTokenRef.current!)
+                await room.connect(
+                    process.env.NEXT_PUBLIC_LIVEKIT_URL!, 
+                    liveKitTokenRef.current!,
+                    { rtcConfig: { iceServers } }
+                )
                 if (cancelled) {
                     room.disconnect()
                     return
@@ -623,7 +632,8 @@ export function useWebRTC(
             setMediaStatus('connecting')
             await roomRef.current.connect(
                 process.env.NEXT_PUBLIC_LIVEKIT_URL!,
-                liveKitTokenRef.current
+                liveKitTokenRef.current,
+                { rtcConfig: { iceServers } }
             )
             // Re-publica tracks após reconexão manual
             const results = await Promise.allSettled([

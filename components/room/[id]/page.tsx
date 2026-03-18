@@ -87,6 +87,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     const [loading, setLoading] = useState(true)
     const [isOnline, setIsOnline] = useState(true)
     const [hasClosedSetup, setHasClosedSetup] = useState(false)
+    const [iceServers, setIceServers] = useState<RTCIceServer[]>([])
 
     // Online/Offline Listeners
     useEffect(() => {
@@ -145,6 +146,19 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
             console.log = orig.log
             console.error = orig.error 
         }
+    }, [])
+
+    // ICE Servers Fetch
+    useEffect(() => {
+        fetch('/api/turn')
+            .then(res => res.json())
+            .then(data => {
+                if (data.iceServers) {
+                    setIceServers(data.iceServers)
+                    console.log('[ICE] Servidores carregados:', data.iceServers.length)
+                }
+            })
+            .catch(err => console.error('[ICE] Falha ao buscar:', err))
     }, [])
 
     // Local Mute State
@@ -210,7 +224,8 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         userName, 
         liveKitToken || undefined, 
         isGhost, 
-        hostId
+        hostId,
+        iceServers
     )
 
     const isSignalingConnected = signalingStatus === 'SUBSCRIBED' || signalingStatus === 'joined'
