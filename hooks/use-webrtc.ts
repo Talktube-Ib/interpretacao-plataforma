@@ -823,12 +823,14 @@ export function useWebRTC(
             const pc = (roomRef.current.engine as any).pc as RTCPeerConnection
             diagnostics.state = roomRef.current.state
             
-            // Se o room existe mas o estado é 'connecting' ou 'reconnecting', mostrar isso
-            if (roomRef.current.state === 'connecting' || roomRef.current.state === 'reconnecting') {
-                diagnostics.iceState = roomRef.current.state
-            } else if (pc) {
+            if (pc) {
                 diagnostics.iceState = pc.iceConnectionState
                 diagnostics.signalingState = pc.signalingState
+                
+                // Overlay state if connecting
+                if (roomRef.current.state === 'connecting' || roomRef.current.state === 'reconnecting') {
+                    diagnostics.iceState = roomRef.current.state // 'connecting' is more descriptive than 'new' or 'checking' for the user
+                }
                 
                 const stats = await pc.getStats()
                 stats.forEach(report => {
