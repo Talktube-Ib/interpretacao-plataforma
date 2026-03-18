@@ -36,7 +36,6 @@ import { LANGUAGES } from '@/lib/languages'
 import { checkAndEndMeeting, restartPersonalMeeting, endMeeting } from '@/app/actions/meeting'
 import { VideoGrid } from '@/components/room/video-grid'
 import { LayoutGrid, Maximize2, ChevronLeft, ChevronRight, Ghost } from 'lucide-react'
-import { PreCallLobby } from '@/components/room/pre-call-lobby'
 import { SettingsDialog } from '@/components/room/settings-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
 import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal'
@@ -253,173 +252,122 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                 const supabase = createClient()
                 const { data: { user } } = await supabase.auth.getUser()
 
-                if (user) {
-                    setUserId(user.id)
-                    const { data: profile, error: profileError } = await supabase
+                if (!user) {
+                    console.log('[Auth] Usuário não autenticado. Redirecionando para login...')
+                    window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
+                    return
+                }
+
+                // 2. Fetch Profile
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id, role, full_name')
+                    .eq('id', user.id)
+                    .maybeSingle()
+
+                const name = profile?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || t('room.participant_default')
+                const roleFromDB = profile?.role || 'participant'
+
+                // 3. Fetch Meeting
+                const { data: meeting } = await supabase
+                    .from('meetings')
+                    .select('id, settings, start_time, status, host_id')
+                    .eq('id', roomId)
+                    .maybeSingle()
+
+                if (!meeting) {
+                    // Check if it's a personal room ID (owned by another user)
+                    const { data: hostProfile } = await supabase
                         .from('profiles')
-                        .select('role, full_name')
-                        .eq('id', user.id)
-                        .maybeSingle()
-
-                    if (profileError) {
-                        console.error('Error fetching profile:', profileError)
-                    }
-
-                    if (profile) {
-                        setUserName(profile.full_name || user?.user_metadata?.full_name || user.email?.split('@')[0] || t('room.participant_default'))
-                        setCurrentRole(profile.role || user?.user_metadata?.role || 'participant')
-                    } else {
-                        // Fallback if profile fetch fails but user exists (shouldn't happen often but RLS might cause it)
-                        setUserName(user?.user_metadata?.full_name || user.email?.split('@')[0] || t('room.participant_default'))
-                        setCurrentRole(user?.user_metadata?.role || 'participant')
-                    }
-                    const { data: meeting, error: meetingError } = await supabase
-                        .from('meetings')
-                        .select('id, settings, start_time, status, host_id')
+                        .select('id')
                         .eq('id', roomId)
                         .maybeSingle()
 
-                    if (meetingError || !meeting) {
-                        // Check if it's a personal room ID
-                        const { data: profileData } = await supabase
-                            .from('profiles')
-                            .select('id')
-                            .eq('id', roomId)
-                            .maybeSingle()
-
-                        if (!profileData) {
-                            setError(t('room.meeting_not_found'))
-                            setLoading(false)
-                            return
-                        }
+                    if (!hostProfile) {
+                        setError(t('room.meeting_not_found'))
+                        setLoading(false)
+                        return
                     }
-
-                    // Set hostId state
-                    if (meeting?.host_id) {
-                        setHostId(meeting.host_id)
-                    } else if (profile?.id) { // If it's a personal room, the profile ID is the host ID
-                        setHostId(profile.id)
-                    }
-
-
-                    // Check Expiration (Lazy Check)
-                    if (meeting?.status === 'active' && meeting.start_time) {
-                        const startTime = new Date(meeting.start_time).getTime()
-                        const diffMinutes = (Date.now() - startTime) / (1000 * 60)
-
-                        if (diffMinutes > 120) {
-                            // Expired. Kill it.
-                            const { expired } = await checkAndEndMeeting(roomId)
-                            if (expired) {
-                                // IF HOST, AUTO RESTART
-                                if (meeting.host_id === user.id) {
-                                    await restartPersonalMeeting(roomId)
-                                    window.location.reload()
-                                    return
-                                }
-
-                                alert(t('room.meeting_expired_title'))
-                                window.location.href = '/dashboard'
-                                return
-                            }
-                        }
-                    } else if (meeting?.status === 'ended') {
-                        // IF HOST, AUTO RESTART
+                    
+                    // Personal room logic
+                    setHostId(hostProfile.id)
+                } else {
+                    setHostId(meeting.host_id)
+                    
+                    // Status checks
+                    if (meeting.status === 'ended') {
                         if (meeting.host_id === user.id) {
                             await restartPersonalMeeting(roomId)
                             window.location.reload()
                             return
                         }
-
                         alert(t('room.meeting_ended_title'))
                         window.location.href = '/dashboard'
                         return
                     }
 
-                    // Check Meeting Interpreters (Item 1)
-                    if (meeting?.settings?.interpreters) {
-                        const interpreterConfig = meeting.settings.interpreters.find(
-                            (i: { email: string; lang?: string; langs?: string[] }) => i.email?.toLowerCase() === user.email?.toLowerCase()
-                        )
+                    // Meeting settings
+                    if (meeting.settings?.active_languages) {
+                        setActiveLanguages(meeting.settings.active_languages)
+                    }
 
+                    // Interpreter logic
+                    if (meeting.settings?.interpreters) {
+                        const interpreterConfig = meeting.settings.interpreters.find(
+                            (i: any) => i.email?.toLowerCase() === user.email?.toLowerCase()
+                        )
                         if (interpreterConfig) {
                             setCurrentRole('interpreter')
-                            // Support single 'lang' or array 'langs'
                             if (interpreterConfig.lang) {
                                 setAssignedLanguages([interpreterConfig.lang])
-                                // Auto-set the broadcast language
                                 setMyBroadcastLang(interpreterConfig.lang)
                             } else if (interpreterConfig.langs) {
                                 setAssignedLanguages(interpreterConfig.langs)
                                 setMyBroadcastLang(interpreterConfig.langs[0])
                             }
+                        } else {
+                            setCurrentRole(roleFromDB)
                         }
+                    } else {
+                        setCurrentRole(roleFromDB)
                     }
-
-                    if (meeting?.settings?.active_languages) {
-                        setActiveLanguages(meeting.settings.active_languages)
-                    }
-                } else {
-                    const { data: meeting } = await supabase
-                        .from('meetings')
-                        .select('id, status, start_time, settings, host_id')
-                        .eq('id', roomId)
-                        .maybeSingle()
-
-                    if (!meeting) {
-                        const { data: profileData } = await supabase
-                            .from('profiles')
-                            .select('id')
-                            .eq('id', roomId)
-                            .maybeSingle()
-
-                        if (!profileData) {
-                            setError(t('room.meeting_not_found'))
-                            setLoading(false)
-                            return
-                        }
-                    }
-
-                    // Set hostId state for guests too, if available
-                    if (meeting?.host_id) {
-                        setHostId(meeting.host_id)
-                    }
-
-
-                    if (meeting?.status === 'ended') {
-                        alert(t('room.meeting_ended_title'))
-                        window.location.href = '/dashboard'
-                        return
-                    }
-
-                    if (meeting?.status === 'active' && meeting.start_time) {
-                        const startTime = new Date(meeting.start_time).getTime()
-                        const diffMinutes = (Date.now() - startTime) / (1000 * 60)
-                        if (diffMinutes > 120) {
-                            alert(t('room.meeting_limit_title'))
-                            window.location.href = '/login' // Guests to login
-                            return
-                        }
-                    }
-
-                    if (meeting?.settings?.active_languages) {
-                        setActiveLanguages(meeting.settings.active_languages)
-                    }
-                    
-                    // NO MORE GUESTS: Redirect to login if no user session
-                    console.log('[Auth] Usuário não autenticado. Redirecionando para login...')
-                    window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
                 }
+
+                // 4. AUTO-JOIN & GHOST MODE
+                const urlParams = new URLSearchParams(window.location.search)
+                const ghostParam = urlParams.get('ghost') === 'true'
+
+                startTransition(() => {
+                    setUserId(user.id)
+                    setUserName(name)
+                    setIsGhost(ghostParam)
+                    
+                    setLobbyConfig({
+                        micOn: !ghostParam,
+                        cameraOn: !ghostParam,
+                        audioDeviceId: 'default',
+                        videoDeviceId: 'default',
+                        isGhost: ghostParam,
+                        name: name
+                    })
+
+                    setMicOn(!ghostParam)
+                    setCameraOn(!ghostParam)
+                    setIsJoined(true) // BYPASS LOBBY
+                })
+
             } catch (error) {
                 console.error("Critical error in initUser:", error)
+                setError("Falha ao iniciar sessão")
             } finally {
                 setIsLoaded(true)
                 setLoading(false)
             }
         }
+
         initUser()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [roomId]) // TIREI o 't' daqui para evitar reconexão ao mudar idioma
+    }, [roomId])
 
     useEffect(() => {
         // Guard triplo:
@@ -758,40 +706,9 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         )
     }
 
+    // We skip the lobby and go straight to the room
     if (!isJoined) {
-        return (
-            <PreCallLobby
-                userName={userName}
-                isGuest={isGuest}
-                onJoin={async (config: {
-                    micOn: boolean,
-                    cameraOn: boolean,
-                    audioDeviceId: string,
-                    videoDeviceId: string,
-                    isGhost: boolean,
-                    name: string,
-                    stream?: MediaStream
-                }) => {
-                    setLobbyConfig(config)
-                    setMicOn(config.micOn)
-                    setCameraOn(config.cameraOn)
-                    setIsGhost(config.isGhost)
-                    setUserName(config.name)
-                    setIsJoined(true)
-                    setLoading(false)
-
-                    if (config.isGhost) {
-                        const { logAdminAction } = await import('@/components/admin/actions')
-                        await logAdminAction({
-                            action: 'ROOM_GHOST_JOIN',
-                            targetResource: 'meeting',
-                            targetId: roomId,
-                            details: { name: config.name, role: currentRole }
-                        })
-                    }
-                }}
-            />
-        )
+        return null // Should be handled by the auth loader above
     }
 
 
