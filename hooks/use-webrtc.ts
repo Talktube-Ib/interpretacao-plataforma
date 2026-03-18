@@ -188,24 +188,10 @@ export function useWebRTC(
 
         roomRef.current = room
 
-        // Health Monitor
-        const healthCheckInterval = setInterval(() => {
-            if (room.state !== 'connected' || cancelled) return
-            const presencePeerCount = Array.from(peersRef.current.keys()).filter(
-                id => !id.endsWith('-presentation')
-            ).length
-            const lkPeerCount = room.remoteParticipants.size
-            if (presencePeerCount > 0 && lkPeerCount === 0) {
-                console.warn('[Health] Presence/LiveKit mismatch. Tentando reconectar SFU...')
-                room.connect(
-                    process.env.NEXT_PUBLIC_LIVEKIT_URL!, 
-                    liveKitTokenRef.current!,
-                    { rtcConfig: { iceServers } }
-                ).catch(
-                    err => console.error('[Health] Reconexão silenciosa falhou:', err)
-                )
-            }
-        }, 10000)
+        // Health Monitor: removido pois causava reconexões destrutivas quando
+        // o Fly.io rodava múltiplas instâncias e os participantes conectavam em máquinas diferentes.
+        // O LiveKit tem seu próprio mecanismo de reconexão via ExponentialReconnectPolicy.
+        const healthCheckInterval: ReturnType<typeof setInterval> | null = null
 
         const handleParticipantConnected = (participant: RemoteParticipant) => {
             console.log('[LK] Participant connected:', participant.identity)
@@ -482,7 +468,7 @@ export function useWebRTC(
         return () => {
             cancelled = true
             console.log('[LK] Cleaning up room connection')
-            clearInterval(healthCheckInterval)
+            if (healthCheckInterval) clearInterval(healthCheckInterval)
             room.removeAllListeners()
             room.disconnect()
             roomRef.current = null
