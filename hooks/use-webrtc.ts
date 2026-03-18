@@ -231,6 +231,8 @@ export function useWebRTC(
             participant: RemoteParticipant
         ) => {
             console.log(`[LK] Track subscribed: ${track.kind} (${publication.source}) from ${participant.identity}`)
+            console.log(`[LK] Track details:`, { id: track.sid, kind: track.kind, readyState: track.mediaStreamTrack?.readyState, enabled: track.mediaStreamTrack?.enabled })
+            
             const fullIdentity = participant.identity
             const baseUserId = fullIdentity.split('_')[0]
             const isScreen = publication.source === Track.Source.ScreenShare
@@ -246,28 +248,43 @@ export function useWebRTC(
                 micOn: false,
                 isSpeaking: false,
                 handRaised: false,
-                connectionQuality: 'excellent', // Initial quality
+                connectionQuality: 'excellent',
                 stream: null,
                 screenStream: null
             } as PeerData)
 
             if (isScreen) {
+                // Para screen share, monta um stream manualmente
                 const stream = existing.screenStream ?? new MediaStream()
                 stream.addTrack(track.mediaStreamTrack)
                 existing.screenStream = new MediaStream(stream.getTracks())
                 setSharingUserId(baseUserId)
             } else {
-                const stream = existing.stream ?? new MediaStream()
-                // Remove track do mesmo tipo para evitar duplicatas
-                stream.getTracks().forEach((t: MediaStreamTrack) => { if (t.kind === track.kind) stream.removeTrack(t) })
-                stream.addTrack(track.mediaStreamTrack)
-                existing.stream = new MediaStream(stream.getTracks())
+                // Para camera/mic: usa o mediaStream nativo do LiveKit se disponível
+                const nativeStream = participant.getTrackPublications()
+                    .filter(p => p.kind === 'video' || p.kind === 'audio')
+                    .map(p => (p as RemoteTrackPublication).track?.mediaStreamTrack)
+                    .filter((t): t is MediaStreamTrack => !!t && t.readyState === 'live')
+                
+                if (nativeStream.length > 0) {
+                    existing.stream = new MediaStream(nativeStream)
+                    console.log(`[LK] Built stream from LiveKit native tracks:`, nativeStream.map(t => ({ kind: t.kind, readyState: t.readyState })))
+                } else {
+                    // Fallback: adiciona manualmente ao stream existente
+                    const stream = existing.stream ?? new MediaStream()
+                    stream.getTracks().forEach((t: MediaStreamTrack) => { if (t.kind === track.kind) stream.removeTrack(t) })
+                    stream.addTrack(track.mediaStreamTrack)
+                    existing.stream = new MediaStream(stream.getTracks())
+                }
+
                 if (track.kind === Track.Kind.Video) existing.cameraOn = true
                 if (track.kind === Track.Kind.Audio) existing.micOn = true
             }
 
             existing.connectionState = 'connected'
             peersRef.current.set(fullIdentity, existing)
+            const streamTracks = existing.stream?.getTracks() ?? []
+            console.log(`[LK] Peer stream after subscribe:`, { identity: fullIdentity, streamTracks: streamTracks.map(t => ({ kind: t.kind, readyState: t.readyState, enabled: t.enabled })) })
             syncToState()
             setUserCount(room.remoteParticipants.size + 1)
         }
@@ -277,7 +294,7 @@ export function useWebRTC(
             publication: RemoteTrackPublication,
             participant: RemoteParticipant
         ) => {
-            console.log(`[LK] Track unsubscribed: ${track.kind} from ${participant.identity}`)
+            console.log(`[LK] Track unsubscribed: ${track.kind} from ${participant.identity}`, { readyState: track.mediaStreamTrack?.readyState, reason: 'track-ended-or-network' })
             const peerId = participant.identity
             const baseUserId = peerId.split('_')[0]
             const existing = peersRef.current.get(peerId)
