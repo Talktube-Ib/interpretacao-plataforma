@@ -22,6 +22,7 @@ import Link from 'next/link'
 import { RecorderControls } from '@/components/room/RecorderControls'
 import { createClient } from '@/lib/supabase/client'
 import { useWebRTC } from '@/hooks/use-webrtc'
+import { useMediaStream } from '@/hooks/use-media-stream'
 import { useChat } from '@/hooks/use-chat'
 import { RemoteVideo, LocalVideo } from '@/components/webrtc/video-player'
 import { ChatPanel } from '@/components/room/chat-panel'
@@ -182,6 +183,19 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
             [targetId]: volume
         }))
     }, [])
+
+    const { 
+        stream: lobbyStream, 
+        error: lobbyError, 
+        toggleMic: toggleLobbyMic, 
+        toggleCamera: toggleLobbyCamera, 
+        switchDevice: switchLobbyDevice 
+    } = useMediaStream({
+        micOn: lobbyConfig?.micOn ?? true,
+        cameraOn: lobbyConfig?.cameraOn ?? true,
+        audioDeviceId: lobbyConfig?.audioDeviceId || 'default',
+        videoDeviceId: lobbyConfig?.videoDeviceId || 'default',
+    }, !isJoined)
 
     const {
         localStream,
