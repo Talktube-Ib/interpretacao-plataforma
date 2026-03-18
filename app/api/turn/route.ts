@@ -34,21 +34,28 @@ export async function GET() {
     if (meteredApiKey) {
         try {
             const domain = process.env.METERED_DOMAIN || 'global.metered.live'
-            // Use the longer key if both are found, or try to be smart
             const url = `https://${domain}/api/v1/turn/credentials?apiKey=${meteredApiKey}`
 
-            console.log("Fetching TURN from Metered:", domain)
+            console.log("[ICE] Buscando TURN via Metered:", domain)
             const response = await fetch(url)
             if (response.ok) {
                 const iceServersFromMetered = await response.json()
                 if (Array.isArray(iceServersFromMetered)) {
-                    // Combine with defaults for extra safety
-                    const merged = [...iceServersFromMetered, ...iceServers]
-                    return NextResponse.json({ iceServers: merged })
+                    console.log("[ICE] Metered retornou", iceServersFromMetered.length, "servidores")
+                    return NextResponse.json({ iceServers: [...iceServersFromMetered, ...iceServers] })
                 }
             } else {
                 const errText = await response.text()
-                console.error("Metered API returned error:", response.status, errText)
+                console.error("[ICE] Erro na API Metered:", response.status, errText)
+                // Se o domínio customizado falhar, tenta o global como fallback
+                if (domain !== 'global.metered.live') {
+                    const fallbackUrl = `https://global.metered.live/api/v1/turn/credentials?apiKey=${meteredApiKey}`
+                    const fbRes = await fetch(fallbackUrl)
+                    if (fbRes.ok) {
+                        const fbServers = await fbRes.json()
+                        return NextResponse.json({ iceServers: [...fbServers, ...iceServers] })
+                    }
+                }
             }
         } catch (e) {
             console.error("Metered fetch failed", e)
