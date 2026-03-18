@@ -195,6 +195,9 @@ export const dictionaries = {
             connecting: "Conectando...",
             room_active: "Sala Ativa",
             room_ended: "Encerrada",
+            refresh_connection: "Atualizando conexão...",
+            authenticating: "Autenticando...",
+            preparing_session: "Preparando sessão...",
         },
         create_meeting: {
             button_label: "Agendar Reunião",
@@ -581,6 +584,9 @@ export const dictionaries = {
             connecting: "Connecting...",
             room_active: "Active Room",
             room_ended: "Ended",
+            refresh_connection: "Refreshing connection...",
+            authenticating: "Authenticating...",
+            preparing_session: "Preparing session...",
         },
         create_meeting: {
             button_label: "Schedule Meeting",
@@ -924,6 +930,9 @@ export const dictionaries = {
             connecting: "Conectando...",
             room_active: "Sala Activa",
             room_ended: "Finalizada",
+            refresh_connection: "Actualizando conexión...",
+            authenticating: "Autenticando...",
+            preparing_session: "Preparando sesión...",
         },
         create_meeting: {
             button_label: "Programar Reunión",
