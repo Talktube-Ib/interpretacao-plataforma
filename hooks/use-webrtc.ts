@@ -271,23 +271,19 @@ export function useWebRTC(
                 existing.screenStream = new MediaStream(stream.getTracks())
                 setSharingUserId(baseUserId)
             } else {
-                // Para camera/mic: usa o mediaStream nativo do LiveKit se disponível
-                const nativeStream = participant.getTrackPublications()
-                    .filter(p => p.kind === 'video' || p.kind === 'audio')
-                    .map(p => (p as RemoteTrackPublication).track?.mediaStreamTrack)
-                    .filter((t): t is MediaStreamTrack => !!t && t.readyState === 'live')
-                
-                if (nativeStream.length > 0) {
-                    existing.stream = new MediaStream(nativeStream)
-                    console.log(`[LK] Built stream from LiveKit native tracks:`, nativeStream.map(t => ({ kind: t.kind, readyState: t.readyState })))
-                } else {
-                    // Fallback: adiciona manualmente ao stream existente
-                    const stream = existing.stream ?? new MediaStream()
-                    stream.getTracks().forEach((t: MediaStreamTrack) => { if (t.kind === track.kind) stream.removeTrack(t) })
-                    stream.addTrack(track.mediaStreamTrack)
-                    existing.stream = new MediaStream(stream.getTracks())
-                }
+                // Usa o track diretamente do callback — garante ser o track correto do RTCPeerConnection
+                const existingStream = existing.stream ?? new MediaStream()
+                // Remove track do mesmo tipo se existir (evita duplicatas)
+                existingStream.getTracks()
+                    .filter(t => t.kind === track.kind)
+                    .forEach(t => existingStream.removeTrack(t))
+                existingStream.addTrack(track.mediaStreamTrack)
+                // Cria novo objeto MediaStream para que React detecte a mudança de referência
+                existing.stream = new MediaStream(existingStream.getTracks())
 
+                console.log(`[LK] Built stream from direct track:`, existing.stream.getTracks().map(t => ({ kind: t.kind, readyState: t.readyState })))
+
+                // Sempre define cameraOn/micOn ao receber o track — não depende do Presence
                 if (track.kind === Track.Kind.Video) existing.cameraOn = true
                 if (track.kind === Track.Kind.Audio) existing.micOn = true
             }
