@@ -71,9 +71,15 @@ export const RemoteVideo = memo(function RemoteVideo({
             videoEl.srcObject = stream
             videoEl.playsInline = true
             videoEl.play().catch(e => {
+                // AbortError é esperado quando o React desmonta/remonta o elemento
+                // durante uma re-renderização (ex: quando o stream atualiza)
+                if (e.name === 'AbortError') return
                 console.warn("[Video] Autoplay failed:", e)
                 videoEl.muted = true
-                videoEl.play().catch(e2 => console.error("[Video] Final play failure:", e2))
+                videoEl.play().catch(e2 => {
+                    if (e2.name !== 'AbortError')
+                        console.error("[Video] Final play failure:", e2)
+                })
             })
         }
     }, [stream, hasVideoTrack, cameraOff])
@@ -84,10 +90,14 @@ export const RemoteVideo = memo(function RemoteVideo({
         if (audioEl && stream && hasAudioTrack) {
             audioEl.srcObject = stream
             audioEl.play().catch(e => {
+                if (e.name === 'AbortError') return
                 console.warn("[Audio] Autoplay failed, trying muted for permission:", e)
                 audioEl.muted = true
                 audioEl.play().then(() => {
                     setIsMutedAutoplay(true)
+                }).catch(e2 => {
+                    if (e2.name !== 'AbortError')
+                        console.error("[Audio] Final play failure:", e2)
                 })
             })
         }
