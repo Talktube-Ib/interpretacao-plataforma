@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import {
     Mic, MicOff, Video, VideoOff, PhoneOff, Check,
     Globe, Users, MessageSquare, Monitor, X, ChevronUp, Settings, Share2, Hand, Smile, PlayCircle,
-    MoreHorizontal, Volume2, Wifi, WifiOff, AlertTriangle,
+    MoreHorizontal, Volume2, Wifi, WifiOff, AlertTriangle, Loader2,
 } from 'lucide-react'
 import { FloatingReactions } from '@/components/room/floating-reactions'
 import {
