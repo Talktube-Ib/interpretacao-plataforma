@@ -325,21 +325,31 @@ export function useWebRTC(
             try {
                 const micEnabled = metadataRef.current.micOn
                 const camEnabled = metadataRef.current.cameraOn
-                // FIX: paralelo com Promise.allSettled — se câmera falhar, mic ainda publica
+
+                console.log('[LK] Re-publishing INITIAL tracks after reconnection (Pass-Through)')
                 const results = await Promise.allSettled([
-                    room.localParticipant.setMicrophoneEnabled(micEnabled, { deviceId: lastAudioDeviceId.current }),
-                    room.localParticipant.setCameraEnabled(camEnabled, { deviceId: lastVideoDeviceId.current }),
+                    (async () => {
+                        const track = localStream?.getAudioTracks()[0]
+                        if (track) {
+                            const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
+                            if (!micEnabled) await pub.track?.mute()
+                            return pub
+                        }
+                    })(),
+                    (async () => {
+                        const track = localStream?.getVideoTracks()[0]
+                        if (track) {
+                            const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Camera })
+                            if (!camEnabled) await pub.track?.mute()
+                            return pub
+                        }
+                    })()
                 ])
                 
                 results.forEach((r, i) => {
                     const kind = i === 0 ? 'Mic' : 'Cam'
-                    if (r.status === 'fulfilled') console.log(`[LK] Local ${kind} published successfully`)
-                    else console.error(`[LK] Falha ao publicar ${kind}:`, r.reason)
-                })
-                results.forEach((r, i) => {
-                    if (r.status === 'rejected') {
-                        console.error(`[LK] Re-publish falhou (${i === 0 ? 'mic' : 'cam'}):`, r.reason)
-                    }
+                    if (r.status === 'fulfilled' && r.value) console.log(`[LK] Local ${kind} re-published successfully (Pass-Through)`)
+                    else if (r.status === 'rejected') console.error(`[LK] Falha ao re-publicar ${kind}:`, r.reason)
                 })
             } catch (err) {
                 console.error('[LK] Erro ao re-publicar tracks após reconexão:', err)
@@ -405,24 +415,39 @@ export function useWebRTC(
                 // guest e viewer não publicam — evita erro de permissão do LiveKit
                 const canPublish = !['guest', 'viewer'].includes(userRole.toLowerCase())
 
-                if (canPublish) {
+                if (canPublish && localStream) {
                     const micEnabled = initialConfig.micOn !== false
                     const camEnabled = initialConfig.cameraOn !== false
 
+                    console.log('[LK] Publishing INITIAL tracks from localStream')
                     const results = await Promise.allSettled([
-                        room.localParticipant.setMicrophoneEnabled(micEnabled, { deviceId: lastAudioDeviceId.current }),
-                        room.localParticipant.setCameraEnabled(camEnabled, { deviceId: lastVideoDeviceId.current }),
+                        (async () => {
+                            const track = localStream.getAudioTracks()[0]
+                            if (track) {
+                                const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
+                                if (!micEnabled) await pub.track?.mute()
+                                return pub
+                            }
+                        })(),
+                        (async () => {
+                            const track = localStream.getVideoTracks()[0]
+                            if (track) {
+                                const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Camera })
+                                if (!camEnabled) await pub.track?.mute()
+                                return pub
+                            }
+                        })()
                     ])
 
                     if (cancelled) return
 
                     results.forEach((r, i) => {
                         const kind = i === 0 ? 'Mic' : 'Cam'
-                        if (r.status === 'fulfilled') console.log(`[LK] Local ${kind} published successfully`)
-                        else console.error(`[LK] Falha ao publicar ${kind}:`, r.reason)
+                        if (r.status === 'fulfilled' && r.value) console.log(`[LK] Local ${kind} published successfully (Pass-Through)`)
+                        else if (r.status === 'rejected') console.error(`[LK] Falha ao publicar ${kind}:`, r.reason)
                     })
                 } else {
-                    console.log(`[LK] Cargo "${userRole}" — publicação de tracks desabilitada`)
+                    console.log(`[LK] Cargo "${userRole}" ou localStream ausente — pulando publicação inicial`)
                 }
 
                 setUserCount(room.remoteParticipants.size + 1)
@@ -679,20 +704,32 @@ export function useWebRTC(
                 liveKitTokenRef.current,
                 { rtcConfig: { iceServers } }
             )
-            // Re-publica tracks após reconexão manual
+            // Re-publica tracks após reconexão manual (Pass-Through)
+            const micEnabled = metadataRef.current.micOn
+            const camEnabled = metadataRef.current.cameraOn
+
             const results = await Promise.allSettled([
-                roomRef.current.localParticipant.setMicrophoneEnabled(
-                    metadataRef.current.micOn,
-                    { deviceId: lastAudioDeviceId.current }
-                ),
-                roomRef.current.localParticipant.setCameraEnabled(
-                    metadataRef.current.cameraOn,
-                    { deviceId: lastVideoDeviceId.current }
-                ),
+                (async () => {
+                    const track = localStream?.getAudioTracks()[0]
+                    if (track) {
+                        const pub = await roomRef.current!.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
+                        if (!micEnabled) await pub.track?.mute()
+                        return pub
+                    }
+                })(),
+                (async () => {
+                    const track = localStream?.getVideoTracks()[0]
+                    if (track) {
+                        const pub = await roomRef.current!.localParticipant.publishTrack(track, { source: Track.Source.Camera })
+                        if (!camEnabled) await pub.track?.mute()
+                        return pub
+                    }
+                })()
             ])
             results.forEach((r, i) => {
-                if (r.status === 'rejected')
-                    console.error(`[Reconnect] Re-publish falhou (${i === 0 ? 'mic' : 'cam'}):`, r.reason)
+                const kind = i === 0 ? 'Mic' : 'Cam'
+                if (r.status === 'fulfilled' && r.value) console.log(`[LK] Local ${kind} re-published manually`)
+                else if (r.status === 'rejected') console.error(`[Reconnect] Re-publish falhou ${kind}:`, r.reason)
             })
             setMediaStatus('connected')
             console.log('[Reconnect] Reconexão manual bem-sucedida')
@@ -711,12 +748,19 @@ export function useWebRTC(
 
             if (roomRef.current?.state === 'connected') {
                 try {
-                    await roomRef.current.switchActiveDevice(
-                        kind === 'audio' ? 'audioinput' : 'videoinput',
-                        deviceId
-                    )
+                    const source = kind === 'audio' ? Track.Source.Microphone : Track.Source.Camera
+                    const pub = roomRef.current.localParticipant.getTrackPublication(source)
+                    const newTrack = await switchDevice(kind, deviceId) // Get the new track from parent
+                    
+                    if (pub && newTrack) {
+                        console.log(`[Device] Replacing ${kind} track in LiveKit`)
+                        await roomRef.current.localParticipant.unpublishTrack(pub.track as any)
+                        await roomRef.current.localParticipant.publishTrack(newTrack, { source })
+                    } else if (newTrack) {
+                        await roomRef.current.localParticipant.publishTrack(newTrack, { source })
+                    }
                 } catch (err) {
-                    console.error(`[Device] Switch ${kind} falhou:`, err)
+                    console.error(`[Device] Switch ${kind} falhou no LiveKit:`, err)
                 }
             }
         },
@@ -728,26 +772,36 @@ export function useWebRTC(
         async (enabled: boolean) => {
             toggleMicStream(enabled)
             if (roomRef.current) {
-                await roomRef.current.localParticipant.setMicrophoneEnabled(enabled, {
-                    deviceId: lastAudioDeviceId.current,
-                })
+                const pub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Microphone)
+                if (pub) {
+                    if (enabled) await pub.track?.unmute()
+                    else await pub.track?.mute()
+                } else if (enabled && localStream) {
+                    const track = localStream.getAudioTracks()[0]
+                    if (track) await roomRef.current.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
+                }
                 updateMetadata({ micOn: enabled })
             }
         },
-        [toggleMicStream, updateMetadata]
+        [toggleMicStream, updateMetadata, localStream]
     )
 
     const toggleCamera = useCallback(
         async (enabled: boolean) => {
             toggleCameraStream(enabled)
             if (roomRef.current) {
-                await roomRef.current.localParticipant.setCameraEnabled(enabled, {
-                    deviceId: lastVideoDeviceId.current,
-                })
+                const pub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Camera)
+                if (pub) {
+                    if (enabled) await pub.track?.unmute()
+                    else await pub.track?.mute()
+                } else if (enabled && localStream) {
+                    const track = localStream.getVideoTracks()[0]
+                    if (track) await roomRef.current.localParticipant.publishTrack(track, { source: Track.Source.Camera })
+                }
                 updateMetadata({ cameraOn: enabled })
             }
         },
-        [toggleCameraStream, updateMetadata]
+        [toggleCameraStream, updateMetadata, localStream]
     )
 
     // ─── Return ───────────────────────────────────────────────────────────────
