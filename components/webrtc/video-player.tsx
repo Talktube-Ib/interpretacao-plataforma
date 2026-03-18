@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MicOff, VideoOff, Maximize2, Loader2, User, Hand, WifiOff, VolumeX, Volume2 } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Maximize2, Loader2, User, Hand, WifiOff, VolumeX, Volume2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface VideoPlayerProps {
@@ -11,6 +11,7 @@ interface VideoPlayerProps {
     cameraOff?: boolean
     handRaised?: boolean
     isSpeaking?: boolean
+    connectionQuality?: string
     volume?: number
     connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected' | 'closed'
     onSpeakingChange?: (isSpeaking: boolean) => void
@@ -306,7 +307,7 @@ export const RemoteVideo = memo(function RemoteVideo({
 })
 
 export const LocalVideo = memo(function LocalVideo({ 
-    stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onPin, isPinned, showPinButton = true 
+    stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onPin, isPinned, showPinButton = true, connectionQuality 
 }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -321,6 +322,23 @@ export const LocalVideo = memo(function LocalVideo({
             "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500",
             isSpeaking && "ring-4 ring-[#06b6d4] shadow-lg",
         )}>
+            {isSpeaking && (
+                <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 bg-[#06b6d4] text-white px-2 py-0.5 rounded-full text-[10px] font-bold animate-pulse shadow-lg shadow-[#06b6d4]/20 border border-white/20">
+                    <Mic className="h-3 w-3" />
+                    SPEAKING
+                </div>
+            )}
+
+            {/* Indicador de Qualidade */}
+            {connectionQuality && connectionQuality !== 'excellent' && (
+                <div className={cn(
+                    "absolute top-2 left-2 z-30 px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1",
+                    connectionQuality === 'poor' ? "bg-red-500/80 border-red-400 text-white" : "bg-amber-500/80 border-amber-400 text-white",
+                    isSpeaking && "top-8" // Desloca se estiver falando
+                )}>
+                    {connectionQuality === 'poor' ? 'Rede Ruim' : 'Rede Instável'}
+                </div>
+            )}
             {cameraOff || !stream ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900">
                     <div className="h-14 w-14 rounded-full bg-zinc-800 flex items-center justify-center">

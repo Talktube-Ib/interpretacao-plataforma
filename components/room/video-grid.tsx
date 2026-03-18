@@ -19,6 +19,7 @@ export interface Peer {
     isSpeaking?: boolean
     handRaised?: boolean
     connectionState?: 'connecting' | 'connected' | 'failed' | 'disconnected' | 'closed'
+    connectionQuality?: string
 }
 
 export interface DisplayItem extends Peer {
@@ -211,6 +212,7 @@ export function VideoGrid({
                             ? v => onLocalVolumeChange!(featuredItem.userId, v)
                             : undefined}
                         connectionState={featuredItem.connectionState}
+                        connectionQuality={featuredItem.connectionQuality}
                     />
                     {pinnedSpeakerId === featuredItem.id && (
                         <div className="absolute top-3 right-3 bg-[#06b6d4] p-1.5 rounded-full z-10">
@@ -275,6 +277,7 @@ export function VideoGrid({
                                     ? v => onLocalVolumeChange!(item.userId, v)
                                     : undefined}
                                 connectionState={item.connectionState}
+                                connectionQuality={item.connectionQuality}
                                 onPin={() => onSpeakerChange(item.id)}
                                 isPinned={pinnedSpeakerId === item.id}
                                 showPinButton
@@ -378,6 +381,7 @@ export function VideoGrid({
                                     ? v => onLocalVolumeChange!(item.userId, v)
                                     : undefined}
                                 connectionState={item.connectionState}
+                                connectionQuality={item.connectionQuality}
                                 onPin={() => onSpeakerChange(item.id)}
                                 isPinned={pinnedSpeakerId === item.id}
                                 showPinButton

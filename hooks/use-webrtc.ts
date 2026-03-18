@@ -11,6 +11,9 @@ import {
     RoomOptions,
     ReconnectPolicy,
     DefaultReconnectPolicy,
+    TrackPublication,
+    ConnectionQuality,
+    Participant,
 } from 'livekit-client'
 import { useMediaStream } from './use-media-stream'
 import { useSignaling } from './use-signaling'
@@ -25,6 +28,7 @@ interface PeerData {
     micOn: boolean
     cameraOn: boolean
     isSpeaking?: boolean
+    connectionQuality: string // Added connectionQuality
     isGhost?: boolean
     handRaised?: boolean
     name: string
@@ -232,7 +236,9 @@ export function useWebRTC(
                 joinedAt: Date.now(),
                 cameraOn: false,
                 micOn: false,
+                isSpeaking: false,
                 handRaised: false,
+                connectionQuality: 'excellent', // Initial quality
                 stream: null,
                 screenStream: null
             } as PeerData)
@@ -316,6 +322,12 @@ export function useWebRTC(
                     room.localParticipant.setMicrophoneEnabled(micEnabled, { deviceId: lastAudioDeviceId.current }),
                     room.localParticipant.setCameraEnabled(camEnabled, { deviceId: lastVideoDeviceId.current }),
                 ])
+                
+                results.forEach((r, i) => {
+                    const kind = i === 0 ? 'Mic' : 'Cam'
+                    if (r.status === 'fulfilled') console.log(`[LK] Local ${kind} published successfully`)
+                    else console.error(`[LK] Falha ao publicar ${kind}:`, r.reason)
+                })
                 results.forEach((r, i) => {
                     if (r.status === 'rejected') {
                         console.error(`[LK] Re-publish falhou (${i === 0 ? 'mic' : 'cam'}):`, r.reason)
@@ -323,6 +335,14 @@ export function useWebRTC(
                 })
             } catch (err) {
                 console.error('[LK] Erro ao re-publicar tracks após reconexão:', err)
+            }
+        }
+
+        const handleConnectionQualityChanged = (quality: ConnectionQuality, participant: Participant) => {
+            const peer = peersRef.current.get(participant.identity)
+            if (peer) {
+                peer.connectionQuality = quality.toString()
+                syncToState()
             }
         }
 
@@ -383,9 +403,9 @@ export function useWebRTC(
                     if (cancelled) return
 
                     results.forEach((r, i) => {
-                        if (r.status === 'rejected') {
-                            console.error(`[LK] Publish falhou (${i === 0 ? 'mic' : 'cam'}):`, r.reason)
-                        }
+                        const kind = i === 0 ? 'Mic' : 'Cam'
+                        if (r.status === 'fulfilled') console.log(`[LK] Local ${kind} published successfully`)
+                        else console.error(`[LK] Falha ao publicar ${kind}:`, r.reason)
                     })
                 } else {
                     console.log(`[LK] Cargo "${userRole}" — publicação de tracks desabilitada`)
@@ -505,6 +525,7 @@ export function useWebRTC(
                         audioBlocked: !!remoteData?.audioBlocked,
                         connectionState: isAlreadyInLK ? 'connected' : 'connecting',
                         joinedAt: Date.now(),
+                        connectionQuality: 'excellent',
                         stream: null,
                         screenStream: null
                     }

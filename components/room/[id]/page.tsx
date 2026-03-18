@@ -421,7 +421,8 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
             }
         }
         initUser()
-    }, [roomId, t])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roomId]) // TIREI o 't' daqui para evitar reconexão ao mudar idioma
 
     useEffect(() => {
         // Guard triplo:
@@ -469,7 +470,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                     setLiveKitToken(data.token)
                     setTokenReady(true)
                     setLastError(null)
-                    console.log('[Token] OK para cargo:', currentRole, 'Conectando em:', data.url || 'URL não fornecida')
+                    console.log('[Token] OK para cargo:', currentRole, 'Refresh em 3h30min. URL:', data.url)
                 } else {
                     console.error('[Token] API retornou sem token:', data)
                     setLastError(`Token Error: ${data.error || 'Resposta inválida'}`)
@@ -672,6 +673,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     const handleToggleMic = useCallback(() => {
         setMicOn(prev => {
             const newState = !prev
+            console.log('[UI] Toggle Mic ->', newState)
             hookToggleMic(newState)
             return newState
         })
@@ -692,6 +694,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     const handleToggleCamera = useCallback(() => {
         setCameraOn(prev => {
             const newState = !prev
+            console.log('[UI] Toggle Cam ->', newState)
             hookToggleCamera(newState)
             return newState
         })
