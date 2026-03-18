@@ -361,6 +361,12 @@ export function useWebRTC(
                 console.warn('[LK] Disconnected:', reason)
                 if (!cancelled) setMediaStatus('disconnected')
             })
+            .on(RoomEvent.SignalConnected, () => {
+                console.log('[LK] Signaling connected')
+            })
+            .on(RoomEvent.MediaConnectionStateChanged, state => {
+                 console.log(`[LK] Media Connection State -> ${state}`)
+            })
             .on(RoomEvent.Reconnecting, () => {
                 console.log('[LK] Reconnecting...')
                 if (!cancelled) setMediaStatus('connecting')
