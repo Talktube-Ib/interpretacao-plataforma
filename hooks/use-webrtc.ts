@@ -528,7 +528,7 @@ export function useWebRTC(
                     if (existing.role !== remoteRole) { existing.role = remoteRole; peerChanged = true }
                     if (peerChanged) changed = true
                 } else {
-                    const isAlreadyInLK = roomRef.current?.remoteParticipants.has(remoteSessionId)
+                    const isAlreadyInLK = Array.from(roomRef.current?.remoteParticipants.values() || []).some(p => p.identity === remoteSessionId)
                     const newPeer: PeerData = {
                         userId: remoteId,
                         id: remoteSessionId,
@@ -554,13 +554,13 @@ export function useWebRTC(
 
             // Cleanup: peers em 'connecting' há mais de 15s sem aparecer no LiveKit
             const now = Date.now()
-            const lkIds = roomRef.current
-                ? Array.from(roomRef.current.remoteParticipants.keys())
+            const lkIdentities = roomRef.current
+                ? Array.from(roomRef.current.remoteParticipants.values()).map(p => p.identity)
                 : []
 
             peersRef.current.forEach((peer, peerId) => {
                 if (peer.isPresentation) return
-                if (!lkIds.includes(peerId) && (now - (peer.joinedAt ?? now)) > 15000 && peer.connectionState === 'connecting') {
+                if (!lkIdentities.includes(peerId) && (now - (peer.joinedAt ?? now)) > 15000 && peer.connectionState === 'connecting') {
                     console.warn('[Presence] Ghost detectado (15s timeout):', peerId)
                     peersRef.current.delete(peerId)
                     changed = true
