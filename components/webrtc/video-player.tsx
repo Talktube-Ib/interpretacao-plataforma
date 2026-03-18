@@ -76,7 +76,7 @@ export const RemoteVideo = memo(function RemoteVideo({
                 videoEl.play().catch(e2 => console.error("[Video] Final play failure:", e2))
             })
         }
-    }, [stream, hasVideoTrack])
+    }, [stream, hasVideoTrack, cameraOff])
 
     // Audio Sync (Dedicado para evitar corte quando troca pra avatar)
     useEffect(() => {
@@ -91,7 +91,7 @@ export const RemoteVideo = memo(function RemoteVideo({
                 })
             })
         }
-    }, [stream, hasAudioTrack])
+    }, [stream, hasAudioTrack, micOff])
 
     useEffect(() => {
         if (videoRef.current) {
@@ -312,10 +312,11 @@ export const LocalVideo = memo(function LocalVideo({
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
-        if (videoRef.current && stream) {
+        if (videoRef.current && stream && !cameraOff) {
             videoRef.current.srcObject = stream
+            videoRef.current.play().catch(console.error)
         }
-    }, [stream])
+    }, [stream, cameraOff])
 
     return (
         <div className={cn(

@@ -32,10 +32,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
 import { ShareMeetingDialog } from '@/components/share-meeting-dialog'
-import { LANGUAGES } from '@/lib/languages'
+import { LANGUAGES, type Language } from '@/lib/languages'
 import { checkAndEndMeeting, restartPersonalMeeting, endMeeting } from '@/app/actions/meeting'
 import { VideoGrid } from '@/components/room/video-grid'
 import { LayoutGrid, Maximize2, ChevronLeft, ChevronRight, Ghost } from 'lucide-react'
+import { PreCallLobby } from '@/components/room/pre-call-lobby'
 import { SettingsDialog } from '@/components/room/settings-dialog'
 import { useLanguage } from '@/components/providers/language-provider'
 import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal'
@@ -108,6 +109,8 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         cameraOn: boolean,
         audioDeviceId: string,
         videoDeviceId: string,
+        isGhost: boolean,
+        name: string,
         stream?: MediaStream
     } | null>(null)
 
@@ -223,7 +226,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         userName, 
         liveKitToken || undefined, 
         isGhost, 
-        hostId,
+        hostId ?? undefined,
         iceServers
     )
 
@@ -333,7 +336,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                     }
                 }
 
-                // 4. AUTO-JOIN & GHOST MODE
+                // 4. PREPARE LOBBY (Auto-join disabled by user request, but settings ready)
                 const urlParams = new URLSearchParams(window.location.search)
                 const ghostParam = urlParams.get('ghost') === 'true'
 
@@ -353,7 +356,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
 
                     setMicOn(!ghostParam)
                     setCameraOn(!ghostParam)
-                    setIsJoined(true) // BYPASS LOBBY
+                    setIsJoined(false) // USER WANTS LOBBY FIRST
                 })
 
             } catch (error) {
@@ -366,16 +369,11 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         }
 
         initUser()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [roomId])
 
     useEffect(() => {
-        // Guard triplo:
-        // 1. precisa ter entrado na sala
-        // 2. sessionUserId precisa estar resolvido (userId.length > 4 cobre guest-xxx)
-        // 3. não rebusca se já tem token válido
         if (!isJoined || !sessionUserId || !roomId) return
-        if (liveKitToken) return // já tem token, não rebusca
+        if (liveKitToken) return 
 
         let cancelled = false
 
@@ -387,6 +385,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                     `/api/livekit/token?` +
                     `room=${encodeURIComponent(roomId)}` +
                     `&username=${encodeURIComponent(sessionUserId)}` +
+                    `&name=${encodeURIComponent(userName)}` +
                     `&role=${encodeURIComponent(currentRole)}`
                 )
 
@@ -395,55 +394,33 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                 if (!resp.ok) {
                     const text = await resp.text()
                     console.error('[Token] HTTP error:', resp.status, text)
-                    
-                    // Retry logic for 504 (Vercel Timeout) or 503
                     if ((resp.status === 504 || resp.status === 503) && attempt < 3) {
-                        console.warn(`[Token] Retrying in 2s due to status ${resp.status}...`)
-                        setTimeout(() => {
-                            if (!cancelled) fetchToken(attempt + 1)
-                        }, 2000)
+                        setTimeout(() => { if (!cancelled) fetchToken(attempt + 1) }, 2000)
                         return
                     }
-
                     setLastError(`Token HTTP ${resp.status}: ${text.slice(0, 50)}`)
                     return
                 }
 
                 const data = await resp.json()
-
                 if (data.token) {
                     setLiveKitToken(data.token)
                     setTokenReady(true)
                     setLastError(null)
-                    console.log('[Token] OK para cargo:', currentRole, 'Refresh em 3h30min. URL:', data.url)
-                } else {
-                    console.error('[Token] API retornou sem token:', data)
-                    setLastError(`Token Error: ${data.error || 'Resposta inválida'}`)
                 }
             } catch (err) {
                 if (cancelled) return
-                console.error('[Token] Falha de rede:', err)
-                
                 if (attempt < 3) {
-                    console.warn('[Token] Retrying in 2s due to network error...')
-                    setTimeout(() => {
-                        if (!cancelled) fetchToken(attempt + 1)
-                    }, 2000)
+                    setTimeout(() => { if (!cancelled) fetchToken(attempt + 1) }, 2000)
                     return
                 }
-
-                setLastError(
-                    `Falha ao conectar: ${err instanceof Error ? err.message : String(err)}`
-                )
+                setLastError(`Falha de rede: ${String(err)}`)
             }
         }
 
         fetchToken()
         return () => { cancelled = true }
-
-        // liveKitToken NÃO está nas deps — evita loop se o token mudar
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isJoined, sessionUserId, roomId, currentRole])
+    }, [isJoined, sessionUserId, roomId, currentRole, userName])
 
     // Refresh do token 30min antes de expirar
     useEffect(() => {
@@ -451,7 +428,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         const REFRESH_MS = (4 * 60 - 30) * 60 * 1000 // 3h30 (token dura 4h)
         const timer = setTimeout(async () => {
             try {
-                const resp = await fetch(`/api/livekit/token?room=${encodeURIComponent(roomId)}&username=${encodeURIComponent(sessionUserId)}&role=${currentRole}`)
+                const resp = await fetch(`/api/livekit/token?room=${encodeURIComponent(roomId)}&username=${encodeURIComponent(sessionUserId)}&name=${encodeURIComponent(userName)}&role=${currentRole}`)
                 const data = await resp.json()
                 if (data.token) { 
                     setLiveKitToken(data.token)
@@ -706,9 +683,42 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         )
     }
 
-    // We skip the lobby and go straight to the room
+    // We show the lobby if not joined
     if (!isJoined) {
-        return null // Should be handled by the auth loader above
+        return (
+            <PreCallLobby
+                userName={userName}
+                userRole={currentRole}
+                isGuest={isGuest}
+                onJoin={async (config: {
+                    micOn: boolean,
+                    cameraOn: boolean,
+                    audioDeviceId: string,
+                    videoDeviceId: string,
+                    isGhost: boolean,
+                    name: string,
+                    stream?: MediaStream
+                }) => {
+                    setLobbyConfig(config)
+                    setMicOn(config.micOn)
+                    setCameraOn(config.cameraOn)
+                    setIsGhost(config.isGhost)
+                    setUserName(config.name)
+                    setIsJoined(true)
+                    setLoading(false)
+
+                    if (config.isGhost) {
+                        const { logAdminAction } = await import('@/components/admin/actions')
+                        await logAdminAction({
+                            action: 'ROOM_GHOST_JOIN',
+                            targetResource: 'meeting',
+                            targetId: roomId,
+                            details: { name: config.name, role: currentRole }
+                        })
+                    }
+                }}
+            />
+        )
     }
 
 

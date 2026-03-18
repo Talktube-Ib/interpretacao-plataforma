@@ -305,17 +305,11 @@ export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLob
 
                     <div className="space-y-6 bg-slate-900/40 p-8 rounded-3xl border border-white/5 backdrop-blur-sm">
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Seu Nome</label>
-                            <div className="relative">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
-                                <Input
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="pl-12 h-14 bg-slate-950/50 border-slate-800 text-lg focus:ring-purple-500/50 rounded-xl text-white placeholder:text-slate-600"
-                                    placeholder="Como quer ser chamado?"
-                                />
-                            </div>
+                        {/* Name is now fixed and from profile, so we don't show the input */}
+                        <div className="text-center pb-4">
+                            <p className="text-sm text-slate-500 uppercase tracking-widest font-black">
+                                {userName}
+                            </p>
                         </div>
 
                         {(!stream && !error) ? (

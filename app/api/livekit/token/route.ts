@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const room     = searchParams.get('room')
   const username = searchParams.get('username')
+  const name     = searchParams.get('name') || username
   const role     = (searchParams.get('role') ?? 'participant') as ParticipantRole
 
   // 1. Verificação de Segurança (Supabase Session)
@@ -108,6 +109,7 @@ export async function GET(req: NextRequest) {
 
     const at = new AccessToken(apiKey, apiSecret, {
       identity: username,
+      name: name || undefined,
       ttl: roleConfig.ttl,       // ← TTL explícito por cargo
       // Metadata útil para o console do intérprete e health monitor
       metadata: JSON.stringify({ role }),
