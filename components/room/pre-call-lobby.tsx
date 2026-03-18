@@ -19,6 +19,8 @@ interface PreCallLobbyProps {
     userName: string
     userRole: string
     isGuest: boolean
+    stream?: MediaStream
+    error?: string
     onJoin: (config: {
         micOn: boolean
         cameraOn: boolean
@@ -30,7 +32,14 @@ interface PreCallLobbyProps {
     }) => void
 }
 
-export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLobbyProps) {
+export function PreCallLobby({ 
+    userName, 
+    userRole, 
+    isGuest, 
+    stream: externalStream, 
+    error: externalError, 
+    onJoin 
+}: PreCallLobbyProps) {
     const [name, setName] = useState(userName || '')
     const [micOn, setMicOn] = useState(true)
     const [cameraOn, setCameraOn] = useState(true)
@@ -47,12 +56,15 @@ export function PreCallLobby({ userName, userRole, isGuest, onJoin }: PreCallLob
     const analyserRef = useRef<AnalyserNode | null>(null)
 
     // Use our refactored hook
-    const { stream, error, toggleMic, toggleCamera, switchDevice } = useMediaStream({
+    const { stream: internalStream, error: internalError, toggleMic, toggleCamera, switchDevice } = useMediaStream({
         micOn,
         cameraOn,
         audioDeviceId: selectedAudioId,
         videoDeviceId: selectedVideoId
-    }, true) // isJoined = true immediately for preview
+    }, !externalStream) // Só ativa interno se não houver externo
+
+    const stream = externalStream || internalStream
+    const error = externalError || internalError
 
     // Audio Visualization Loop
     useEffect(() => {

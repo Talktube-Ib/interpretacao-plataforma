@@ -704,6 +704,8 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                 userName={userName}
                 userRole={currentRole}
                 isGuest={isGuest}
+                stream={lobbyStream ?? undefined}
+                error={lobbyError || undefined}
                 onJoin={async (config: {
                     micOn: boolean,
                     cameraOn: boolean,
