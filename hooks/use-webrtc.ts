@@ -195,12 +195,37 @@ export function useWebRTC(
 
         const handleParticipantConnected = (participant: RemoteParticipant) => {
             console.log('[LK] Participant connected:', participant.identity)
-            const existing = peersRef.current.get(participant.identity)
+            const fullIdentity = participant.identity
+            const baseUserId = fullIdentity.split('_')[0]
+            const existing = peersRef.current.get(fullIdentity)
+            
             if (existing) {
+                // Atualiza o estado do peer existente para connected
                 existing.connectionState = 'connected'
-                syncToState()
+                peersRef.current.set(fullIdentity, existing)
+            } else {
+                // Cria o peer com 'connected' mesmo antes dos tracks chegarem
+                const remoteData = (roomRef.current?.remoteParticipants.get(fullIdentity) as any)?.metadata
+                    ? JSON.parse((roomRef.current?.remoteParticipants.get(fullIdentity) as any).metadata)
+                    : {}
+                peersRef.current.set(fullIdentity, {
+                    userId: baseUserId,
+                    id: fullIdentity,
+                    name: remoteData?.name || 'Participante',
+                    role: remoteData?.role || 'participant',
+                    micOn: false,
+                    cameraOn: false,
+                    isSpeaking: false,
+                    handRaised: false,
+                    connectionQuality: 'excellent',
+                    connectionState: 'connected',
+                    joinedAt: Date.now(),
+                    stream: null,
+                    screenStream: null,
+                })
             }
             setUserCount(room.remoteParticipants.size + 1)
+            syncToState()
         }
 
         const handleParticipantDisconnected = (participant: RemoteParticipant) => {
@@ -423,7 +448,8 @@ export function useWebRTC(
                     const camEnabled = initialConfig.cameraOn !== false
 
                     console.log('[LK] Publishing INITIAL tracks from localStream')
-                    const results = await Promise.allSettled([
+                    // Publica áudio primeiro (sem delay)
+                    const audioResults = await Promise.allSettled([
                         (async () => {
                             const track = localStream.getAudioTracks()[0]
                             if (track) {
@@ -431,11 +457,27 @@ export function useWebRTC(
                                 if (!micEnabled) await pub.track?.mute()
                                 return pub
                             }
-                        })(),
+                        })()
+                    ])
+                    audioResults.forEach(r => {
+                        if (r.status === 'fulfilled' && r.value) console.log('[LK] Local Mic published successfully (Pass-Through)')
+                        else if (r.status === 'rejected') console.error('[LK] Falha ao publicar Mic:', r.reason)
+                    })
+
+                    // Publica vídeo com delay para garantir que os frames estejam prontos (evita publish timeout via TURN)
+                    await new Promise(resolve => setTimeout(resolve, 500))
+                    const videoResults = await Promise.allSettled([
                         (async () => {
                             const track = localStream.getVideoTracks()[0]
                             if (track) {
-                                const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Camera })
+                                // Verifica se o track já tem frames disponíveis
+                                const settings = track.getSettings()
+                                console.log('[LK] Publishing video track with settings:', { width: settings.width, height: settings.height, frameRate: settings.frameRate })
+                                const pub = await room.localParticipant.publishTrack(track, {
+                                    source: Track.Source.Camera,
+                                    // Desabilita simulcast para evitar timeout via TURN relay
+                                    simulcast: false,
+                                })
                                 if (!camEnabled) await pub.track?.mute()
                                 return pub
                             }
@@ -444,10 +486,9 @@ export function useWebRTC(
 
                     if (cancelled) return
 
-                    results.forEach((r, i) => {
-                        const kind = i === 0 ? 'Mic' : 'Cam'
-                        if (r.status === 'fulfilled' && r.value) console.log(`[LK] Local ${kind} published successfully (Pass-Through)`)
-                        else if (r.status === 'rejected') console.error(`[LK] Falha ao publicar ${kind}:`, r.reason)
+                    videoResults.forEach(r => {
+                        if (r.status === 'fulfilled' && r.value) console.log('[LK] Local Cam published successfully (Pass-Through)')
+                        else if (r.status === 'rejected') console.error('[LK] Falha ao publicar Cam:', r.reason)
                     })
                 } else {
                     console.log(`[LK] Cargo "${userRole}" ou localStream ausente — pulando publicação inicial`)
