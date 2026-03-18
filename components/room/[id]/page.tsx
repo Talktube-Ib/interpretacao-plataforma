@@ -195,7 +195,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         cameraOn: lobbyConfig?.cameraOn ?? true,
         audioDeviceId: lobbyConfig?.audioDeviceId || 'default',
         videoDeviceId: lobbyConfig?.videoDeviceId || 'default',
-    }, !isJoined)
+    }, true)
 
     const {
         localStream,
