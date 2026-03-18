@@ -364,8 +364,8 @@ export function useWebRTC(
             .on(RoomEvent.SignalConnected, () => {
                 console.log('[LK] Signaling connected')
             })
-            .on(RoomEvent.MediaConnectionStateChanged, state => {
-                 console.log(`[LK] Media Connection State -> ${state}`)
+            .on(RoomEvent.ConnectionStateChanged, state => {
+                 console.log(`[LK] PC Connection State -> ${state}`)
             })
             .on(RoomEvent.Reconnecting, () => {
                 console.log('[LK] Reconnecting...')
