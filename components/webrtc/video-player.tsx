@@ -184,7 +184,7 @@ export const RemoteVideo = memo(function RemoteVideo({
             {/* Elemento de áudio persistente */}
             <audio ref={audioRef} autoPlay playsInline />
 
-            {cameraOff || !stream || !hasVideoTrack ? (
+            {(cameraOff && !hasVideoTrack) || !stream || !hasVideoTrack ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-950 backdrop-blur-3xl">
                     <div className="h-16 w-16 md:h-24 md:w-24 rounded-full bg-zinc-800/50 flex items-center justify-center border border-white/5">
                         <User className="h-8 w-8 md:h-12 md:w-12 text-zinc-600" />

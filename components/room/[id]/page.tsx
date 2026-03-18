@@ -221,7 +221,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         roomId, 
         sessionUserId || '', 
         currentRole, 
-        lobbyConfig || {}, 
+        { ...lobbyConfig, stream: lobbyStream ?? undefined }, 
         isJoined && tokenReady, 
         userName, 
         liveKitToken || undefined, 

@@ -127,7 +127,10 @@ export function useWebRTC(
     // Mantém ref sincronizado com prop (sem re-criar o Room)
     useEffect(() => {
         liveKitTokenRef.current = liveKitToken
-    }, [liveKitToken])
+        metadataRef.current.cameraOn = initialConfig.cameraOn !== false
+        metadataRef.current.micOn = initialConfig.micOn !== false
+        metadataRef.current.name = userName
+    }, [liveKitToken, initialConfig.cameraOn, initialConfig.micOn, userName])
 
     // Mantém sharingUserIdRef sincronizado com state
     useEffect(() => {
@@ -503,11 +506,20 @@ export function useWebRTC(
                     ]
                     let peerChanged = false
                     fields.forEach(f => {
-                        const newVal = f === 'role'
+                        let newVal = f === 'role'
                             ? remoteData?.role?.toLowerCase()
                             : remoteData?.[f as string]
+                        
+                        // FIX: Prioritize active tracks over signaling metadata
+                        if (f === 'cameraOn' && !newVal) {
+                            newVal = !!existing.stream && existing.stream.getVideoTracks().length > 0
+                        }
+                        if (f === 'micOn' && !newVal) {
+                            newVal = !!existing.stream && existing.stream.getAudioTracks().length > 0
+                        }
+
                         if (existing[f] !== newVal) {
-                            ;(existing as any)[f] = newVal
+                            (existing as any)[f] = newVal
                             peerChanged = true
                         }
                     })
@@ -522,8 +534,8 @@ export function useWebRTC(
                         id: remoteSessionId,
                         name: remoteData?.name || 'Participante',
                         role: remoteData?.role || 'participant',
-                        micOn: !!remoteData?.micOn,
-                        cameraOn: !!remoteData?.cameraOn,
+                        micOn: !!remoteData?.micOn || (roomRef.current?.remoteParticipants.get(remoteSessionId)?.getTrackPublication(Track.Source.Microphone)?.isSubscribed ?? false),
+                        cameraOn: !!remoteData?.cameraOn || (roomRef.current?.remoteParticipants.get(remoteSessionId)?.getTrackPublication(Track.Source.Camera)?.isSubscribed ?? false),
                         handRaised: !!remoteData?.handRaised,
                         language: remoteData?.language || 'floor',
                         isHost: !!remoteData?.isHost,
