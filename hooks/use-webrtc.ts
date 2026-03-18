@@ -805,36 +805,46 @@ export function useWebRTC(
     )
 
     const getDiagnostics = useCallback(async () => {
-        if (!roomRef.current) return null
+        const diagnostics: any = {
+            hasRoom: !!roomRef.current,
+            hasToken: !!liveKitToken,
+            isJoinedProp: isJoined,
+            state: 'no-room',
+            iceState: 'n/a',
+            candidateType: '---',
+            protocol: '---',
+            participants: peers.length + 1,
+            url: process.env.NEXT_PUBLIC_LIVEKIT_URL,
+        }
+
+        if (!roomRef.current) return diagnostics
         
         try {
             const pc = (roomRef.current.engine as any).pc as RTCPeerConnection
-            if (!pc) return null
-            const stats = await pc.getStats()
+            diagnostics.state = roomRef.current.state
             
-            let candidateType = 'unknown'
-            let protocol = 'unknown'
-            
-            stats.forEach(report => {
-                if (report.type === 'remote-candidate' && report.candidateType) {
-                    candidateType = report.candidateType
-                    protocol = report.protocol
-                }
-            })
-
-            return {
-                state: roomRef.current.state,
-                iceState: pc?.iceConnectionState || 'unknown',
-                candidateType,
-                protocol,
-                participants: roomRef.current.remoteParticipants.size,
-                url: process.env.NEXT_PUBLIC_LIVEKIT_URL,
+            // Se o room existe mas o estado é 'connecting' ou 'reconnecting', mostrar isso
+            if (roomRef.current.state === 'connecting' || roomRef.current.state === 'reconnecting') {
+                diagnostics.iceState = roomRef.current.state
+            } else if (pc) {
+                diagnostics.iceState = pc.iceConnectionState
+                diagnostics.signalingState = pc.signalingState
+                
+                const stats = await pc.getStats()
+                stats.forEach(report => {
+                    if (report.type === 'remote-candidate' && report.candidateType) {
+                        diagnostics.candidateType = report.candidateType
+                        diagnostics.protocol = report.protocol
+                    }
+                })
             }
+
+            return diagnostics
         } catch (e) {
             console.error('[Diagnostics] Failed to collect stats:', e)
-            return null
+            return diagnostics
         }
-    }, [])
+    }, [isJoined, liveKitToken, peers.length])
 
     // ─── Return ───────────────────────────────────────────────────────────────
     return {

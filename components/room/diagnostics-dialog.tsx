@@ -142,6 +142,18 @@ export function DiagnosticsDialog({ getDiagnostics, reconnect, trigger }: Diagno
                                     </TableHeader>
                                     <TableBody>
                                         <TableRow className="border-zinc-800 hover:bg-zinc-900/30">
+                                            <TableCell className="py-2 text-xs font-medium">Room Inicializado</TableCell>
+                                            <TableCell className="py-2 text-xs text-right font-mono">
+                                                {data?.hasRoom ? <Badge className="bg-green-500/10 text-green-500 border-green-500/20 py-0 h-5">SIM</Badge> : <Badge className="bg-red-500/10 text-red-500 border-red-500/20 py-0 h-5">NÃO</Badge>}
+                                            </TableCell>
+                                        </TableRow>
+                                        <TableRow className="border-zinc-800 hover:bg-zinc-900/30">
+                                            <TableCell className="py-2 text-xs font-medium">Token Disponível</TableCell>
+                                            <TableCell className="py-2 text-xs text-right font-mono">
+                                                {data?.hasToken ? <Badge className="bg-green-500/10 text-green-500 border-green-500/20 py-0 h-5">SIM</Badge> : <Badge className="bg-red-500/10 text-red-500 border-red-500/20 py-0 h-5">NÃO</Badge>}
+                                            </TableCell>
+                                        </TableRow>
+                                        <TableRow className="border-zinc-800 hover:bg-zinc-900/30">
                                             <TableCell className="py-2 text-xs font-medium">Servidor LiveKit</TableCell>
                                             <TableCell className="py-2 text-xs text-right font-mono text-zinc-400">
                                                 {data?.url ? new URL(data.url).hostname : '---'}
