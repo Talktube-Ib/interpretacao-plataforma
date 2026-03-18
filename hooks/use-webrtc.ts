@@ -820,7 +820,10 @@ export function useWebRTC(
         if (!roomRef.current) return diagnostics
         
         try {
-            const pc = (roomRef.current.engine as any).pc as RTCPeerConnection
+            // Em versões recentes do LiveKit, o pc pode estar em caminhos diferentes dependendo da versão interna
+            const engine = (roomRef.current as any).engine
+            const pc = engine?.pc || (engine?.publisher as any)?.pc || (engine?.subscriber as any)?.pc
+            
             diagnostics.state = roomRef.current.state
             
             if (pc) {
@@ -833,7 +836,7 @@ export function useWebRTC(
                 }
                 
                 const stats = await pc.getStats()
-                stats.forEach(report => {
+                stats.forEach((report: any) => {
                     if (report.type === 'remote-candidate' && report.candidateType) {
                         diagnostics.candidateType = report.candidateType
                         diagnostics.protocol = report.protocol
