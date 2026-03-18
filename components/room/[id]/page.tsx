@@ -418,9 +418,9 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
 
         let cancelled = false
 
-        const fetchToken = async () => {
+        const fetchToken = async (attempt = 1) => {
             try {
-                console.log('[Token] Buscando para:', { sessionUserId, role: currentRole })
+                console.log(`[Token] Buscando para:`, { sessionUserId, role: currentRole, attempt })
 
                 const resp = await fetch(
                     `/api/livekit/token?` +
@@ -434,7 +434,17 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                 if (!resp.ok) {
                     const text = await resp.text()
                     console.error('[Token] HTTP error:', resp.status, text)
-                    setLastError(`Token HTTP ${resp.status}`)
+                    
+                    // Retry logic for 504 (Vercel Timeout) or 503
+                    if ((resp.status === 504 || resp.status === 503) && attempt < 3) {
+                        console.warn(`[Token] Retrying in 2s due to status ${resp.status}...`)
+                        setTimeout(() => {
+                            if (!cancelled) fetchToken(attempt + 1)
+                        }, 2000)
+                        return
+                    }
+
+                    setLastError(`Token HTTP ${resp.status}: ${text.slice(0, 50)}`)
                     return
                 }
 
@@ -452,6 +462,15 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
             } catch (err) {
                 if (cancelled) return
                 console.error('[Token] Falha de rede:', err)
+                
+                if (attempt < 3) {
+                    console.warn('[Token] Retrying in 2s due to network error...')
+                    setTimeout(() => {
+                        if (!cancelled) fetchToken(attempt + 1)
+                    }, 2000)
+                    return
+                }
+
                 setLastError(
                     `Falha ao conectar: ${err instanceof Error ? err.message : String(err)}`
                 )

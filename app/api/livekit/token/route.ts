@@ -2,6 +2,8 @@ import { AccessToken } from 'livekit-server-sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+export const maxDuration = 30; // 30 seconds
+
 // Tipos de cargo suportados
 type ParticipantRole = 'admin' | 'interpreter' | 'participant' | 'guest'
 
