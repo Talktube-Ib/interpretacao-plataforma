@@ -24,29 +24,16 @@ const ROLE_GRANTS: Record<ParticipantRole, any> = {
     canSubscribe: true,
     canPublishData: true,
     canUpdateOwnMetadata: true,
+    ttl: 60 * 60 * 6,  // 6 horas (sessões longas de interpretação)
   },
   participant: {
     roomJoin: true,
     canPublish: true,
     canSubscribe: true,
-    canPublishData: false,
-    canUpdateOwnMetadata: false,
+    canPublishData: true,
+    canUpdateOwnMetadata: true,
+    ttl: 60 * 60 * 4,  // 4 horas
   },
-  guest: {
-    roomJoin: true,
-    canPublish: false,   // Convidado só assiste
-    canSubscribe: true,
-    canPublishData: false,
-    canUpdateOwnMetadata: false,
-  },
-}
-
-// TTL por cargo (em segundos)
-const ROLE_TTL: Record<ParticipantRole, number> = {
-  admin:       60 * 60 * 8,  // 8 horas
-  interpreter: 60 * 60 * 6,  // 6 horas (sessões longas de interpretação)
-  participant: 60 * 60 * 4,  // 4 horas
-  guest:       60 * 60 * 2,  // 2 horas
 }
 
 export async function GET(req: NextRequest) {
@@ -62,10 +49,16 @@ export async function GET(req: NextRequest) {
   const isGuest = username?.startsWith('guest-')
 
   // Se não for um guest válido e não tiver sessão, bloqueia
-  if (!user && !isGuest) {
-      console.warn('[Security] Unauthorized token request blocked:', { room, username, role })
+  // A lógica de guest foi removida, então esta verificação pode ser simplificada
+  if (!user && isGuest) { // Se for um guest (que não deveria mais existir) e não tiver user, bloqueia
+      console.warn('[Security] Unauthorized token request blocked: guest role is deprecated', { room, username, role })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  if (!user && !isGuest) { // Se não for guest e não tiver user, bloqueia
+      console.warn('[Security] Unauthorized token request blocked: no user session', { room, username, role })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
 
   // Se for adm ou interpreter, OBRIGATÓRIO ter sessão válida no banco
   if ((role === 'admin' || role === 'interpreter') && !user) {
@@ -80,8 +73,8 @@ export async function GET(req: NextRequest) {
   if (!username) {
     return NextResponse.json({ error: 'Missing "username" query parameter' }, { status: 400 })
   }
-  if (!Object.keys(ROLE_GRANTS).includes(role)) {
-    return NextResponse.json({ error: `Invalid role. Valid roles: ${Object.keys(ROLE_GRANTS).join(', ')}` }, { status: 400 })
+  if (!Object.keys(ROLE_CONFIGS).includes(role)) {
+    return NextResponse.json({ error: `Invalid role. Valid roles: ${Object.keys(ROLE_CONFIGS).join(', ')}` }, { status: 400 })
   }
 
   const apiKey   = process.env.LIVEKIT_API_KEY
@@ -110,16 +103,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const ttl    = ROLE_TTL[role]
-    const grants = ROLE_GRANTS[role]
+    const roleConfig = ROLE_CONFIGS[role]
 
     const at = new AccessToken(apiKey, apiSecret, {
       identity: username,
-      ttl,       // ← TTL explícito por cargo
+      ttl: roleConfig.ttl,       // ← TTL explícito por cargo
       // Metadata útil para o console do intérprete e health monitor
       metadata: JSON.stringify({ role }),
     })
 
+    // Extrai as permissões de grants, excluindo o ttl
+    const { ttl, ...grants } = roleConfig
     at.addGrant({ ...grants, room })
 
     const token = await at.toJwt()

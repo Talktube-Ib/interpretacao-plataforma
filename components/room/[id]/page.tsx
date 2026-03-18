@@ -406,12 +406,9 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                         setActiveLanguages(meeting.settings.active_languages)
                     }
                     
-                    const guestId = 'guest-' + Math.random().toString(36).substring(2, 11)
-                    startTransition(() => {
-                        setUserId(guestId)
-                        setUserName(t('room.guest_default'))
-                        setCurrentRole('guest')
-                    })
+                    // NO MORE GUESTS: Redirect to login if no user session
+                    console.log('[Auth] Usuário não autenticado. Redirecionando para login...')
+                    window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
                 }
             } catch (error) {
                 console.error("Critical error in initUser:", error)
@@ -746,15 +743,12 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
 
 
 
-    if (!isLoaded || (loading && !isJoined) || (isJoined && !tokenReady)) {
+    if (!isLoaded || (loading && !isJoined)) {
         return (
-            <div className="h-screen w-full flex flex-col items-center justify-center bg-[#020817] text-white gap-4">
-                <div className="h-8 w-8 border-4 border-[#06b6d4] border-t-transparent rounded-full animate-spin" />
-                <p className="text-zinc-400 text-sm animate-pulse">
-                    {isJoined && !tokenReady
-                        ? 'Autenticando conexão...'  // mensagem específica para aguardar token
-                        : error || t('room.connecting') || 'Carregando...'}
-                </p>
+            <div className="h-screen w-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
+                <Loader2 className="h-10 w-10 text-[#06b6d4] animate-spin mb-6" />
+                <h2 className="text-2xl font-bold text-white mb-2">{t('room.authenticating')}</h2>
+                <p className="text-zinc-400 text-center max-w-xs">{t('room.preparing_session')}</p>
                 {error && (
                     <Button variant="outline" onClick={() => window.location.reload()}>
                         Tentar novamente
