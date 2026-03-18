@@ -21,6 +21,9 @@ interface PreCallLobbyProps {
     isGuest: boolean
     stream?: MediaStream
     error?: string
+    onToggleMic?: (enabled: boolean) => void
+    onToggleCamera?: (enabled: boolean) => void
+    onSwitchDevice?: (kind: 'audio' | 'video', deviceId: string) => void
     onJoin: (config: {
         micOn: boolean
         cameraOn: boolean
@@ -38,6 +41,9 @@ export function PreCallLobby({
     isGuest, 
     stream: externalStream, 
     error: externalError, 
+    onToggleMic,
+    onToggleCamera,
+    onSwitchDevice,
     onJoin 
 }: PreCallLobbyProps) {
     const [name, setName] = useState(userName || '')
@@ -61,7 +67,7 @@ export function PreCallLobby({
         cameraOn,
         audioDeviceId: selectedAudioId,
         videoDeviceId: selectedVideoId
-    }, !externalStream) // Só ativa interno se não houver externo
+    }, false) // NUNCA ativa interno — agora o RoomPage gerencia tudo
 
     const stream = externalStream || internalStream
     const error = externalError || internalError
@@ -211,7 +217,11 @@ export function PreCallLobby({
                                         "h-12 w-12 rounded-none hover:bg-white/10 transition-all",
                                         micOn ? "text-white" : "text-red-500 bg-red-500/10"
                                     )}
-                                    onClick={() => setMicOn(!micOn)}
+                                    onClick={() => {
+                                        const next = !micOn
+                                        setMicOn(next)
+                                        if (onToggleMic) onToggleMic(next)
+                                    }}
                                 >
                                     {micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
                                 </Button>
@@ -228,7 +238,10 @@ export function PreCallLobby({
                                         {audioDevices.map(device => (
                                             <DropdownMenuItem
                                                 key={device.deviceId}
-                                                onClick={() => setSelectedAudioId(device.deviceId)}
+                                                onClick={() => {
+                                                    setSelectedAudioId(device.deviceId)
+                                                    if (onSwitchDevice) onSwitchDevice('audio', device.deviceId)
+                                                }}
                                                 className="cursor-pointer focus:bg-zinc-800 focus:text-white flex justify-between"
                                             >
                                                 <span className="truncate max-w-[180px]">{device.label || `Mic ${device.deviceId.slice(0, 4)}`}</span>
@@ -248,7 +261,11 @@ export function PreCallLobby({
                                         "h-12 w-12 rounded-none hover:bg-white/10 transition-all",
                                         cameraOn ? "text-white" : "text-red-500 bg-red-500/10"
                                     )}
-                                    onClick={() => setCameraOn(!cameraOn)}
+                                    onClick={() => {
+                                        const next = !cameraOn
+                                        setCameraOn(next)
+                                        if (onToggleCamera) onToggleCamera(next)
+                                    }}
                                 >
                                     {cameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
                                 </Button>
@@ -265,7 +282,10 @@ export function PreCallLobby({
                                         {videoDevices.map(device => (
                                             <DropdownMenuItem
                                                 key={device.deviceId}
-                                                onClick={() => setSelectedVideoId(device.deviceId)}
+                                                onClick={() => {
+                                                    setSelectedVideoId(device.deviceId)
+                                                    if (onSwitchDevice) onSwitchDevice('video', device.deviceId)
+                                                }}
                                                 className="cursor-pointer focus:bg-zinc-800 focus:text-white flex justify-between"
                                             >
                                                 <span className="truncate max-w-[180px]">{device.label || `Cam ${device.deviceId.slice(0, 4)}`}</span>

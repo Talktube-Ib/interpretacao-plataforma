@@ -184,13 +184,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         }))
     }, [])
 
-    const { 
-        stream: lobbyStream, 
-        error: lobbyError, 
-        toggleMic: toggleLobbyMic, 
-        toggleCamera: toggleLobbyCamera, 
-        switchDevice: switchLobbyDevice 
-    } = useMediaStream({
+    const mediaProps = useMediaStream({
         micOn: lobbyConfig?.micOn ?? true,
         cameraOn: lobbyConfig?.cameraOn ?? true,
         audioDeviceId: lobbyConfig?.audioDeviceId || 'default',
@@ -198,14 +192,20 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
     }, true)
 
     const {
-        localStream,
+        stream: localStream,
+        error: mediaError,
+        toggleMic: toggleLocalMic,
+        toggleCamera: toggleLocalCamera,
+        switchDevice: switchLocalDevice
+    } = mediaProps
+
+    const {
         peers,
         toggleMic: hookToggleMic,
         toggleCamera: hookToggleCamera,
         shareScreen,
         stopScreenShare,
         userCount,
-        mediaError,
         channel,
         updateMetadata,
         switchDevice: switchDeviceWebRTC,
@@ -235,13 +235,14 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         roomId, 
         sessionUserId || '', 
         currentRole, 
-        { ...lobbyConfig, stream: lobbyStream ?? undefined }, 
+        { ...lobbyConfig, stream: localStream ?? undefined }, 
         isJoined && tokenReady, 
         userName, 
         liveKitToken || undefined, 
         isGhost, 
         hostId ?? undefined,
-        iceServers
+        iceServers,
+        mediaProps
     )
 
     const isSignalingConnected = signalingStatus === 'SUBSCRIBED' || signalingStatus === 'joined'
@@ -704,8 +705,11 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                 userName={userName}
                 userRole={currentRole}
                 isGuest={isGuest}
-                stream={lobbyStream ?? undefined}
-                error={lobbyError || undefined}
+                stream={localStream ?? undefined}
+                error={mediaError || undefined}
+                onToggleMic={toggleLocalMic}
+                onToggleCamera={toggleLocalCamera}
+                onSwitchDevice={switchLocalDevice}
                 onJoin={async (config: {
                     micOn: boolean,
                     cameraOn: boolean,

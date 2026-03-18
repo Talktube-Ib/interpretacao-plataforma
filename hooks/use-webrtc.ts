@@ -15,7 +15,6 @@ import {
     ConnectionQuality,
     Participant,
 } from 'livekit-client'
-import { useMediaStream } from './use-media-stream'
 import { useSignaling } from './use-signaling'
 
 interface PeerData {
@@ -80,17 +79,23 @@ export function useWebRTC(
     liveKitToken?: string,
     isGhostMode: boolean = false,
     initialHostId?: string,
-    iceServers?: RTCIceServer[]
+    iceServers?: RTCIceServer[],
+    mediaProps?: {
+        stream: MediaStream | null
+        toggleMic: (enabled: boolean) => void
+        toggleCamera: (enabled: boolean) => void
+        switchDevice: (kind: 'audio' | 'video', deviceId: string) => Promise<MediaStreamTrack | undefined>
+        error: string | null
+    }
 ) {
     const sessionUserId = userId
 
-    const { stream: localStream, error: mediaError, toggleMic: toggleMicStream, toggleCamera: toggleCameraStream, switchDevice } = useMediaStream({
-        micOn: initialConfig.micOn,
-        cameraOn: initialConfig.cameraOn,
-        audioDeviceId: initialConfig.audioDeviceId,
-        videoDeviceId: initialConfig.videoDeviceId,
-        stream: initialConfig.stream
-    }, isJoined)
+    // Media is now managed externally by RoomPage and passed via mediaProps
+    const localStream = mediaProps?.stream ?? null
+    const mediaError = mediaProps?.error ?? null
+    const toggleMicStream = mediaProps?.toggleMic ?? (() => {})
+    const toggleCameraStream = mediaProps?.toggleCamera ?? (() => {})
+    const switchDevice = mediaProps?.switchDevice ?? (async () => undefined)
 
     const [peers, setPeers] = useState<PeerData[]>([])
     const [userCount, setUserCount] = useState(0)
