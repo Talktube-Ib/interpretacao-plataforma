@@ -176,12 +176,12 @@ export function useWebRTC(
                 simulcast: true,
                 videoCodec: 'vp8',
                 videoEncoding: {
-                    maxBitrate: 800_000,
-                    maxFramerate: 24,
+                    maxBitrate: 400_000,
+                    maxFramerate: 20,
                 },
                 screenShareEncoding: {
-                    maxBitrate: 2_500_000,
-                    maxFramerate: 15,
+                    maxBitrate: 1_500_000,
+                    maxFramerate: 12,
                 },
             },
         })
@@ -804,6 +804,38 @@ export function useWebRTC(
         [toggleCameraStream, updateMetadata, localStream]
     )
 
+    const getDiagnostics = useCallback(async () => {
+        if (!roomRef.current) return null
+        
+        try {
+            const pc = (roomRef.current.engine as any).pc as RTCPeerConnection
+            if (!pc) return null
+            const stats = await pc.getStats()
+            
+            let candidateType = 'unknown'
+            let protocol = 'unknown'
+            
+            stats.forEach(report => {
+                if (report.type === 'remote-candidate' && report.candidateType) {
+                    candidateType = report.candidateType
+                    protocol = report.protocol
+                }
+            })
+
+            return {
+                state: roomRef.current.state,
+                iceState: pc?.iceConnectionState || 'unknown',
+                candidateType,
+                protocol,
+                participants: roomRef.current.remoteParticipants.size,
+                url: process.env.NEXT_PUBLIC_LIVEKIT_URL,
+            }
+        } catch (e) {
+            console.error('[Diagnostics] Failed to collect stats:', e)
+            return null
+        }
+    }, [])
+
     // ─── Return ───────────────────────────────────────────────────────────────
     return {
         localStream,
@@ -839,5 +871,6 @@ export function useWebRTC(
         lastError,
         setLastError,
         localScreenStream,
+        getDiagnostics,
     }
 }

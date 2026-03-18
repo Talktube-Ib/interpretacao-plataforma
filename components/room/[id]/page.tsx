@@ -44,6 +44,7 @@ import { InterpreterSetupModal } from '@/components/room/interpreter-setup-modal
 import { VolumeControl } from '@/components/room/volume-control'
 import { UpsellModal } from '@/components/marketing/upsell-modal'
 import { VirtualBooth } from '@/components/VirtualBooth'
+import { DiagnosticsDialog } from '@/components/room/diagnostics-dialog'
 
 interface RoomPageProps {
     roomId: string
@@ -230,7 +231,8 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         lastError,
         setLastError,
         localScreenStream,
-        signalingStatus
+        signalingStatus,
+        getDiagnostics,
     } = useWebRTC(
         roomId, 
         sessionUserId || '', 
@@ -1172,6 +1174,12 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
 
                         </DropdownMenu>
                     </div>
+
+                    {/* Connectivity Diagnostics */}
+                    <DiagnosticsDialog 
+                        getDiagnostics={getDiagnostics} 
+                        reconnect={reconnect} 
+                    />
 
                     {/* Sharing Dropdown - Desktop Only */}
                     <DropdownMenu>
