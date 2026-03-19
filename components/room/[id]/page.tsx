@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Logo } from '@/components/logo'
 
 export default function RoomPage() {
     const params = useParams()
@@ -176,13 +177,12 @@ export default function RoomPage() {
 
             {/* Header minimalista */}
             <header className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-md z-50">
-                <div className="flex items-center gap-3">
-                    <div className="bg-cyan-500/10 p-2 rounded-xl border border-cyan-500/20">
-                        <Shield className="h-5 w-5 text-cyan-500" />
-                    </div>
-                    <div>
-                        <h1 className="text-sm font-bold tracking-tight">Sala de Vídeo (Estável)</h1>
-                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">ID: {roomId}</p>
+                <div className="flex items-center gap-4">
+                    <Logo className="h-8 w-auto scale-90 md:scale-100" />
+                    <div className="hidden md:block h-6 w-px bg-white/10 mx-2" />
+                    <div className="hidden md:block">
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Sala de Interpretação</p>
+                        <p className="text-[9px] text-zinc-600 font-medium">ID: {roomId}</p>
                     </div>
                 </div>
                 
