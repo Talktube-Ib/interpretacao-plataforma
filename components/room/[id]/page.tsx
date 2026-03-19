@@ -20,6 +20,7 @@ export default function RoomPage() {
     
     // Auth & Identity (Minimalist)
     const [userId] = useState(() => `user_${Math.random().toString(36).substring(2, 7)}`)
+    const [userIdentity] = useState(() => `${userId}_${Math.random().toString(36).substring(2, 5)}`)
     const [userName, setUserName] = useState<string>(searchParams.get('name') || 'Convidado')
     const userRole = searchParams.get('role') || 'participant'
     
@@ -45,7 +46,7 @@ export default function RoomPage() {
                 // Token fetch
                 const params = new URLSearchParams({
                     room: roomId,
-                    username: `${userId}_${Math.random().toString(36).substring(2, 5)}`,
+                    username: userIdentity,
                     role: userRole,
                     name: currentName
                 })
@@ -91,7 +92,7 @@ export default function RoomPage() {
         isAudioBlocked
     } = useWebRTC(
         roomId,
-        userId,
+        userIdentity,
         userRole,
         { micOn: true, cameraOn: true, stream: localMediaStream || undefined },
         isJoined,

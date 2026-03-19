@@ -43,6 +43,7 @@ export function useWebRTC(
 
     const roomRef = useRef<Room | null>(null)
     const peersRef = useRef<Map<string, PeerData>>(new Map())
+    const connectsRef = useRef(0)
 
     // ─── Sync Local State to Component ───────────────────────────────────────
     const syncToState = useCallback(() => {
@@ -70,6 +71,12 @@ export function useWebRTC(
     // ─── LiveKit Room Logic ──────────────────────────────────────────────────
     useEffect(() => {
         if (!isJoined || !liveKitToken) return
+        
+        // Impedir reconexão se já estivermos na mesma sala e conectados/conectando
+        if (roomRef.current && 
+           (roomRef.current.state === ConnectionState.Connected || roomRef.current.state === ConnectionState.Connecting)) {
+            return
+        }
 
         const room = new Room({
             adaptiveStream: true,
@@ -85,7 +92,6 @@ export function useWebRTC(
         setRoom(room)
 
         const handleTrackSubscribed = (track: RemoteTrack, pub: RemoteTrackPublication, p: RemoteParticipant) => {
-            console.log(`[LK] Subscribed: ${track.kind} (${pub.source}) from ${p.identity}`)
             const id = p.identity
             const existing = peersRef.current.get(id) || {
                 userId: id.split('_')[0],
@@ -212,10 +218,10 @@ export function useWebRTC(
                 const rawUrl = liveKitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL!
                 const url = rawUrl.startsWith('http') ? rawUrl.replace('http', 'ws') : rawUrl
                 
-                await room.connect(url, liveKitToken!, { rtcConfig: { iceServers } })
+                await room.connect(url, liveKitToken, { rtcConfig: { iceServers } })
                 setMediaStatus('connected')
+                if (userName) room.localParticipant.setName(userName)
 
-                // Initial publish (DO NOT USE initialConfig as dependency)
                 await room.localParticipant.setMicrophoneEnabled(true)
                 await room.localParticipant.setCameraEnabled(true)
                 updateLocalStates()
@@ -229,11 +235,16 @@ export function useWebRTC(
         connect()
 
         return () => {
-            room.removeAllListeners()
-            room.disconnect()
-            roomRef.current = null
+            // Só desconecta se a sala ou o ID mudar REALMENTE
+            // A limpeza do React disparará se liveKitToken mudar, mas o early return no topo protege de criar novo
         }
-    }, [isJoined, liveKitToken, roomId, liveKitUrl, iceServers, syncToState, updateLocalStates])
+    }, [isJoined, !!liveKitToken, roomId])
+
+    useEffect(() => {
+        if (roomRef.current?.state === ConnectionState.Connected && userName) {
+            roomRef.current.localParticipant.setName(userName)
+        }
+    }, [userName])
 
     // ─── Actions ─────────────────────────────────────────────────────────────
     const toggleMic = useCallback(async (enabled: boolean) => {
