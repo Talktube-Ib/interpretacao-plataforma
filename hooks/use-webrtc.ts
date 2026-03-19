@@ -218,7 +218,7 @@ export function useWebRTC(
                 const rawUrl = liveKitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL!
                 const url = rawUrl.startsWith('http') ? rawUrl.replace('http', 'ws') : rawUrl
                 
-                await room.connect(url, liveKitToken, { rtcConfig: { iceServers } })
+                await room.connect(url, liveKitToken)
                 setMediaStatus('connected')
                 if (userName) room.localParticipant.setName(userName)
 

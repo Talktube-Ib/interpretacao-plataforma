@@ -169,15 +169,9 @@ export const RemoteVideo = memo(function RemoteVideo({
             const now = Date.now()
             const { videoWidth, videoHeight, currentTime, paused, readyState } = videoEl
 
-            // Diagnóstico periódico
-            if (now - lastCheckTime > 5000) {
-                console.log(`[VP-WATCHDOG] ${name}:`, {
-                    dims: `${videoWidth}x${videoHeight}`,
-                    currentTime,
-                    paused,
-                    readyState,
-                    hasVideoTrack
-                })
+            // Diagnóstico periódico (a cada 30 segundos agora para menos ruído)
+            if (now - lastCheckTime > 30000) {
+                console.log(`[VP-WATCHDOG] ${name}: Status OK (${videoWidth}x${videoHeight})`)
                 lastCheckTime = now
             }
 
@@ -375,14 +369,8 @@ export const LocalVideo = memo(function LocalVideo({
             const now = Date.now()
             const { videoWidth, videoHeight, currentTime, paused, readyState } = videoEl
 
-            if (now - lastCheckTime > 5000) {
-                console.log(`[VP-LOCAL-WATCHDOG]:`, {
-                    dims: `${videoWidth}x${videoHeight}`,
-                    currentTime,
-                    paused,
-                    readyState,
-                    streamId: stream.id
-                })
+            if (now - lastCheckTime > 30000) {
+                console.log(`[VP-LOCAL-WATCHDOG]: Status OK (${videoWidth}x${videoHeight})`)
                 lastCheckTime = now
             }
 
