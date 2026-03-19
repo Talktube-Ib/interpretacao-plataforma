@@ -19,7 +19,7 @@ export interface PeerData {
     cameraOn: boolean
     stream: MediaStream | null
     screenStream: MediaStream | null
-    connectionState: string
+    connectionState: 'disconnected' | 'connecting' | 'connected' | 'failed' | 'closed'
 }
 
 export function useWebRTC(
@@ -30,11 +30,12 @@ export function useWebRTC(
     isJoined: boolean = false,
     userName: string = 'Participante',
     liveKitToken?: string,
+    liveKitUrl?: string,
 ) {
     const [room, setRoom] = useState<Room | null>(null)
     const [peers, setPeers] = useState<PeerData[]>([])
     const [roomLocalStream, setRoomLocalStream] = useState<MediaStream | null>(null)
-    const [mediaStatus, setMediaStatus] = useState<string>('disconnected')
+    const [mediaStatus, setMediaStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'failed' | 'closed'>('disconnected')
     const [lastError, setLastError] = useState<string | null>(null)
 
     const roomRef = useRef<Room | null>(null)
@@ -64,9 +65,11 @@ export function useWebRTC(
         const room = new Room({
             adaptiveStream: true,
             dynacast: true,
+            videoCaptureDefaults: {
+                resolution: { width: 1280, height: 720 },
+            },
             publishDefaults: {
-                videoSimulcast: true,
-                screenShareSimulcast: true,
+                simulcast: true,
             }
         })
         roomRef.current = room
@@ -144,7 +147,7 @@ export function useWebRTC(
             syncToState()
         }
 
-        const handleMuteChange = (pub: RemoteTrackPublication, p: Participant) => {
+        const handleMuteChange = (pub: any, p: Participant) => {
             if (p instanceof RemoteParticipant) {
                 const existing = peersRef.current.get(p.identity)
                 if (existing) {
@@ -165,12 +168,17 @@ export function useWebRTC(
             .on(RoomEvent.TrackUnmuted, handleMuteChange)
             .on(RoomEvent.LocalTrackPublished, updateLocalStream)
             .on(RoomEvent.LocalTrackUnpublished, updateLocalStream)
-            .on(RoomEvent.ConnectionStateChanged, (state) => setMediaStatus(state))
+            .on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
+                if (state === ConnectionState.Connected) setMediaStatus('connected')
+                else if (state === ConnectionState.Connecting || state === ConnectionState.Reconnecting) setMediaStatus('connecting')
+                else if (state === ConnectionState.Disconnected) setMediaStatus('disconnected')
+            })
 
         const connect = async () => {
             try {
                 setMediaStatus('connecting')
-                await room.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL!, liveKitToken)
+                const url = liveKitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL!
+                await room.connect(url, liveKitToken)
                 setMediaStatus('connected')
 
                 // Initial publish (minimalist - rely on room capabilities)
@@ -180,7 +188,7 @@ export function useWebRTC(
             } catch (err) {
                 console.error('[LK] Connection error:', err)
                 setLastError(String(err))
-                setMediaStatus('error')
+                setMediaStatus('failed')
             }
         }
 
@@ -191,7 +199,7 @@ export function useWebRTC(
             room.disconnect()
             roomRef.current = null
         }
-    }, [isJoined, liveKitToken, roomId]) // Minimized dependencies for stability
+    }, [isJoined, liveKitToken, roomId, liveKitUrl]) // Added liveKitUrl
 
     // ─── Actions ─────────────────────────────────────────────────────────────
     const toggleMic = useCallback(async (enabled: boolean) => {
@@ -225,7 +233,7 @@ export function useWebRTC(
         localScreenStream: null,
         sharingUserId: null,
         reactions: [],
-        signalingStatus: 'joined', // Mock for simplified room
+        signalingStatus: 'joined', 
         getDiagnostics: () => ({}),
         sendEmoji: () => {},
         shareScreen: () => {},
@@ -238,8 +246,6 @@ export function useWebRTC(
         muteUser: () => {},
         blockUserAudio: () => {},
         unblockUserAudio: () => {},
-        mediaStatus: mediaStatus as any,
-        lastError,
         setLastError,
     }
 }

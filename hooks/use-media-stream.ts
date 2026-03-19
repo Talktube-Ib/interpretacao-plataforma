@@ -86,15 +86,20 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
         }
     }, [isJoined, config.audioDeviceId, config.videoDeviceId, config.stream])
 
+    const [isMicOn, setIsMicOn] = useState(config.micOn !== false)
+    const [isCameraOn, setIsCameraOn] = useState(config.cameraOn !== false)
+
     const toggleMic = useCallback((enabled: boolean) => {
         if (stream) {
             stream.getAudioTracks().forEach(t => t.enabled = enabled)
+            setIsMicOn(enabled)
         }
     }, [stream])
 
     const toggleCamera = useCallback((enabled: boolean) => {
         if (stream) {
             stream.getVideoTracks().forEach(t => t.enabled = enabled)
+            setIsCameraOn(enabled)
         }
     }, [stream])
 
@@ -118,8 +123,13 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
 
             stream.addTrack(newTrack)
 
-            if (kind === 'audio') currentAudioTrackRef.current = newTrack
-            else currentVideoTrackRef.current = newTrack
+            if (kind === 'audio') {
+                currentAudioTrackRef.current = newTrack
+                newTrack.enabled = isMicOn
+            } else {
+                currentVideoTrackRef.current = newTrack
+                newTrack.enabled = isCameraOn
+            }
 
             // Trigger React update by creating a new stream reference
             setStream(new MediaStream(stream.getTracks()))
@@ -129,13 +139,15 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
             console.error(`Failed to switch ${kind} device:`, err)
             throw err
         }
-    }, [stream])
+    }, [stream, isMicOn, isCameraOn])
 
     return {
         stream,
         error,
         toggleMic,
         toggleCamera,
-        switchDevice
+        switchDevice,
+        isMicOn,
+        isCameraOn
     }
 }

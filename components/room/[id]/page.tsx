@@ -21,6 +21,7 @@ export default function RoomPage() {
     const userRole = searchParams.get('role') || 'participant'
     
     const [token, setToken] = useState<string | null>(null)
+    const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null)
     const [isJoined, setIsJoined] = useState(false)
 
     // 1. Fetch Token
@@ -42,6 +43,7 @@ export default function RoomPage() {
 
                 const data = await res.json()
                 setToken(data.token)
+                if (data.url) setLiveKitUrl(data.url)
                 setIsJoined(true)
             } catch (err) {
                 console.error("Failed to fetch token:", err)
@@ -74,7 +76,8 @@ export default function RoomPage() {
         { micOn: isMicOn, cameraOn: isCameraOn, stream: localMediaStream || undefined },
         isJoined,
         userName,
-        token || undefined
+        token || undefined,
+        liveKitUrl || undefined
     )
 
     const handleLeave = () => {
