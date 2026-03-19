@@ -8,6 +8,7 @@ import { VideoGrid } from '@/components/room/video-grid'
 import { Mic, MicOff, Video, VideoOff, LogOut, Settings, Users, Monitor, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function RoomPage() {
     const params = useParams()
@@ -90,6 +91,7 @@ export default function RoomPage() {
     // 4. Local Controls (Mute Peer for me, Volume for me)
     const [localMutedPeers, setLocalMutedPeers] = useState<Set<string>>(new Set())
     const [localPeerVolumes, setLocalPeerVolumes] = useState<Record<string, number>>({})
+    const [isInviteOpen, setIsInviteOpen] = useState(false)
 
     const handleMutePeer = (targetId: string) => {
         setLocalMutedPeers(prev => {
@@ -120,7 +122,47 @@ export default function RoomPage() {
     }
 
     return (
-        <div className="h-screen w-screen bg-zinc-950 flex flex-col overflow-hidden text-white font-sans">
+        <div className="h-screen w-screen bg-zinc-950 flex flex-col overflow-hidden text-white font-sans relative">
+            {/* Popup de Convite (Meet Style) */}
+            <AnimatePresence>
+                {isInviteOpen && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        className="absolute bottom-28 left-8 z-[100] w-80 bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl backdrop-blur-2xl"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-bold text-white">Sua reunião está pronta</h3>
+                            <button onClick={() => setIsInviteOpen(false)} className="text-zinc-500 hover:text-white transition-colors">
+                                <LogOut className="h-4 w-4 rotate-45" />
+                            </button>
+                        </div>
+                        <p className="text-xs text-zinc-400 mb-4 leading-relaxed">Compartilhe este link com quem você deseja que participe da reunião.</p>
+                        <div className="bg-black/40 border border-white/5 rounded-2xl p-3 flex items-center justify-between gap-2 overflow-hidden">
+                            <span className="text-[10px] text-zinc-300 truncate flex-1">{typeof window !== 'undefined' ? window.location.href : ''}</span>
+                            <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 shrink-0 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 rounded-xl"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(window.location.href);
+                                    alert("Link copiado!");
+                                }}
+                            >
+                                <Monitor className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <button 
+                            className="w-full mt-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-2xl transition-all border border-white/5"
+                            onClick={() => setIsInviteOpen(false)}
+                        >
+                            Entendi
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Header minimalista */}
             <header className="h-16 px-6 border-b border-white/5 flex items-center justify-between bg-black/40 backdrop-blur-md z-50">
                 <div className="flex items-center gap-3">
@@ -137,13 +179,13 @@ export default function RoomPage() {
                      <Button
                         variant="ghost" 
                         size="sm"
-                        onClick={() => {
-                            navigator.clipboard.writeText(window.location.href);
-                            alert("Link da reunião copiado!");
-                        }}
-                        className="bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 rounded-full px-4 flex items-center gap-2 transition-all"
+                        onClick={() => setIsInviteOpen(!isInviteOpen)}
+                        className={cn(
+                            "bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 rounded-full px-4 flex items-center gap-2 transition-all",
+                            isInviteOpen && "bg-cyan-500/10 text-cyan-500 border-cyan-500/20"
+                        )}
                     >
-                        <Monitor className="h-4 w-4" />
+                        <Users className="h-4 w-4" />
                         <span className="text-xs font-bold uppercase tracking-wider">Convidar</span>
                     </Button>
 

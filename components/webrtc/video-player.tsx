@@ -213,14 +213,19 @@ export const RemoteVideo = memo(function RemoteVideo({
         return () => clearInterval(watchdog)
     }, [stream, hasVideoTrack, cameraOff, name])
 
+    const [showControls, setShowControls] = useState(false)
+
     const isConnecting = connectionState === 'connecting'
 
     return (
-        <div className={cn(
-            "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500 z-10",
-            isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)] z-20",
-            (isPaused || isMutedAutoplay) && "ring-4 ring-amber-500"
-        )}>
+        <div 
+            onClick={() => setShowControls(!showControls)}
+            className={cn(
+                "group relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden transition-all duration-500 z-10 cursor-pointer",
+                isSpeaking && "ring-4 ring-[#06b6d4] ring-offset-4 ring-offset-zinc-950 shadow-[0_0_30px_-10px_rgba(6,182,212,0.5)] z-20",
+                (isPaused || isMutedAutoplay) && "ring-4 ring-amber-500"
+            )}
+        >
             {/* Elemento de áudio persistente */}
             <audio ref={audioRef} autoPlay playsInline />
 
@@ -277,7 +282,11 @@ export const RemoteVideo = memo(function RemoteVideo({
 
             {onIndividualVolumeChange && (
                 <div 
-                    className="absolute top-3 left-3 z-[110] flex items-center gap-1.5 bg-black/50 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 pointer-events-auto transition-all duration-300 opacity-0 group-hover:opacity-100"
+                    onClick={(e) => e.stopPropagation()} 
+                    className={cn(
+                        "absolute top-3 left-3 z-[110] flex items-center gap-1.5 bg-black/70 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 pointer-events-auto transition-all duration-300",
+                        showControls ? "opacity-100 scale-100" : "opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100"
+                    )}
                 >
                     <button 
                         onClick={(e) => { 
