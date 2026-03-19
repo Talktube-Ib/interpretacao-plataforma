@@ -277,39 +277,34 @@ export const RemoteVideo = memo(function RemoteVideo({
 
             {onIndividualVolumeChange && (
                 <div 
-                    className="absolute top-3 left-3 z-[110] flex flex-col gap-2 bg-black/60 backdrop-blur-xl p-2 rounded-2xl border border-white/10 pointer-events-auto transition-all duration-300"
-                    onMouseEnter={() => setShowSlider(true)}
-                    onMouseLeave={() => setShowSlider(false)}
+                    className="absolute top-3 left-3 z-[110] flex items-center gap-1.5 bg-black/50 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 pointer-events-auto transition-all duration-300 hover:bg-black/70"
                 >
-                    <div className="flex items-center gap-2">
-                        <button 
-                            onClick={(e) => { 
-                                e.stopPropagation(); 
-                                onMutePeer?.(); 
-                            }} 
-                            className={cn(
-                                "p-1.5 rounded-lg transition-colors", 
-                                (individualVolume === 0 || isLocalMuted) ? "text-red-500 bg-red-500/10" : "text-white hover:bg-white/10"
-                            )}
-                            title={(individualVolume === 0 || isLocalMuted) ? "Ativar Som" : "Silenciar Participante"}
-                        >
-                            {(individualVolume === 0 || isLocalMuted) ? (
-                                <VolumeX className="h-4 w-4 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-                            ) : (
-                                <Volume2 className="h-4 w-4" />
-                            )}
-                        </button>
+                    <button 
+                        onClick={(e) => { 
+                            e.stopPropagation(); 
+                            onMutePeer?.(); 
+                        }} 
+                        className={cn(
+                            "p-2 rounded-xl transition-all", 
+                            (individualVolume === 0 || isLocalMuted) ? "text-red-500 bg-red-500/10" : "text-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/20"
+                        )}
+                        title={(individualVolume === 0 || isLocalMuted) ? "Ativar Som" : "Silenciar Participante"}
+                    >
+                        {(individualVolume === 0 || isLocalMuted) ? (
+                            <VolumeX className="h-4 w-4 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                        ) : (
+                            <Volume2 className="h-4 w-4" />
+                        )}
+                    </button>
+                    <div className="flex items-center w-16 md:w-24 px-1">
                         <input 
                             type="range" 
                             min="0" 
                             max="1" 
-                            step="0.01" 
+                            step="0.05" 
                             value={individualVolume} 
                             onChange={(e) => onIndividualVolumeChange(parseFloat(e.target.value))} 
-                            className={cn(
-                                "h-1 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#06b6d4] transition-all duration-300", 
-                                showSlider ? "w-20 opacity-100" : "w-0 opacity-0 pointer-events-none"
-                            )} 
+                            className="h-1 w-full bg-white/20 rounded-full appearance-none cursor-pointer accent-cyan-400" 
                         />
                     </div>
                 </div>

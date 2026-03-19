@@ -63,10 +63,6 @@ export default function RoomPage() {
     // 2. Media Devices
     const { 
         stream: localMediaStream, 
-        toggleMic: toggleLocalMic, 
-        toggleCamera: toggleLocalCam,
-        isMicOn,
-        isCameraOn
     } = useMediaStream()
 
     // 3. WebRTC Logic
@@ -83,13 +79,30 @@ export default function RoomPage() {
         roomId,
         userId,
         userRole,
-        { micOn: isMicOn, cameraOn: isCameraOn, stream: localMediaStream || undefined },
+        { micOn: true, cameraOn: true, stream: localMediaStream || undefined },
         isJoined,
         userName,
         token || undefined,
         liveKitUrl || undefined,
         iceServers
     )
+
+    // 4. Local Controls (Mute Peer for me, Volume for me)
+    const [localMutedPeers, setLocalMutedPeers] = useState<Set<string>>(new Set())
+    const [localPeerVolumes, setLocalPeerVolumes] = useState<Record<string, number>>({})
+
+    const handleMutePeer = (targetId: string) => {
+        setLocalMutedPeers(prev => {
+            const next = new Set(prev)
+            if (next.has(targetId)) next.delete(targetId)
+            else next.add(targetId)
+            return next
+        })
+    }
+
+    const handleLocalVolumeChange = (targetId: string, volume: number) => {
+        setLocalPeerVolumes(prev => ({ ...prev, [targetId]: volume }))
+    }
 
     const handleLeave = () => {
         router.push('/')
@@ -150,6 +163,10 @@ export default function RoomPage() {
                     localUserName={userName}
                     selectedLang="original"
                     handRaised={false}
+                    localMutedPeers={localMutedPeers}
+                    onMutePeer={handleMutePeer}
+                    localPeerVolumes={localPeerVolumes}
+                    onLocalVolumeChange={handleLocalVolumeChange}
                 />
             </main>
 
