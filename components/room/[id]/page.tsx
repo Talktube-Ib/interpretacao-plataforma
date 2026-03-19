@@ -134,6 +134,19 @@ export default function RoomPage() {
                 </div>
                 
                 <div className="flex items-center gap-4">
+                     <Button
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                            navigator.clipboard.writeText(window.location.href);
+                            alert("Link da reunião copiado!");
+                        }}
+                        className="bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 rounded-full px-4 flex items-center gap-2 transition-all"
+                    >
+                        <Monitor className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Convidar</span>
+                    </Button>
+
                      <div className={cn(
                         "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
                         mediaStatus === 'connected' ? "bg-green-500/10 text-green-500" : 

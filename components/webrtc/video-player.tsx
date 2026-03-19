@@ -277,7 +277,7 @@ export const RemoteVideo = memo(function RemoteVideo({
 
             {onIndividualVolumeChange && (
                 <div 
-                    className="absolute top-3 left-3 z-[110] flex items-center gap-1.5 bg-black/50 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 pointer-events-auto transition-all duration-300 hover:bg-black/70"
+                    className="absolute top-3 left-3 z-[110] flex items-center gap-1.5 bg-black/50 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 pointer-events-auto transition-all duration-300 opacity-0 group-hover:opacity-100"
                 >
                     <button 
                         onClick={(e) => { 
@@ -296,7 +296,7 @@ export const RemoteVideo = memo(function RemoteVideo({
                             <Volume2 className="h-4 w-4" />
                         )}
                     </button>
-                    <div className="flex items-center w-16 md:w-24 px-1">
+                    <div className="flex items-center w-0 group-hover:w-16 md:group-hover:w-24 px-0 group-hover:px-1 transition-all duration-300 overflow-hidden">
                         <input 
                             type="range" 
                             min="0" 
