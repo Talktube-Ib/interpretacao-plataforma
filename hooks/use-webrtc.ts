@@ -466,25 +466,25 @@ export function useWebRTC(
                         (async () => {
                             const track = localStream.getVideoTracks()[0]
                             if (track) {
-                                // Aguarda até 2 segundos por frames válidos (dimensões > 0)
-                                let settings = track.getSettings()
-                                let waitAttempts = 0
-                                while ((!settings.width || settings.width === 0) && waitAttempts < 20) {
-                                    await new Promise(r => setTimeout(r, 100))
-                                    settings = track.getSettings()
-                                    waitAttempts++
-                                }
-
-                                console.log('[LK] Publishing video track with settings:', { 
-                                    width: settings.width, 
-                                    height: settings.height, 
+                                // Tenta obter as dimensões reais, mas não trava se não vierem
+                                const settings = track.getSettings()
+                                const width = settings.width || 1280
+                                const height = settings.height || 720
+                                
+                                console.log('[LK] Publishing video track:', { 
+                                    width, 
+                                    height, 
                                     frameRate: settings.frameRate,
-                                    waitAttempts
+                                    streamId: localStream.id
                                 })
                                 
                                 const pub = await room.localParticipant.publishTrack(track, {
                                     source: Track.Source.Camera,
-                                    simulcast: false,
+                                    simulcast: true, // Re-ativando simulcast para melhor compatibilidade
+                                    videoEncoding: {
+                                        maxBitrate: 1_500_000,
+                                        maxFramerate: 30,
+                                    }
                                 })
                                 if (!camEnabled) await pub.track?.mute()
                                 return pub

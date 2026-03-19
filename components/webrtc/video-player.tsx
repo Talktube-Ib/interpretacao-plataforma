@@ -355,7 +355,16 @@ export const LocalVideo = memo(function LocalVideo({
 
     useEffect(() => {
         const videoEl = videoRef.current
-        if (!videoEl || !stream || cameraOff) return
+        if (!videoEl || !stream || cameraOff) {
+            if (videoEl) videoEl.srcObject = null
+            return
+        }
+
+        // Atribuição crucial que foi removida
+        videoEl.srcObject = stream
+        videoEl.play().catch(err => {
+            console.warn("[VP-LOCAL] Falha ao dar play inicial:", err)
+        })
 
         let lastCheckTime = Date.now()
         
@@ -374,15 +383,19 @@ export const LocalVideo = memo(function LocalVideo({
                 lastCheckTime = now
             }
 
-            if (!cameraOff && readyState >= 2 && !paused && (videoWidth === 0 || videoHeight === 0)) {
+            // Se pausado mas deveria estar tocando
+            if (paused && !cameraOff && readyState >= 2) {
+                videoEl.play().catch(() => {})
+            }
+
+            if (!cameraOff && readyState >= 2 && (videoWidth === 0 || videoHeight === 0)) {
                 // Se local está 0x0 por muito tempo, tenta re-anexar
                 stuckFrameCountRef.current++
                 if (stuckFrameCountRef.current > 30) {
                     console.warn("[VP-LOCAL] Vídeo local 0x0. Re-anexando srcObject...")
                     stuckFrameCountRef.current = 0
-                    const s = videoEl.srcObject
                     videoEl.srcObject = null
-                    setTimeout(() => { if (videoEl && s) videoEl.srcObject = s }, 50)
+                    setTimeout(() => { if (videoEl) videoEl.srcObject = stream }, 50)
                 }
             } else {
                 stuckFrameCountRef.current = 0
