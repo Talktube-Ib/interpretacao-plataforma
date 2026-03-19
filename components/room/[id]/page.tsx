@@ -231,6 +231,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
         lastError,
         setLastError,
         localScreenStream,
+        roomLocalStream,
         signalingStatus,
         getDiagnostics,
     } = useWebRTC(
@@ -870,7 +871,7 @@ export default function RoomPage({ roomId, searchRole }: RoomPageProps) {
                 <div className="flex-1 min-w-0 p-2 md:p-6 flex items-center justify-center transition-all duration-300 relative">
                     <VideoGrid
                         peers={paginatedPeers.map(p => ({ ...p, connectionState: p.connectionState || mediaStatus }))}
-                        localStream={localStream}
+                        localStream={roomLocalStream}
                         currentRole={currentRole}
                         micOn={micOn}
                         cameraOn={cameraOn}

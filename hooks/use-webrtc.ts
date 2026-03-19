@@ -13,6 +13,7 @@ import {
     DefaultReconnectPolicy,
     TrackPublication,
     ConnectionQuality,
+    VideoPresets,
     Participant,
 } from 'livekit-client'
 import { useSignaling } from './use-signaling'
@@ -90,17 +91,72 @@ export function useWebRTC(
 ) {
     const sessionUserId = userId
 
-    // Media is now managed externally by RoomPage and passed via mediaProps
+    const [room, setRoom] = useState<Room | null>(null)
+    const [peers, setPeers] = useState<PeerData[]>([])
+    const [localStreamFromRoom, setLocalStreamFromRoom] = useState<MediaStream | null>(null)
+
+    // Backwards compatibility for internal usage
     const localStream = mediaProps?.stream ?? null
     const mediaError = mediaProps?.error ?? null
-    const toggleMicStream = mediaProps?.toggleMic ?? (() => {})
-    const toggleCameraStream = mediaProps?.toggleCamera ?? (() => {})
-    const switchDevice = mediaProps?.switchDevice ?? (async () => undefined)
 
-    const [peers, setPeers] = useState<PeerData[]>([])
+    // Backwards compatibility and internal use
+    const toggleMicStream = useCallback((enabled: boolean) => {
+        if (room) room.localParticipant.setMicrophoneEnabled(enabled).catch(console.error)
+        else mediaProps?.toggleMic(enabled)
+    }, [room, mediaProps])
+
+    const toggleCameraStream = useCallback((enabled: boolean) => {
+        if (room) room.localParticipant.setCameraEnabled(enabled).catch(console.error)
+        else mediaProps?.toggleCamera(enabled)
+    }, [room, mediaProps])
+
+    const switchDevice = useCallback(async (kind: 'audio' | 'video', deviceId: string) => {
+        if (room) {
+            if (kind === 'audio') await room.switchActiveDevice('audioinput', deviceId)
+            else await room.switchActiveDevice('videoinput', deviceId)
+            return undefined // LiveKit switch doesn't return the track directly here
+        }
+        return mediaProps?.switchDevice(kind, deviceId)
+    }, [room, mediaProps])
     const [userCount, setUserCount] = useState(0)
     const [sharingUserId, setSharingUserId] = useState<string | null>(null)
     const [hostId, setHostId] = useState<string | null>(initialHostId || null)
+    const [isHandoverRequested, setIsHandoverRequested] = useState(false)
+
+    // Sync local tracks from Room to localStreamFromRoom
+    useEffect(() => {
+        if (!room) {
+            setLocalStreamFromRoom(null)
+            return
+        }
+
+        const syncLocalTracks = () => {
+            const tracks = room.localParticipant.getTrackPublications()
+                .map(pub => pub.track?.mediaStreamTrack)
+                .filter(Boolean) as MediaStreamTrack[]
+            
+            if (tracks.length > 0) {
+                setLocalStreamFromRoom(new MediaStream(tracks))
+            } else {
+                setLocalStreamFromRoom(null)
+            }
+        }
+
+        room.on(RoomEvent.LocalTrackPublished, syncLocalTracks)
+        room.on(RoomEvent.LocalTrackUnpublished, syncLocalTracks)
+        // Também ouve mutes para garantir que o stream reflita o estado real
+        room.on(RoomEvent.TrackMuted, syncLocalTracks)
+        room.on(RoomEvent.TrackUnmuted, syncLocalTracks)
+        
+        syncLocalTracks()
+
+        return () => {
+            room.off(RoomEvent.LocalTrackPublished, syncLocalTracks)
+            room.off(RoomEvent.LocalTrackUnpublished, syncLocalTracks)
+            room.off(RoomEvent.TrackMuted, syncLocalTracks)
+            room.off(RoomEvent.TrackUnmuted, syncLocalTracks)
+        }
+    }, [room])
     const [localHandRaised, setLocalHandRaised] = useState(false)
     const [reactions, setReactions] = useState<{ id: string; emoji: string; userId: string }[]>([])
     const [mediaStatus, setMediaStatus] = useState<'connecting' | 'connected' | 'failed' | 'disconnected'>('disconnected')
@@ -188,11 +244,6 @@ export function useWebRTC(
 
         roomRef.current = room
 
-        // Health Monitor: removido pois causava reconexões destrutivas quando
-        // o Fly.io rodava múltiplas instâncias e os participantes conectavam em máquinas diferentes.
-        // O LiveKit tem seu próprio mecanismo de reconexão via ExponentialReconnectPolicy.
-        const healthCheckInterval: ReturnType<typeof setInterval> | null = null
-
         const handleParticipantConnected = (participant: RemoteParticipant) => {
             console.log('[LK] Participant connected:', participant.identity)
             const fullIdentity = participant.identity
@@ -200,11 +251,9 @@ export function useWebRTC(
             const existing = peersRef.current.get(fullIdentity)
             
             if (existing) {
-                // Atualiza o estado do peer existente para connected
                 existing.connectionState = 'connected'
                 peersRef.current.set(fullIdentity, existing)
             } else {
-                // Cria o peer com 'connected' mesmo antes dos tracks chegarem
                 const remoteData = (roomRef.current?.remoteParticipants.get(fullIdentity) as any)?.metadata
                     ? JSON.parse((roomRef.current?.remoteParticipants.get(fullIdentity) as any).metadata)
                     : {}
@@ -242,8 +291,6 @@ export function useWebRTC(
             participant: RemoteParticipant
         ) => {
             console.log(`[LK] Track subscribed: ${track.kind} (${publication.source}) from ${participant.identity}`)
-            console.log(`[LK] Track details:`, { id: track.sid, kind: track.kind, readyState: track.mediaStreamTrack?.readyState, enabled: track.mediaStreamTrack?.enabled })
-            
             const fullIdentity = participant.identity
             const baseUserId = fullIdentity.split('_')[0]
             const isScreen = publication.source === Track.Source.ScreenShare
@@ -270,19 +317,15 @@ export function useWebRTC(
                 existing.screenStream = new MediaStream(newTracks)
                 setSharingUserId(baseUserId)
             } else {
-                // Reconstroi o stream de forma limpa com as tracks atuais + a nova
                 const currentTracks = existing.stream?.getTracks() || []
                 const newTracks = [...currentTracks.filter(t => t.kind !== track.kind), track.mediaStreamTrack]
                 existing.stream = new MediaStream(newTracks)
-
                 if (track.kind === Track.Kind.Video) existing.cameraOn = true
                 if (track.kind === Track.Kind.Audio) existing.micOn = true
             }
 
             existing.connectionState = 'connected'
             peersRef.current.set(fullIdentity, existing)
-            const streamTracks = existing.stream?.getTracks() ?? []
-            console.log(`[LK] Peer stream after subscribe:`, { identity: fullIdentity, streamTracks: streamTracks.map(t => ({ kind: t.kind, readyState: t.readyState, enabled: t.enabled })) })
             syncToState()
             setUserCount(room.remoteParticipants.size + 1)
         }
@@ -292,7 +335,7 @@ export function useWebRTC(
             publication: RemoteTrackPublication,
             participant: RemoteParticipant
         ) => {
-            console.log(`[LK] Track unsubscribed: ${track.kind} from ${participant.identity}`, { readyState: track.mediaStreamTrack?.readyState, reason: 'track-ended-or-network' })
+            console.log(`[LK] Track unsubscribed: ${track.kind} from ${participant.identity}`)
             const peerId = participant.identity
             const baseUserId = peerId.split('_')[0]
             const existing = peersRef.current.get(peerId)
@@ -309,7 +352,6 @@ export function useWebRTC(
                 } else {
                     if (isScreen) {
                         existing.screenStream = null
-                        // FIX: usa ref em vez do closure stale
                         if (sharingUserIdRef.current === baseUserId) setSharingUserId(null)
                     } else {
                         existing.stream = null
@@ -326,57 +368,9 @@ export function useWebRTC(
             syncToState()
         }
 
-        // FIX: re-publica tracks após reconexão (crítico para mobile)
         const handleReconnected = async () => {
-            console.log('[LK] Reconnected — re-publishing local tracks')
+            console.log('[LK] Reconnected')
             setMediaStatus('connected')
-
-            const canPublish = !['guest', 'viewer'].includes(userRole.toLowerCase())
-            if (!canPublish) {
-                console.log(`[LK] Cargo "${userRole}" — re-publicação de tracks ignorada na reconexão`)
-                return // guest não re-publica
-            }
-
-            try {
-                const micEnabled = metadataRef.current.micOn
-                const camEnabled = metadataRef.current.cameraOn
-
-                console.log('[LK] Re-publishing INITIAL tracks after reconnection (Pass-Through)')
-                const results = await Promise.allSettled([
-                    (async () => {
-                        const track = localStream?.getAudioTracks()[0]
-                        if (track) {
-                            const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
-                            if (!micEnabled) await pub.track?.mute()
-                            return pub
-                        }
-                    })(),
-                    (async () => {
-                        const track = localStream?.getVideoTracks()[0]
-                        if (track) {
-                            const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Camera })
-                            if (!camEnabled) await pub.track?.mute()
-                            return pub
-                        }
-                    })()
-                ])
-                
-                results.forEach((r, i) => {
-                    const kind = i === 0 ? 'Mic' : 'Cam'
-                    if (r.status === 'fulfilled' && r.value) console.log(`[LK] Local ${kind} re-published successfully (Pass-Through)`)
-                    else if (r.status === 'rejected') console.error(`[LK] Falha ao re-publicar ${kind}:`, r.reason)
-                })
-            } catch (err) {
-                console.error('[LK] Erro ao re-publicar tracks após reconexão:', err)
-            }
-        }
-
-        const handleConnectionQualityChanged = (quality: ConnectionQuality, participant: Participant) => {
-            const peer = peersRef.current.get(participant.identity)
-            if (peer) {
-                peer.connectionQuality = quality.toString()
-                syncToState()
-            }
         }
 
         room
@@ -384,122 +378,33 @@ export function useWebRTC(
             .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
             .on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
             .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
-            .on(RoomEvent.TrackPublished, (pub, participant) => {
-                console.log(`[LK] Track published: ${pub.kind} (${pub.source}) from ${participant.identity}`)
-            })
-            .on(RoomEvent.ConnectionStateChanged, state => {
-                console.log('[LK] Connection state:', state)
-            })
             .on(RoomEvent.Disconnected, reason => {
-                console.warn('[LK] Disconnected:', reason)
                 if (!cancelled) setMediaStatus('disconnected')
             })
-            .on(RoomEvent.SignalConnected, () => {
-                console.log('[LK] Signaling connected')
-            })
-            .on(RoomEvent.ConnectionStateChanged, state => {
-                 console.log(`[LK] PC Connection State -> ${state}`)
-            })
             .on(RoomEvent.Reconnecting, () => {
-                console.log('[LK] Reconnecting...')
                 if (!cancelled) setMediaStatus('connecting')
             })
             .on(RoomEvent.Reconnected, handleReconnected)
 
         const connect = async () => {
             try {
-                console.log('[LK] Connecting...', { roomId, sessionUserId, role: userRole })
                 if (cancelled) return
                 setMediaStatus('connecting')
-
-                await room.connect(
-                    process.env.NEXT_PUBLIC_LIVEKIT_URL!, 
-                    liveKitTokenRef.current!,
-                    { rtcConfig: { iceServers } }
-                )
-                if (cancelled) {
-                    room.disconnect()
-                    return
-                }
-                
-                console.log('[LK] Connected successfully')
+                await room.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL!, liveKitTokenRef.current!, { rtcConfig: { iceServers } })
+                if (cancelled) { room.disconnect(); return }
                 setMediaStatus('connected')
                 setLastError(null)
 
-                // FIX: só publica tracks se o cargo permite
-                // guest e viewer não publicam — evita erro de permissão do LiveKit
                 const canPublish = !['guest', 'viewer'].includes(userRole.toLowerCase())
-
-                if (canPublish && localStream) {
-                    const micEnabled = initialConfig.micOn !== false
-                    const camEnabled = initialConfig.cameraOn !== false
-
-                    console.log('[LK] Publishing INITIAL tracks from localStream')
-                    // Publica áudio primeiro (sem delay)
-                    const audioResults = await Promise.allSettled([
-                        (async () => {
-                            const track = localStream.getAudioTracks()[0]
-                            if (track) {
-                                const pub = await room.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
-                                if (!micEnabled) await pub.track?.mute()
-                                return pub
-                            }
-                        })()
-                    ])
-                    audioResults.forEach(r => {
-                        if (r.status === 'fulfilled' && r.value) console.log('[LK] Local Mic published successfully (Pass-Through)')
-                        else if (r.status === 'rejected') console.error('[LK] Falha ao publicar Mic:', r.reason)
-                    })
-
-                    // Publica vídeo com delay para garantir que os frames estejam prontos (evita publish timeout via TURN)
-                    await new Promise(resolve => setTimeout(resolve, 500))
-                    const videoResults = await Promise.allSettled([
-                        (async () => {
-                            const track = localStream.getVideoTracks()[0]
-                            if (track) {
-                                // Tenta obter as dimensões reais, mas não trava se não vierem
-                                const settings = track.getSettings()
-                                const width = settings.width || 1280
-                                const height = settings.height || 720
-                                
-                                console.log('[LK] Publishing video track:', { 
-                                    width, 
-                                    height, 
-                                    frameRate: settings.frameRate,
-                                    streamId: localStream.id
-                                })
-                                
-                                const pub = await room.localParticipant.publishTrack(track, {
-                                    source: Track.Source.Camera,
-                                    simulcast: true, // Re-ativando simulcast para melhor compatibilidade
-                                    videoEncoding: {
-                                        maxBitrate: 1_500_000,
-                                        maxFramerate: 30,
-                                    }
-                                })
-                                if (!camEnabled) await pub.track?.mute()
-                                return pub
-                            }
-                        })()
-                    ])
-
-                    if (cancelled) return
-
-                    videoResults.forEach(r => {
-                        if (r.status === 'fulfilled' && r.value) console.log('[LK] Local Cam published successfully (Pass-Through)')
-                        else if (r.status === 'rejected') console.error('[LK] Falha ao publicar Cam:', r.reason)
-                    })
-                } else {
-                    console.log(`[LK] Cargo "${userRole}" ou localStream ausente — pulando publicação inicial`)
+                if (canPublish) {
+                    await room.localParticipant.setMicrophoneEnabled(initialConfig.micOn !== false)
+                    await room.localParticipant.setCameraEnabled(initialConfig.cameraOn !== false)
                 }
-
                 setUserCount(room.remoteParticipants.size + 1)
             } catch (error) {
                 if (cancelled) return
-                console.error('[LK] Connection failed:', error)
                 setLastError(error instanceof Error ? error.message : String(error))
                 setMediaStatus('failed')
-                setUserCount(1)
             }
         }
 
@@ -507,143 +412,11 @@ export function useWebRTC(
 
         return () => {
             cancelled = true
-            console.log('[LK] Cleaning up room connection')
-            if (healthCheckInterval) clearInterval(healthCheckInterval)
             room.removeAllListeners()
             room.disconnect()
             roomRef.current = null
         }
-    // FIX: liveKitToken removido das deps — usa ref para evitar re-criação do Room
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isJoined, roomId, sessionUserId])
-
-    // ─── Signaling & Presence ─────────────────────────────────────────────────
-    const handleRoomEvent = useCallback(
-        (event: { created_by: string; type: string; payload: Record<string, any> }) => {
-            if (event.created_by === userId) return
-            const { type, payload: data } = event
-
-            if (data.targetId === userId) {
-                if (type === 'KICK') {
-                    alert('Você foi removido da reunião pelo administrador.')
-                    window.location.href = '/dashboard'
-                } else if (type === 'MUTE') {
-                    toggleMicStream(false)
-                    window.dispatchEvent(new CustomEvent('admin-mute'))
-                } else if (type === 'BLOCK_AUDIO') {
-                    metadataRef.current.audioBlocked = true
-                    toggleMicStream(false)
-                    alert('Seu áudio foi bloqueado pelo anfitrião.')
-                } else if (type === 'UNBLOCK_AUDIO') {
-                    metadataRef.current.audioBlocked = false
-                    alert('Seu áudio foi desbloqueado.')
-                } else if (type === 'SET_ROLE') {
-                    metadataRef.current.role = data.role
-                    if (data.role !== 'interpreter') metadataRef.current.language = 'floor'
-                }
-                signaling?.trackMetadata(metadataRef.current)
-            }
-
-            if (type === 'SET_ALLOWED_LANGUAGES') {
-                window.dispatchEvent(new CustomEvent('admin-update-languages', { detail: data.languages }))
-            }
-        },
-        [userId, toggleMicStream]
-    )
-
-    const handlePresenceSync = useCallback(
-        (users: string[], state: Record<string, UserMetadata[]>) => {
-            console.log('[Presence] Sync. Users:', users)
-            let changed = false
-
-            // Remove peers que saíram
-            Array.from(peersRef.current.keys()).forEach(peerId => {
-                if (peerId.endsWith('-presentation')) return
-                if (!users.includes(peerId) && peerId !== sessionUserId) {
-                    peersRef.current.delete(peerId)
-                    changed = true
-                }
-            })
-
-            // Adiciona / atualiza peers presentes
-            users.forEach(remoteSessionId => {
-                if (remoteSessionId === sessionUserId) return
-                const remoteData = (state[remoteSessionId] as any[])?.[0]
-                const remoteId = remoteSessionId.split('_')[0]
-                const existing = peersRef.current.get(remoteSessionId)
-
-                if (existing) {
-                    const fields: Array<keyof typeof existing> = [
-                        'name', 'micOn', 'cameraOn', 'handRaised', 'language',
-                        'isHost', 'isGhost', 'audioBlocked',
-                    ]
-                    let peerChanged = false
-                    fields.forEach(f => {
-                        let newVal = f === 'role'
-                            ? remoteData?.role?.toLowerCase()
-                            : remoteData?.[f as string]
-                        
-                        // FIX: Prioritize active tracks over signaling metadata
-                        if (f === 'cameraOn' && !newVal) {
-                            newVal = !!existing.stream && existing.stream.getVideoTracks().length > 0
-                        }
-                        if (f === 'micOn' && !newVal) {
-                            newVal = !!existing.stream && existing.stream.getAudioTracks().length > 0
-                        }
-
-                        if (existing[f] !== newVal) {
-                            (existing as any)[f] = newVal
-                            peerChanged = true
-                        }
-                    })
-                    // role separado por causa do toLowerCase
-                    const remoteRole = remoteData?.role?.toLowerCase() || ''
-                    if (existing.role !== remoteRole) { existing.role = remoteRole; peerChanged = true }
-                    if (peerChanged) changed = true
-                } else {
-                    const isAlreadyInLK = Array.from(roomRef.current?.remoteParticipants.values() || []).some(p => p.identity === remoteSessionId)
-                    const newPeer: PeerData = {
-                        userId: remoteId,
-                        id: remoteSessionId,
-                        name: remoteData?.name || 'Participante',
-                        role: remoteData?.role || 'participant',
-                        micOn: !!remoteData?.micOn || (roomRef.current?.remoteParticipants.get(remoteSessionId)?.getTrackPublication(Track.Source.Microphone)?.isSubscribed ?? false),
-                        cameraOn: !!remoteData?.cameraOn || (roomRef.current?.remoteParticipants.get(remoteSessionId)?.getTrackPublication(Track.Source.Camera)?.isSubscribed ?? false),
-                        handRaised: !!remoteData?.handRaised,
-                        language: remoteData?.language || 'floor',
-                        isHost: !!remoteData?.isHost,
-                        isGhost: !!remoteData?.isGhost,
-                        audioBlocked: !!remoteData?.audioBlocked,
-                        connectionState: isAlreadyInLK ? 'connected' : 'connecting',
-                        joinedAt: Date.now(),
-                        connectionQuality: 'excellent',
-                        stream: null,
-                        screenStream: null
-                    }
-                    peersRef.current.set(remoteSessionId, newPeer)
-                    changed = true
-                }
-            })
-
-            // Cleanup: peers em 'connecting' há mais de 15s sem aparecer no LiveKit
-            const now = Date.now()
-            const lkIdentities = roomRef.current
-                ? Array.from(roomRef.current.remoteParticipants.values()).map(p => p.identity)
-                : []
-
-            peersRef.current.forEach((peer, peerId) => {
-                if (peer.isPresentation) return
-                if (!lkIdentities.includes(peerId) && (now - (peer.joinedAt ?? now)) > 15000 && peer.connectionState === 'connecting') {
-                    console.warn('[Presence] Ghost detectado (15s timeout):', peerId)
-                    peersRef.current.delete(peerId)
-                    changed = true
-                }
-            })
-
-            if (changed) syncToState()
-        },
-        [sessionUserId, syncToState]
-    )
 
     const signaling = useSignaling(
         roomId,
@@ -659,35 +432,101 @@ export function useWebRTC(
                 setReactions(prev => [...prev, { id, emoji: payload.emoji, userId: payload.sender }])
                 setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 5000)
             },
-            onRoomEvent: handleRoomEvent,
-            onPresenceSync: handlePresenceSync,
+            onRoomEvent: (event) => handleRoomEvent(event),
+            onPresenceSync: (u, s) => handlePresenceSync(u, s),
         },
         isJoined
     )
 
-    const updateMetadata = useCallback(
-        (patch: Partial<UserMetadata>) => {
-            metadataRef.current = { ...metadataRef.current, ...patch }
-            signaling?.trackMetadata(metadataRef.current)
-        },
-        [signaling]
-    )
+    // ─── Signaling & Presence ─────────────────────────────────────────────────
+    function handleRoomEvent(event: { created_by: string; type: string; payload: Record<string, any> }) {
+        if (event.created_by === userId) return
+        const { type, payload: data } = event
 
-    // ─── Screen Share ─────────────────────────────────────────────────────────
+        if (data.targetId === userId) {
+            if (type === 'KICK') {
+                alert('Você foi removido da reunião pelo administrador.')
+                window.location.href = '/dashboard'
+            } else if (type === 'MUTE') {
+                toggleMicStream(false)
+                window.dispatchEvent(new CustomEvent('admin-mute'))
+            } else if (type === 'BLOCK_AUDIO') {
+                metadataRef.current.audioBlocked = true
+                toggleMicStream(false)
+                alert('Seu áudio foi bloqueado pelo anfitrião.')
+            } else if (type === 'UNBLOCK_AUDIO') {
+                metadataRef.current.audioBlocked = false
+                alert('Seu áudio foi desbloqueado.')
+            } else if (type === 'SET_ROLE') {
+                metadataRef.current.role = data.role
+            }
+            signaling?.trackMetadata(metadataRef.current)
+        }
+    }
+
+    function handlePresenceSync(users: string[], state: Record<string, UserMetadata[]>) {
+        let changed = false
+        Array.from(peersRef.current.keys()).forEach(peerId => {
+            if (peerId.endsWith('-presentation')) return
+            if (!users.includes(peerId) && peerId !== sessionUserId) {
+                peersRef.current.delete(peerId)
+                changed = true
+            }
+        })
+        users.forEach(remoteSessionId => {
+            if (remoteSessionId === sessionUserId) return
+            const remoteData = (state[remoteSessionId] as any[])?.[0]
+            const remoteId = remoteSessionId.split('_')[0]
+            const existing = peersRef.current.get(remoteSessionId)
+
+            if (existing) {
+                let peerChanged = false
+                const fields: Array<keyof typeof existing> = ['name', 'micOn', 'cameraOn', 'handRaised', 'language', 'isHost', 'isGhost', 'audioBlocked']
+                fields.forEach(f => {
+                    const newVal = remoteData?.[f as string]
+                    if (existing[f] !== newVal) { (existing as any)[f] = newVal; peerChanged = true }
+                })
+                if (peerChanged) changed = true
+            } else {
+                peersRef.current.set(remoteSessionId, {
+                    userId: remoteId,
+                    id: remoteSessionId,
+                    name: remoteData?.name || 'Participante',
+                    role: remoteData?.role || 'participant',
+                    micOn: !!remoteData?.micOn,
+                    cameraOn: !!remoteData?.cameraOn,
+                    handRaised: !!remoteData?.handRaised,
+                    language: remoteData?.language || 'floor',
+                    isHost: !!remoteData?.isHost,
+                    isGhost: !!remoteData?.isGhost,
+                    audioBlocked: !!remoteData?.audioBlocked,
+                    connectionState: 'connected',
+                    joinedAt: Date.now(),
+                    connectionQuality: 'excellent',
+                    stream: null,
+                    screenStream: null
+                })
+                changed = true
+            }
+        })
+        if (changed) syncToState()
+    }
+
+    const updateMetadata = useCallback((patch: Partial<UserMetadata>) => {
+        metadataRef.current = { ...metadataRef.current, ...patch }
+        signaling?.trackMetadata(metadataRef.current)
+    }, [signaling])
+
     const shareScreen = async () => {
         if (!roomRef.current) return
         try {
             await roomRef.current.localParticipant.setScreenShareEnabled(true)
             setTimeout(() => {
                 const pub = roomRef.current?.localParticipant.getTrackPublication(Track.Source.ScreenShare)
-                if (pub?.videoTrack?.mediaStreamTrack) {
-                    setLocalScreenStream(new MediaStream([pub.videoTrack.mediaStreamTrack]))
-                }
+                if (pub?.videoTrack?.mediaStreamTrack) setLocalScreenStream(new MediaStream([pub.videoTrack.mediaStreamTrack]))
             }, 500)
             signaling?.broadcastEvent('share-started', { sender: userId })
-        } catch (error) {
-            console.error('[Screen] Failed to share:', error)
-        }
+        } catch (error) { console.error('[Screen] Failed to share:', error) }
     }
 
     const stopScreenShare = async () => {
@@ -696,16 +535,11 @@ export function useWebRTC(
             await roomRef.current.localParticipant.setScreenShareEnabled(false)
             setLocalScreenStream(null)
             signaling?.broadcastEvent('share-ended', { sender: userId })
-        } catch (error) {
-            console.error('[Screen] Failed to stop:', error)
-        }
+        } catch (error) { console.error('[Screen] Failed to stop:', error) }
     }
 
-    const shareVideoFile = async (_file: File) => {
-        console.warn('[shareVideoFile] Not yet implemented for LiveKit')
-    }
+    const shareVideoFile = async (_file: File) => { console.warn('[shareVideoFile] Not implemented') }
 
-    // ─── Admin Actions ────────────────────────────────────────────────────────
     const supabase = createClient()
     const promoteToHost = async (newHostId: string) => {
         if (!metadataRef.current.isHost) return
@@ -719,182 +553,61 @@ export function useWebRTC(
         setLocalHandRaised(next)
         updateMetadata({ handRaised: next })
     }
-    const kickUser = async (targetId: string) =>
-        supabase.from('room_events').insert({ meeting_id: roomId, type: 'KICK', payload: { targetId } })
-    const updateUserRole = async (targetId: string, newRole: string) =>
-        supabase.from('room_events').insert({ meeting_id: roomId, type: 'SET_ROLE', payload: { targetId, role: newRole } })
-    const updateUserLanguages = async (targetId: string, languages: string[]) =>
-        supabase.from('room_events').insert({ meeting_id: roomId, type: 'SET_ALLOWED_LANGUAGES', payload: { targetId, languages } })
-    const muteUser = async (targetId: string) =>
-        supabase.from('room_events').insert({ meeting_id: roomId, type: 'MUTE', payload: { targetId } })
-    const blockUserAudio = async (targetId: string) =>
-        supabase.from('room_events').insert({ meeting_id: roomId, type: 'BLOCK_AUDIO', payload: { targetId } })
-    const unblockUserAudio = async (targetId: string) =>
-        supabase.from('room_events').insert({ meeting_id: roomId, type: 'UNBLOCK_AUDIO', payload: { targetId } })
+    const kickUser = async (targetId: string) => supabase.from('room_events').insert({ meeting_id: roomId, type: 'KICK', payload: { targetId } })
+    const updateUserRole = async (targetId: string, newRole: string) => supabase.from('room_events').insert({ meeting_id: roomId, type: 'SET_ROLE', payload: { targetId, role: newRole } })
+    const updateUserLanguages = async (targetId: string, languages: string[]) => supabase.from('room_events').insert({ meeting_id: roomId, type: 'SET_ALLOWED_LANGUAGES', payload: { targetId, languages } })
+    const muteUser = async (targetId: string) => supabase.from('room_events').insert({ meeting_id: roomId, type: 'MUTE', payload: { targetId } })
+    const blockUserAudio = async (targetId: string) => supabase.from('room_events').insert({ meeting_id: roomId, type: 'BLOCK_AUDIO', payload: { targetId } })
+    const unblockUserAudio = async (targetId: string) => supabase.from('room_events').insert({ meeting_id: roomId, type: 'UNBLOCK_AUDIO', payload: { targetId } })
 
-    // ─── Reconnect (sem reload de página) ─────────────────────────────────────
-    // FIX: reconecta só o Room do LiveKit, sem perder estado da sessão
     const reconnect = useCallback(async () => {
-        if (!roomRef.current || !liveKitTokenRef.current) {
-            console.warn('[Reconnect] Sem room ou token disponível')
-            return
-        }
+        if (!roomRef.current || !liveKitTokenRef.current) return
         try {
-            console.log('[Reconnect] Reconectando LiveKit...')
             setMediaStatus('connecting')
-            await roomRef.current.connect(
-                process.env.NEXT_PUBLIC_LIVEKIT_URL!,
-                liveKitTokenRef.current,
-                { rtcConfig: { iceServers } }
-            )
-            // Re-publica tracks após reconexão manual (Pass-Through)
-            const micEnabled = metadataRef.current.micOn
-            const camEnabled = metadataRef.current.cameraOn
-
-            const results = await Promise.allSettled([
-                (async () => {
-                    const track = localStream?.getAudioTracks()[0]
-                    if (track) {
-                        const pub = await roomRef.current!.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
-                        if (!micEnabled) await pub.track?.mute()
-                        return pub
-                    }
-                })(),
-                (async () => {
-                    const track = localStream?.getVideoTracks()[0]
-                    if (track) {
-                        const pub = await roomRef.current!.localParticipant.publishTrack(track, { source: Track.Source.Camera })
-                        if (!camEnabled) await pub.track?.mute()
-                        return pub
-                    }
-                })()
-            ])
-            results.forEach((r, i) => {
-                const kind = i === 0 ? 'Mic' : 'Cam'
-                if (r.status === 'fulfilled' && r.value) console.log(`[LK] Local ${kind} re-published manually`)
-                else if (r.status === 'rejected') console.error(`[Reconnect] Re-publish falhou ${kind}:`, r.reason)
-            })
+            await roomRef.current.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL!, liveKitTokenRef.current, { rtcConfig: { iceServers } })
             setMediaStatus('connected')
-            console.log('[Reconnect] Reconexão manual bem-sucedida')
-        } catch (err) {
-            console.error('[Reconnect] Falhou:', err)
-            setMediaStatus('failed')
+        } catch (err) { console.error('[Reconnect] Failed:', err); setMediaStatus('failed') }
+    }, [iceServers])
+
+    const handleSwitchDevice = useCallback(async (kind: 'audio' | 'video', deviceId: string) => {
+        await switchDevice(kind, deviceId)
+        if (roomRef.current?.state === 'connected') {
+            try {
+                const source = kind === 'audio' ? Track.Source.Microphone : Track.Source.Camera
+                const pub = roomRef.current.localParticipant.getTrackPublication(source)
+                const newTrack = await switchDevice(kind, deviceId)
+                if (pub && newTrack) {
+                    await (roomRef.current.localParticipant as any).unpublishTrack(pub.track)
+                    await roomRef.current.localParticipant.publishTrack(newTrack, { source })
+                } else if (newTrack) await roomRef.current.localParticipant.publishTrack(newTrack, { source })
+            } catch (err) { console.error(`[Device] Switch ${kind} failed:`, err) }
         }
-    }, [])
+    }, [switchDevice])
 
-    // ─── Device Switch ────────────────────────────────────────────────────────
-    const handleSwitchDevice = useCallback(
-        async (kind: 'audio' | 'video', deviceId: string) => {
-            await switchDevice(kind, deviceId)
-            if (kind === 'audio') lastAudioDeviceId.current = deviceId
-            else lastVideoDeviceId.current = deviceId
+    const toggleMic = useCallback(async (enabled: boolean) => {
+        toggleMicStream(enabled)
+        if (roomRef.current) {
+            const pub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Microphone)
+            if (pub) { if (enabled) await pub.track?.unmute(); else await pub.track?.mute() }
+            updateMetadata({ micOn: enabled })
+        }
+    }, [toggleMicStream, updateMetadata])
 
-            if (roomRef.current?.state === 'connected') {
-                try {
-                    const source = kind === 'audio' ? Track.Source.Microphone : Track.Source.Camera
-                    const pub = roomRef.current.localParticipant.getTrackPublication(source)
-                    const newTrack = await switchDevice(kind, deviceId) // Get the new track from parent
-                    
-                    if (pub && newTrack) {
-                        console.log(`[Device] Replacing ${kind} track in LiveKit`)
-                        await roomRef.current.localParticipant.unpublishTrack(pub.track as any)
-                        await roomRef.current.localParticipant.publishTrack(newTrack, { source })
-                    } else if (newTrack) {
-                        await roomRef.current.localParticipant.publishTrack(newTrack, { source })
-                    }
-                } catch (err) {
-                    console.error(`[Device] Switch ${kind} falhou no LiveKit:`, err)
-                }
-            }
-        },
-        [switchDevice]
-    )
-
-    // ─── Mic / Camera Toggle ──────────────────────────────────────────────────
-    const toggleMic = useCallback(
-        async (enabled: boolean) => {
-            toggleMicStream(enabled)
-            if (roomRef.current) {
-                const pub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Microphone)
-                if (pub) {
-                    if (enabled) await pub.track?.unmute()
-                    else await pub.track?.mute()
-                } else if (enabled && localStream) {
-                    const track = localStream.getAudioTracks()[0]
-                    if (track) await roomRef.current.localParticipant.publishTrack(track, { source: Track.Source.Microphone })
-                }
-                updateMetadata({ micOn: enabled })
-            }
-        },
-        [toggleMicStream, updateMetadata, localStream]
-    )
-
-    const toggleCamera = useCallback(
-        async (enabled: boolean) => {
-            toggleCameraStream(enabled)
-            if (roomRef.current) {
-                const pub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Camera)
-                if (pub) {
-                    if (enabled) await pub.track?.unmute()
-                    else await pub.track?.mute()
-                } else if (enabled && localStream) {
-                    const track = localStream.getVideoTracks()[0]
-                    if (track) await roomRef.current.localParticipant.publishTrack(track, { source: Track.Source.Camera })
-                }
-                updateMetadata({ cameraOn: enabled })
-            }
-        },
-        [toggleCameraStream, updateMetadata, localStream]
-    )
+    const toggleCamera = useCallback(async (enabled: boolean) => {
+        toggleCameraStream(enabled)
+        if (roomRef.current) {
+            const pub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Camera)
+            if (pub) { if (enabled) await pub.track?.unmute(); else await pub.track?.mute() }
+            updateMetadata({ cameraOn: enabled })
+        }
+    }, [toggleCameraStream, updateMetadata])
 
     const getDiagnostics = useCallback(async () => {
-        const diagnostics: any = {
-            hasRoom: !!roomRef.current,
-            hasToken: !!liveKitToken,
-            isJoinedProp: isJoined,
-            state: 'no-room',
-            iceState: 'n/a',
-            candidateType: '---',
-            protocol: '---',
-            participants: peers.length + 1,
-            url: process.env.NEXT_PUBLIC_LIVEKIT_URL,
-        }
+        const d: any = { hasRoom: !!roomRef.current, state: 'no-room', participants: peers.length + 1 }
+        if (roomRef.current) d.state = roomRef.current.state
+        return d
+    }, [peers.length])
 
-        if (!roomRef.current) return diagnostics
-        
-        try {
-            // Em versões recentes do LiveKit, o pc pode estar em caminhos diferentes dependendo da versão interna
-            const engine = (roomRef.current as any).engine
-            const pc = engine?.pc || (engine?.publisher as any)?.pc || (engine?.subscriber as any)?.pc
-            
-            diagnostics.state = roomRef.current.state
-            
-            if (pc) {
-                diagnostics.iceState = pc.iceConnectionState
-                diagnostics.signalingState = pc.signalingState
-                
-                // Overlay state if connecting
-                if (roomRef.current.state === 'connecting' || roomRef.current.state === 'reconnecting') {
-                    diagnostics.iceState = roomRef.current.state // 'connecting' is more descriptive than 'new' or 'checking' for the user
-                }
-                
-                const stats = await pc.getStats()
-                stats.forEach((report: any) => {
-                    if (report.type === 'remote-candidate' && report.candidateType) {
-                        diagnostics.candidateType = report.candidateType
-                        diagnostics.protocol = report.protocol
-                    }
-                })
-            }
-
-            return diagnostics
-        } catch (e) {
-            console.error('[Diagnostics] Failed to collect stats:', e)
-            return diagnostics
-        }
-    }, [isJoined, liveKitToken, peers.length])
-
-    // ─── Return ───────────────────────────────────────────────────────────────
     return {
         localStream,
         peers,
@@ -925,10 +638,11 @@ export function useWebRTC(
         isHost: hostId === userId,
         reconnect,
         mediaStatus,
-        signalingStatus: signaling?.connectionState || 'disconnected',
         lastError,
         setLastError,
+        roomLocalStream: localStreamFromRoom,
         localScreenStream,
+        signalingStatus: signaling?.connectionState || 'disconnected',
         getDiagnostics,
     }
 }
