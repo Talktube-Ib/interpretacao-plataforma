@@ -248,10 +248,10 @@ export function useWebRTC(
             const baseUserId = fullIdentity.split('_')[0]
             const isScreen = publication.source === Track.Source.ScreenShare
 
-            const existing = peersRef.current.get(fullIdentity) || ({
+            const existing = peersRef.current.get(fullIdentity) || {
                 userId: baseUserId,
                 id: fullIdentity,
-                name: 'Participante',
+                name: participant.name || participant.identity,
                 role: 'participant',
                 connectionState: 'connected' as const,
                 joinedAt: Date.now(),
@@ -262,28 +262,19 @@ export function useWebRTC(
                 connectionQuality: 'excellent',
                 stream: null,
                 screenStream: null
-            } as PeerData)
+            } as PeerData
 
             if (isScreen) {
-                // Para screen share, monta um stream manualmente
-                const stream = existing.screenStream ?? new MediaStream()
-                stream.addTrack(track.mediaStreamTrack)
-                existing.screenStream = new MediaStream(stream.getTracks())
+                const currentTracks = existing.screenStream?.getTracks() || []
+                const newTracks = [...currentTracks.filter(t => t.kind !== track.kind), track.mediaStreamTrack]
+                existing.screenStream = new MediaStream(newTracks)
                 setSharingUserId(baseUserId)
             } else {
-                // Usa o track diretamente do callback — garante ser o track correto do RTCPeerConnection
-                const existingStream = existing.stream ?? new MediaStream()
-                // Remove track do mesmo tipo se existir (evita duplicatas)
-                existingStream.getTracks()
-                    .filter(t => t.kind === track.kind)
-                    .forEach(t => existingStream.removeTrack(t))
-                existingStream.addTrack(track.mediaStreamTrack)
-                // Cria novo objeto MediaStream para que React detecte a mudança de referência
-                existing.stream = new MediaStream(existingStream.getTracks())
+                // Reconstroi o stream de forma limpa com as tracks atuais + a nova
+                const currentTracks = existing.stream?.getTracks() || []
+                const newTracks = [...currentTracks.filter(t => t.kind !== track.kind), track.mediaStreamTrack]
+                existing.stream = new MediaStream(newTracks)
 
-                console.log(`[LK] Built stream from direct track:`, existing.stream.getTracks().map(t => ({ kind: t.kind, readyState: t.readyState })))
-
-                // Sempre define cameraOn/micOn ao receber o track — não depende do Presence
                 if (track.kind === Track.Kind.Video) existing.cameraOn = true
                 if (track.kind === Track.Kind.Audio) existing.micOn = true
             }

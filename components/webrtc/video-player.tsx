@@ -47,14 +47,13 @@ export const RemoteVideo = memo(function RemoteVideo({
     // Monitor de Tracks
     useEffect(() => {
         if (!stream) {
-            setHasVideoTrack(false)
             setHasAudioTrack(false)
             return
         }
         const checkTracks = () => {
             const vTracks = stream.getVideoTracks()
             const aTracks = stream.getAudioTracks()
-            console.log(`[VP] ${name} — stream tracks:`, { 
+            console.log(`[VP] ${name} — stream tracks:`, {
                 video: vTracks.map(t => ({ readyState: t.readyState, enabled: t.enabled })),
                 audio: aTracks.map(t => ({ readyState: t.readyState, enabled: t.enabled })),
                 cameraOff
