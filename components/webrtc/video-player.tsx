@@ -38,15 +38,6 @@ export const RemoteVideo = memo(function RemoteVideo({
     const [isBuffering, setIsBuffering] = useState(false)
     const [showSlider, setShowSlider] = useState(false)
     const [hasVideoTrack, setHasVideoTrack] = useState(false)
-
-    // DIAGNOSTIC: always logs, even when stream is null
-    console.log(`[VP-RENDER] ${name}`, { 
-        streamIsNull: stream == null,
-        streamTrackCount: stream?.getTracks().length ?? 0,
-        cameraOff,
-        connectionState
-    })
-
     const [hasAudioTrack, setHasAudioTrack] = useState(false)
 
     // Watchdog State
