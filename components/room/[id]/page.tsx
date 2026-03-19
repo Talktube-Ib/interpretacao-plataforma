@@ -27,16 +27,19 @@ export default function RoomPage() {
     useEffect(() => {
         async function fetchToken() {
             try {
-                const res = await fetch('/api/livekit/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        room: roomId,
-                        identity: `${userId}_${Math.random().toString(36).substring(2, 5)}`,
-                        name: userName,
-                        metadata: JSON.stringify({ role: userRole, name: userName })
-                    })
+                const params = new URLSearchParams({
+                    room: roomId,
+                    username: `${userId}_${Math.random().toString(36).substring(2, 5)}`,
+                    role: userRole,
+                    name: userName
                 })
+                const res = await fetch(`/api/livekit/token?${params.toString()}`)
+                
+                if (!res.ok) {
+                    const error = await res.text()
+                    throw new Error(`Token fetch failed: ${res.status} ${error}`)
+                }
+
                 const data = await res.json()
                 setToken(data.token)
                 setIsJoined(true)
