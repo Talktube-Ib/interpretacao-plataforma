@@ -177,14 +177,22 @@ export function useWebRTC(
         const connect = async () => {
             try {
                 setMediaStatus('connecting')
-                const url = liveKitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL!
-                await room.connect(url, liveKitToken)
+                const rawUrl = liveKitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL!
+                const url = rawUrl.startsWith('http') ? rawUrl.replace('http', 'ws') : rawUrl
+                
+                console.log('[LK] Connecting to:', url)
+                console.log('[LK] Token length:', liveKitToken?.length || 0)
+                
+                await room.connect(url, liveKitToken!)
+                console.log('[LK] Connected successfully to Room:', room.name)
                 setMediaStatus('connected')
 
-                // Initial publish (minimalist - rely on room capabilities)
+                // Initial publish
+                console.log('[LK] Publishing initial tracks...')
                 await room.localParticipant.setMicrophoneEnabled(initialConfig.micOn !== false)
                 await room.localParticipant.setCameraEnabled(initialConfig.cameraOn !== false)
                 updateLocalStream()
+                console.log('[LK] Initial tracks published.')
             } catch (err) {
                 console.error('[LK] Connection error:', err)
                 setLastError(String(err))

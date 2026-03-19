@@ -112,9 +112,13 @@ export default function RoomPage() {
                 <div className="flex items-center gap-4">
                      <div className={cn(
                         "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                        mediaStatus === 'connected' ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500 animate-pulse"
+                        mediaStatus === 'connected' ? "bg-green-500/10 text-green-500" : 
+                        mediaStatus === 'failed' ? "bg-red-500/10 text-red-500" :
+                        "bg-amber-500/10 text-amber-500 animate-pulse"
                     )}>
-                        {mediaStatus === 'connected' ? 'Conectado' : 'Sincronizando...'}
+                        {mediaStatus === 'connected' ? 'Conectado' : 
+                         mediaStatus === 'failed' ? 'Falha na Conexão' : 
+                         'Sincronizando...'}
                     </div>
                 </div>
             </header>
