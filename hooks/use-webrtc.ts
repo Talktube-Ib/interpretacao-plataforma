@@ -102,17 +102,17 @@ export function useWebRTC(
             if (pub.source === Track.Source.ScreenShare) {
                 existing.screenStream = new MediaStream([track.mediaStreamTrack])
             } else {
-                if (!existing.stream) existing.stream = new MediaStream()
+                const newStream = existing.stream ? new MediaStream(existing.stream.getTracks()) : new MediaStream()
                 
-                // Track management
                 if (track.kind === 'video') {
-                    existing.stream.getVideoTracks().forEach(t => existing.stream?.removeTrack(t))
+                    newStream.getVideoTracks().forEach(t => newStream.removeTrack(t))
                     existing.cameraOn = true
                 } else {
-                    existing.stream.getAudioTracks().forEach(t => existing.stream?.removeTrack(t))
+                    newStream.getAudioTracks().forEach(t => newStream.removeTrack(t))
                     existing.micOn = true
                 }
-                existing.stream.addTrack(track.mediaStreamTrack)
+                newStream.addTrack(track.mediaStreamTrack)
+                existing.stream = newStream
             }
 
             peersRef.current.set(id, existing)
@@ -128,7 +128,9 @@ export function useWebRTC(
                 existing.screenStream = null
             } else {
                 if (existing.stream) {
-                    existing.stream.removeTrack(track.mediaStreamTrack)
+                    const newStream = new MediaStream(existing.stream.getTracks())
+                    newStream.removeTrack(track.mediaStreamTrack)
+                    existing.stream = newStream
                     if (track.kind === 'video') existing.cameraOn = false
                     else existing.micOn = false
                 }
@@ -169,12 +171,33 @@ export function useWebRTC(
             }
         }
 
+        const handleMetadataChanged = (metadata: string | undefined, p: Participant) => {
+            const id = p.identity
+            const existing = peersRef.current.get(id)
+            if (existing) {
+                try {
+                    const parsed = JSON.parse(metadata || '{}')
+                    existing.role = parsed.role || existing.role
+                } catch (e) {}
+                existing.name = p.name || existing.name
+                syncToState()
+            }
+        }
+
         room.on(RoomEvent.TrackSubscribed, handleTrackSubscribed)
             .on(RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
             .on(RoomEvent.ParticipantConnected, handleParticipantConnected)
             .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
             .on(RoomEvent.TrackMuted, handleMuteChange)
             .on(RoomEvent.TrackUnmuted, handleMuteChange)
+            .on(RoomEvent.ParticipantMetadataChanged, handleMetadataChanged)
+            .on(RoomEvent.ParticipantNameChanged, (name: string, p: Participant) => {
+                const existing = peersRef.current.get(p.identity)
+                if (existing) {
+                    existing.name = name || p.name || existing.name
+                    syncToState()
+                }
+            })
             .on(RoomEvent.LocalTrackPublished, updateLocalStates)
             .on(RoomEvent.LocalTrackUnpublished, updateLocalStates)
             .on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
@@ -189,20 +212,13 @@ export function useWebRTC(
                 const rawUrl = liveKitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL!
                 const url = rawUrl.startsWith('http') ? rawUrl.replace('http', 'ws') : rawUrl
                 
-                console.log('[LK] Connecting to:', url)
-                console.log('[LK] Token length:', liveKitToken?.length || 0)
-                console.log('[LK] ICE Servers:', iceServers?.length || 0)
-                
                 await room.connect(url, liveKitToken!, { rtcConfig: { iceServers } })
-                console.log('[LK] Connected successfully to Room:', room.name)
                 setMediaStatus('connected')
 
-                // Initial publish
-                console.log('[LK] Publishing initial tracks...')
-                await room.localParticipant.setMicrophoneEnabled(initialConfig.micOn !== false)
-                await room.localParticipant.setCameraEnabled(initialConfig.cameraOn !== false)
+                // Initial publish (DO NOT USE initialConfig as dependency)
+                await room.localParticipant.setMicrophoneEnabled(true)
+                await room.localParticipant.setCameraEnabled(true)
                 updateLocalStates()
-                console.log('[LK] Initial tracks published.')
             } catch (err) {
                 console.error('[LK] Connection error:', err)
                 setLastError(String(err))
@@ -217,7 +233,7 @@ export function useWebRTC(
             room.disconnect()
             roomRef.current = null
         }
-    }, [isJoined, liveKitToken, roomId, liveKitUrl, iceServers, initialConfig.micOn, initialConfig.cameraOn, syncToState, updateLocalStates])
+    }, [isJoined, liveKitToken, roomId, liveKitUrl, iceServers, syncToState, updateLocalStates])
 
     // ─── Actions ─────────────────────────────────────────────────────────────
     const toggleMic = useCallback(async (enabled: boolean) => {
@@ -260,6 +276,7 @@ export function useWebRTC(
         reconnect,
         userCount: peers.length + 1,
         isHost: userRole === 'admin' || userRole === 'MASTER',
+        isAudioBlocked: room?.canPlaybackAudio === false,
         localScreenStream: null,
         sharingUserId: null,
         reactions: [],

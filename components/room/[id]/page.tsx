@@ -87,7 +87,8 @@ export default function RoomPage() {
         isCameraOn: webrtcCamOn,
         toggleMic: toggleWebRTCMic,
         toggleCamera: toggleWebRTCCam,
-        reconnect
+        reconnect,
+        isAudioBlocked
     } = useWebRTC(
         roomId,
         userId,
@@ -136,6 +137,35 @@ export default function RoomPage() {
     return (
         <div className="h-screen w-screen bg-zinc-950 flex flex-col overflow-hidden text-white font-sans relative">
             {/* Popup de Convite (Meet Style) */}
+            <AnimatePresence>
+                {isAudioBlocked && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 text-center"
+                    >
+                        <div className="max-w-md bg-zinc-900 border border-white/10 rounded-3xl p-8 shadow-2xl">
+                            <div className="bg-cyan-500/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-cyan-500/20">
+                                <Mic className="h-8 w-8 text-cyan-500" />
+                            </div>
+                            <h2 className="text-xl font-bold mb-2">Áudio Bloqueado</h2>
+                            <p className="text-sm text-zinc-400 mb-8 leading-relaxed">
+                                Seu navegador impediu a reprodução automática do áudio. Clique abaixo para entrar e ouvir os outros participantes.
+                            </p>
+                            <Button 
+                                className="w-full py-6 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-cyan-500/20"
+                                onClick={() => {
+                                    toggleWebRTCMic(webrtcMicOn);
+                                }}
+                            >
+                                Ativar Áudio e Entrar
+                            </Button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <AnimatePresence>
                 {isInviteOpen && (
                     <motion.div 
