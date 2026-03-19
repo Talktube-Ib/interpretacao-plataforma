@@ -22,34 +22,42 @@ export default function RoomPage() {
     
     const [token, setToken] = useState<string | null>(null)
     const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null)
+    const [iceServers, setIceServers] = useState<RTCIceServer[] | undefined>(undefined)
     const [isJoined, setIsJoined] = useState(false)
 
-    // 1. Fetch Token
+    // 1. Fetch Token & ICE
     useEffect(() => {
-        async function fetchToken() {
+        async function fetchData() {
             try {
+                // Token fetch
                 const params = new URLSearchParams({
                     room: roomId,
                     username: `${userId}_${Math.random().toString(36).substring(2, 5)}`,
                     role: userRole,
                     name: userName
                 })
-                const res = await fetch(`/api/livekit/token?${params.toString()}`)
-                
-                if (!res.ok) {
-                    const error = await res.text()
-                    throw new Error(`Token fetch failed: ${res.status} ${error}`)
+                const tokenRes = await fetch(`/api/livekit/token?${params.toString()}`)
+                if (!tokenRes.ok) throw new Error(`Token fetch failed: ${tokenRes.status}`)
+                const tokenData = await tokenRes.json()
+                setToken(tokenData.token)
+                if (tokenData.url) setLiveKitUrl(tokenData.url)
+
+                // ICE fetch
+                const iceRes = await fetch('/api/turn')
+                if (iceRes.ok) {
+                    const iceData = await iceRes.json()
+                    if (iceData.iceServers) {
+                        setIceServers(iceData.iceServers)
+                        console.log('[ICE] Servidores carregados:', iceData.iceServers.length)
+                    }
                 }
 
-                const data = await res.json()
-                setToken(data.token)
-                if (data.url) setLiveKitUrl(data.url)
                 setIsJoined(true)
             } catch (err) {
-                console.error("Failed to fetch token:", err)
+                console.error("Failed to fetch room data:", err)
             }
         }
-        fetchToken()
+        fetchData()
     }, [roomId, userId, userName, userRole])
 
     // 2. Media Devices
@@ -77,7 +85,8 @@ export default function RoomPage() {
         isJoined,
         userName,
         token || undefined,
-        liveKitUrl || undefined
+        liveKitUrl || undefined,
+        iceServers
     )
 
     const handleLeave = () => {

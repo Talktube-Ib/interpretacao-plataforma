@@ -31,6 +31,7 @@ export function useWebRTC(
     userName: string = 'Participante',
     liveKitToken?: string,
     liveKitUrl?: string,
+    iceServers?: RTCIceServer[],
 ) {
     const [room, setRoom] = useState<Room | null>(null)
     const [peers, setPeers] = useState<PeerData[]>([])
@@ -182,8 +183,9 @@ export function useWebRTC(
                 
                 console.log('[LK] Connecting to:', url)
                 console.log('[LK] Token length:', liveKitToken?.length || 0)
+                console.log('[LK] ICE Servers:', iceServers?.length || 0)
                 
-                await room.connect(url, liveKitToken!)
+                await room.connect(url, liveKitToken!, { rtcConfig: { iceServers } })
                 console.log('[LK] Connected successfully to Room:', room.name)
                 setMediaStatus('connected')
 
