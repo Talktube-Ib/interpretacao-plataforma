@@ -149,46 +149,70 @@ export const RemoteVideo = memo(function RemoteVideo({
         videoEl.addEventListener('pause', handlePause)
         videoEl.addEventListener('error', handleError)
 
-        const watchdogInterval = setInterval(() => {
-            if (!videoEl || !stream) return
-            const vTrack = stream.getVideoTracks()[0]
-            if (!vTrack || vTrack.readyState !== 'live') return
-
-            const hasZeroRes = videoEl.videoWidth === 0 || videoEl.videoHeight === 0
-            const isStuck = videoEl.currentTime > 0 && videoEl.currentTime === lastTimeRef.current && !videoEl.paused
-
-            if (hasZeroRes || isStuck) {
-                stuckFrameCountRef.current++
-            } else {
-                stuckFrameCountRef.current = 0
-            }
-            lastTimeRef.current = videoEl.currentTime
-
-            if (stuckFrameCountRef.current > 12) {
-                console.warn("Video Watchdog: TRIGGERING SILENT RECOVERY")
-                stuckFrameCountRef.current = 0
-                const currentStream = videoEl.srcObject
-                if (currentStream) {
-                    videoEl.srcObject = null
-                    setTimeout(() => {
-                        if (videoEl && currentStream) {
-                            videoEl.srcObject = currentStream
-                            videoEl.play().catch(() => setIsPaused(true))
-                        }
-                    }, 50)
-                }
-            }
-        }, 500)
-
         return () => {
             videoEl.removeEventListener('waiting', handleWaiting)
             videoEl.removeEventListener('stalled', handleWaiting)
             videoEl.removeEventListener('playing', handlePlaying)
             videoEl.removeEventListener('pause', handlePause)
             videoEl.removeEventListener('error', handleError)
-            clearInterval(watchdogInterval)
         }
     }, [stream, isBuffering])
+
+    // Watchdog de Renderização
+    useEffect(() => {
+        const videoEl = videoRef.current
+        if (!videoEl || !stream || !hasVideoTrack || cameraOff) return
+
+        let lastCheckTime = Date.now()
+        let lastFrameTime = 0
+        
+        const watchdog = setInterval(() => {
+            const now = Date.now()
+            const { videoWidth, videoHeight, currentTime, paused, readyState } = videoEl
+
+            // Diagnóstico periódico
+            if (now - lastCheckTime > 5000) {
+                console.log(`[VP-WATCHDOG] ${name}:`, {
+                    dims: `${videoWidth}x${videoHeight}`,
+                    currentTime,
+                    paused,
+                    readyState,
+                    hasVideoTrack
+                })
+                lastCheckTime = now
+            }
+
+            // Se o vídeo deveria estar tocando mas as dimensões são 0 ou o tempo não avança
+            if (readyState >= 2 && !paused) {
+                if (videoWidth === 0 || videoHeight === 0) {
+                    stuckFrameCountRef.current++
+                } else if (currentTime === lastFrameTime) {
+                    stuckFrameCountRef.current++
+                } else {
+                    stuckFrameCountRef.current = 0
+                    lastFrameTime = currentTime
+                }
+
+                // Se travado por mais de 3 segundos (30 checks)
+                if (stuckFrameCountRef.current > 30) {
+                    console.warn(`[VP-WATCHDOG] ${name} parece travado (${videoWidth}x${videoHeight} @ ${currentTime}). Tentando recuperar...`)
+                    stuckFrameCountRef.current = 0
+                    
+                    // "Kick" no srcObject
+                    const s = videoEl.srcObject
+                    videoEl.srcObject = null
+                    setTimeout(() => {
+                        if (videoEl && s) {
+                            videoEl.srcObject = s
+                            videoEl.play().catch(e => console.error("[VP-WATCHDOG] Erro ao re-iniciar:", e))
+                        }
+                    }, 100)
+                }
+            }
+        }, 100)
+
+        return () => clearInterval(watchdog)
+    }, [stream, hasVideoTrack, cameraOff, name])
 
     const isConnecting = connectionState === 'connecting'
 
@@ -327,12 +351,45 @@ export const LocalVideo = memo(function LocalVideo({
     stream, name, role, micOff, cameraOff, handRaised, isSpeaking, onPin, isPinned, showPinButton = true, connectionQuality 
 }: VideoPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null)
+    const stuckFrameCountRef = useRef(0)
 
     useEffect(() => {
-        if (videoRef.current && stream && !cameraOff) {
-            videoRef.current.srcObject = stream
-            videoRef.current.play().catch(console.error)
-        }
+        const videoEl = videoRef.current
+        if (!videoEl || !stream || cameraOff) return
+
+        let lastCheckTime = Date.now()
+        
+        const watchdog = setInterval(() => {
+            const now = Date.now()
+            const { videoWidth, videoHeight, currentTime, paused, readyState } = videoEl
+
+            if (now - lastCheckTime > 5000) {
+                console.log(`[VP-LOCAL-WATCHDOG]:`, {
+                    dims: `${videoWidth}x${videoHeight}`,
+                    currentTime,
+                    paused,
+                    readyState,
+                    streamId: stream.id
+                })
+                lastCheckTime = now
+            }
+
+            if (!cameraOff && readyState >= 2 && !paused && (videoWidth === 0 || videoHeight === 0)) {
+                // Se local está 0x0 por muito tempo, tenta re-anexar
+                stuckFrameCountRef.current++
+                if (stuckFrameCountRef.current > 30) {
+                    console.warn("[VP-LOCAL] Vídeo local 0x0. Re-anexando srcObject...")
+                    stuckFrameCountRef.current = 0
+                    const s = videoEl.srcObject
+                    videoEl.srcObject = null
+                    setTimeout(() => { if (videoEl && s) videoEl.srcObject = s }, 50)
+                }
+            } else {
+                stuckFrameCountRef.current = 0
+            }
+        }, 100)
+
+        return () => clearInterval(watchdog)
     }, [stream, cameraOff])
 
     return (

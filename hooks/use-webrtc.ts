@@ -466,12 +466,24 @@ export function useWebRTC(
                         (async () => {
                             const track = localStream.getVideoTracks()[0]
                             if (track) {
-                                // Verifica se o track já tem frames disponíveis
-                                const settings = track.getSettings()
-                                console.log('[LK] Publishing video track with settings:', { width: settings.width, height: settings.height, frameRate: settings.frameRate })
+                                // Aguarda até 2 segundos por frames válidos (dimensões > 0)
+                                let settings = track.getSettings()
+                                let waitAttempts = 0
+                                while ((!settings.width || settings.width === 0) && waitAttempts < 20) {
+                                    await new Promise(r => setTimeout(r, 100))
+                                    settings = track.getSettings()
+                                    waitAttempts++
+                                }
+
+                                console.log('[LK] Publishing video track with settings:', { 
+                                    width: settings.width, 
+                                    height: settings.height, 
+                                    frameRate: settings.frameRate,
+                                    waitAttempts
+                                })
+                                
                                 const pub = await room.localParticipant.publishTrack(track, {
                                     source: Track.Source.Camera,
-                                    // Desabilita simulcast para evitar timeout via TURN relay
                                     simulcast: false,
                                 })
                                 if (!camEnabled) await pub.track?.mute()

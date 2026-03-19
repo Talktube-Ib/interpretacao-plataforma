@@ -121,7 +121,9 @@ export function useMediaStream(config: MediaStreamConfig = {}, isJoined: boolean
             if (kind === 'audio') currentAudioTrackRef.current = newTrack
             else currentVideoTrackRef.current = newTrack
 
-            // Notify caller that track changed (useful for renegotiation if needed)
+            // Trigger React update by creating a new stream reference
+            setStream(new MediaStream(stream.getTracks()))
+
             return newTrack
         } catch (err) {
             console.error(`Failed to switch ${kind} device:`, err)
