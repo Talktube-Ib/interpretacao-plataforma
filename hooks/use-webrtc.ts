@@ -222,6 +222,11 @@ export function useWebRTC(
                 setMediaStatus('connected')
                 if (userName) room.localParticipant.setName(userName)
 
+                // Populate existing participants
+                room.remoteParticipants.forEach((p: RemoteParticipant) => {
+                    handleParticipantConnected(p)
+                })
+
                 await room.localParticipant.setMicrophoneEnabled(true)
                 await room.localParticipant.setCameraEnabled(true)
                 updateLocalStates()
