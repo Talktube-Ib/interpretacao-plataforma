@@ -74,6 +74,8 @@ export default function RoomPage() {
         peers,
         roomLocalStream,
         mediaStatus,
+        isMicOn: webrtcMicOn,
+        isCameraOn: webrtcCamOn,
         toggleMic: toggleWebRTCMic,
         toggleCamera: toggleWebRTCCam,
         reconnect
@@ -138,8 +140,8 @@ export default function RoomPage() {
                     peers={peers}
                     localStream={roomLocalStream}
                     currentRole={userRole}
-                    micOn={isMicOn}
-                    cameraOn={isCameraOn}
+                    micOn={webrtcMicOn}
+                    cameraOn={webrtcCamOn}
                     mode="gallery"
                     activeSpeakerId={null}
                     pinnedSpeakerId={null}
@@ -157,25 +159,25 @@ export default function RoomPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => { toggleLocalMic(!isMicOn); toggleWebRTCMic(!isMicOn); }}
+                        onClick={() => toggleWebRTCMic(!webrtcMicOn)}
                         className={cn(
                             "h-12 w-12 rounded-2xl transition-all duration-300",
-                            isMicOn ? "bg-zinc-800 hover:bg-zinc-700 text-white" : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+                            webrtcMicOn ? "bg-zinc-800 hover:bg-zinc-700 text-white" : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
                         )}
                     >
-                        {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+                        {webrtcMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
                     </Button>
 
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => { toggleLocalCam(!isCameraOn); toggleWebRTCCam(!isCameraOn); }}
+                        onClick={() => toggleWebRTCCam(!webrtcCamOn)}
                         className={cn(
                             "h-12 w-12 rounded-2xl transition-all duration-300",
-                            isCameraOn ? "bg-zinc-800 hover:bg-zinc-700 text-white" : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+                            webrtcCamOn ? "bg-zinc-800 hover:bg-zinc-700 text-white" : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
                         )}
                     >
-                        {isCameraOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+                        {webrtcCamOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
                     </Button>
 
                     <div className="w-px h-8 bg-white/10 mx-2" />

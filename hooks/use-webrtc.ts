@@ -36,6 +36,8 @@ export function useWebRTC(
     const [room, setRoom] = useState<Room | null>(null)
     const [peers, setPeers] = useState<PeerData[]>([])
     const [roomLocalStream, setRoomLocalStream] = useState<MediaStream | null>(null)
+    const [isMicOn, setIsMicOn] = useState(initialConfig.micOn !== false)
+    const [isCameraOn, setIsCameraOn] = useState(initialConfig.cameraOn !== false)
     const [mediaStatus, setMediaStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'failed' | 'closed'>('disconnected')
     const [lastError, setLastError] = useState<string | null>(null)
 
@@ -47,9 +49,11 @@ export function useWebRTC(
         setPeers(Array.from(peersRef.current.values()))
     }, [])
 
-    const updateLocalStream = useCallback(() => {
+    const updateLocalStates = useCallback(() => {
         if (!roomRef.current) return
         const lp = roomRef.current.localParticipant
+        
+        // Update local track stream
         const stream = new MediaStream()
         lp.getTrackPublications().forEach(pub => {
             if (pub.track?.mediaStreamTrack) {
@@ -57,6 +61,10 @@ export function useWebRTC(
             }
         })
         setRoomLocalStream(stream.getTracks().length > 0 ? stream : null)
+        
+        // Sync hardware status
+        setIsMicOn(lp.isMicrophoneEnabled)
+        setIsCameraOn(lp.isCameraEnabled)
     }, [])
 
     // ─── LiveKit Room Logic ──────────────────────────────────────────────────
@@ -157,7 +165,7 @@ export function useWebRTC(
                     syncToState()
                 }
             } else {
-                updateLocalStream()
+                updateLocalStates()
             }
         }
 
@@ -167,8 +175,8 @@ export function useWebRTC(
             .on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
             .on(RoomEvent.TrackMuted, handleMuteChange)
             .on(RoomEvent.TrackUnmuted, handleMuteChange)
-            .on(RoomEvent.LocalTrackPublished, updateLocalStream)
-            .on(RoomEvent.LocalTrackUnpublished, updateLocalStream)
+            .on(RoomEvent.LocalTrackPublished, updateLocalStates)
+            .on(RoomEvent.LocalTrackUnpublished, updateLocalStates)
             .on(RoomEvent.ConnectionStateChanged, (state: ConnectionState) => {
                 if (state === ConnectionState.Connected) setMediaStatus('connected')
                 else if (state === ConnectionState.Connecting || state === ConnectionState.Reconnecting) setMediaStatus('connecting')
@@ -193,7 +201,7 @@ export function useWebRTC(
                 console.log('[LK] Publishing initial tracks...')
                 await room.localParticipant.setMicrophoneEnabled(initialConfig.micOn !== false)
                 await room.localParticipant.setCameraEnabled(initialConfig.cameraOn !== false)
-                updateLocalStream()
+                updateLocalStates()
                 console.log('[LK] Initial tracks published.')
             } catch (err) {
                 console.error('[LK] Connection error:', err)
@@ -209,16 +217,26 @@ export function useWebRTC(
             room.disconnect()
             roomRef.current = null
         }
-    }, [isJoined, liveKitToken, roomId, liveKitUrl]) // Added liveKitUrl
+    }, [isJoined, liveKitToken, roomId, liveKitUrl, iceServers, initialConfig.micOn, initialConfig.cameraOn, syncToState, updateLocalStates])
 
     // ─── Actions ─────────────────────────────────────────────────────────────
     const toggleMic = useCallback(async (enabled: boolean) => {
-        if (roomRef.current) await roomRef.current.localParticipant.setMicrophoneEnabled(enabled)
-    }, [])
+        if (!roomRef.current) return
+        try {
+            await roomRef.current.localParticipant.setMicrophoneEnabled(enabled)
+            // Resume audio play if blocked
+            await roomRef.current.startAudio()
+            updateLocalStates()
+        } catch (err) { console.error('[LK] Toggle Mic failed:', err) }
+    }, [updateLocalStates])
 
     const toggleCamera = useCallback(async (enabled: boolean) => {
-        if (roomRef.current) await roomRef.current.localParticipant.setCameraEnabled(enabled)
-    }, [])
+        if (!roomRef.current) return
+        try {
+            await roomRef.current.localParticipant.setCameraEnabled(enabled)
+            updateLocalStates()
+        } catch (err) { console.error('[LK] Toggle Camera failed:', err) }
+    }, [updateLocalStates])
 
     const switchDevice = useCallback(async (kind: 'audio' | 'video', deviceId: string) => {
         if (roomRef.current) await roomRef.current.switchActiveDevice(kind === 'audio' ? 'audioinput' : 'videoinput', deviceId)
@@ -232,6 +250,8 @@ export function useWebRTC(
         room,
         peers,
         roomLocalStream,
+        isMicOn,
+        isCameraOn,
         mediaStatus,
         lastError,
         toggleMic,
