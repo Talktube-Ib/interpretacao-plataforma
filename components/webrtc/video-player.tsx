@@ -452,7 +452,7 @@ export const LocalVideo = memo(function LocalVideo({
 
             <div className="absolute bottom-3 left-3 md:bottom-6 md:left-6 flex items-center justify-between right-3 pointer-events-none">
                 <div className="bg-black/40 backdrop-blur-xl px-2.5 py-1.5 rounded-xl border border-white/10">
-                    <span className="text-white text-[9px] md:text-sm font-bold">Você</span>
+                    <span className="text-white text-[9px] md:text-sm font-bold">{name}</span>
                 </div>
                 <div className="flex gap-1">
                     {handRaised && <Hand className="h-3 w-3 text-amber-500 animate-bounce" />}

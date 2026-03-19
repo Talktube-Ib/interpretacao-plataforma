@@ -7,6 +7,7 @@ import { useWebRTC } from '@/hooks/use-webrtc'
 import { VideoGrid } from '@/components/room/video-grid'
 import { Mic, MicOff, Video, VideoOff, LogOut, Settings, Users, Monitor, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -18,7 +19,7 @@ export default function RoomPage() {
     
     // Auth & Identity (Minimalist)
     const [userId] = useState(() => `user_${Math.random().toString(36).substring(2, 7)}`)
-    const userName = searchParams.get('name') || 'Convidado'
+    const [userName, setUserName] = useState<string>(searchParams.get('name') || 'Convidado')
     const userRole = searchParams.get('role') || 'participant'
     
     const [token, setToken] = useState<string | null>(null)
@@ -30,12 +31,22 @@ export default function RoomPage() {
     useEffect(() => {
         async function fetchData() {
             try {
+                // Tenta pegar o nome do Supabase se disponível
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                
+                let currentName = userName
+                if (user) {
+                    currentName = user.user_metadata?.full_name || user.email?.split('@')[0] || userName
+                    setUserName(currentName)
+                }
+
                 // Token fetch
                 const params = new URLSearchParams({
                     room: roomId,
                     username: `${userId}_${Math.random().toString(36).substring(2, 5)}`,
                     role: userRole,
-                    name: userName
+                    name: currentName
                 })
                 const tokenRes = await fetch(`/api/livekit/token?${params.toString()}`)
                 if (!tokenRes.ok) throw new Error(`Token fetch failed: ${tokenRes.status}`)
@@ -204,25 +215,25 @@ export default function RoomPage() {
 
             {/* Grid de Vídeo - Ocupa todo o espaço */}
             <main className="flex-1 min-h-0 relative p-4 flex items-center justify-center">
-                <VideoGrid
-                    peers={peers}
-                    localStream={roomLocalStream}
-                    currentRole={userRole}
-                    micOn={webrtcMicOn}
-                    cameraOn={webrtcCamOn}
-                    mode="gallery"
-                    activeSpeakerId={null}
-                    pinnedSpeakerId={null}
-                    onSpeakerChange={() => {}}
-                    onPeerSpeaking={() => {}}
-                    localUserName={userName}
-                    selectedLang="original"
-                    handRaised={false}
-                    localMutedPeers={localMutedPeers}
-                    onMutePeer={handleMutePeer}
-                    localPeerVolumes={localPeerVolumes}
-                    onLocalVolumeChange={handleLocalVolumeChange}
-                />
+                    <VideoGrid
+                        peers={peers}
+                        localStream={roomLocalStream}
+                        currentRole={userRole}
+                        micOn={webrtcMicOn}
+                        cameraOn={webrtcCamOn}
+                        mode="gallery"
+                        activeSpeakerId={null}
+                        pinnedSpeakerId={null}
+                        onSpeakerChange={() => {}}
+                        onPeerSpeaking={() => {}}
+                        localUserName={userName}
+                        selectedLang="original"
+                        handRaised={false}
+                        localMutedPeers={localMutedPeers}
+                        onMutePeer={handleMutePeer}
+                        localPeerVolumes={localPeerVolumes}
+                        onLocalVolumeChange={handleLocalVolumeChange}
+                    />
             </main>
 
             {/* Toolbar Inferior */}
