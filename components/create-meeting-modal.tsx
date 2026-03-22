@@ -47,11 +47,19 @@ export default function CreateMeetingModal({ userId, preselectedDate }: CreateMe
         if (!error && meetingData && meetingData[0]) {
             const meetingId = meetingData[0].id
 
-            // Send Notifications
+            // Send Notifications & Assign Interpreters (FIX BUG 6)
             for (const interpreter of data.interpreters) {
                 if (interpreter.email) {
                     const { data: userData } = await supabase.from('profiles').select('id').eq('email', interpreter.email).maybeSingle()
                     if (userData) {
+                        // Inserir na tabela de associações reais (puxado do schema)
+                        await supabase.from('interpreter_assignments').insert({
+                            meeting_id: meetingId,
+                            user_id: userData.id,
+                            language_code: interpreter.languages[0] || 'pt-BR' // Usando o primeiro idioma como principal
+                        })
+
+                        // Notificação
                         await supabase.from('notifications').insert({
                             user_id: userData.id,
                             title: t('notifications.invite_title') || 'Convite para Reunião',

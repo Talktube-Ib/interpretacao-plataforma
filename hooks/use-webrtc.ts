@@ -43,7 +43,18 @@ export function useWebRTC(
 
     const roomRef = useRef<Room | null>(null)
     const peersRef = useRef<Map<string, PeerData>>(new Map())
-    const connectsRef = useRef(0)
+
+    // FIX 1: Stream persistente por participante — nunca recriado, apenas mutado.
+    // Isso evita o "pisca preto" causado por trocar srcObject no <video>.
+    const peerStreamsRef = useRef<Map<string, MediaStream>>(new Map())
+
+    // ─── Retorna (ou cria) o MediaStream persistente de um participante ─────────
+    const getOrCreateStream = useCallback((participantId: string): MediaStream => {
+        if (!peerStreamsRef.current.has(participantId)) {
+            peerStreamsRef.current.set(participantId, new MediaStream())
+        }
+        return peerStreamsRef.current.get(participantId)!
+    }, [])
 
     // ─── Sync Local State to Component ───────────────────────────────────────
     const syncToState = useCallback(() => {
@@ -53,17 +64,29 @@ export function useWebRTC(
     const updateLocalStates = useCallback(() => {
         if (!roomRef.current) return
         const lp = roomRef.current.localParticipant
-        
-        // Update local track stream
-        const stream = new MediaStream()
-        lp.getTrackPublications().forEach(pub => {
-            if (pub.track?.mediaStreamTrack) {
-                stream.addTrack(pub.track.mediaStreamTrack)
-            }
+
+        // FIX 2: Stream local também usa referência persistente.
+        // Reutilizamos o mesmo objeto MediaStream e apenas adicionamos/removemos tracks.
+        setRoomLocalStream(prev => {
+            const stream = prev || new MediaStream()
+            // Remove tracks que não existem mais
+            stream.getTracks().forEach(t => {
+                const stillExists = Array.from(lp.getTrackPublications().values())
+                    .some(pub => pub.track?.mediaStreamTrack === t)
+                if (!stillExists) stream.removeTrack(t)
+            })
+            // Adiciona tracks novos
+            lp.getTrackPublications().forEach(pub => {
+                if (pub.track?.mediaStreamTrack) {
+                    const mst = pub.track.mediaStreamTrack
+                    if (!stream.getTracks().includes(mst)) {
+                        stream.addTrack(mst)
+                    }
+                }
+            })
+            return stream.getTracks().length > 0 ? stream : null
         })
-        setRoomLocalStream(stream.getTracks().length > 0 ? stream : null)
-        
-        // Sync hardware status
+
         setIsMicOn(lp.isMicrophoneEnabled)
         setIsCameraOn(lp.isCameraEnabled)
     }, [])
@@ -71,9 +94,8 @@ export function useWebRTC(
     // ─── LiveKit Room Logic ──────────────────────────────────────────────────
     useEffect(() => {
         if (!isJoined || !liveKitToken) return
-        
-        // Impedir reconexão se já estivermos na mesma sala e conectados/conectando
-        if (roomRef.current && 
+
+        if (roomRef.current &&
            (roomRef.current.state === ConnectionState.Connected || roomRef.current.state === ConnectionState.Connecting)) {
             return
         }
@@ -91,6 +113,8 @@ export function useWebRTC(
         roomRef.current = room
         setRoom(room)
 
+        // FIX 3: handleTrackSubscribed adiciona a track ao stream persistente,
+        // em vez de criar um new MediaStream() a cada update.
         const handleTrackSubscribed = (track: RemoteTrack, pub: RemoteTrackPublication, p: RemoteParticipant) => {
             const id = p.identity
             const existing = peersRef.current.get(id) || {
@@ -102,29 +126,34 @@ export function useWebRTC(
                 cameraOn: false,
                 stream: null,
                 screenStream: null,
-                connectionState: 'connected'
+                connectionState: 'connected' as const
             }
 
             if (pub.source === Track.Source.ScreenShare) {
+                // Screen share pode ter stream próprio sem problema de pisca
                 existing.screenStream = new MediaStream([track.mediaStreamTrack])
             } else {
-                const newStream = existing.stream ? new MediaStream(existing.stream.getTracks()) : new MediaStream()
-                
+                // Reutilizar o mesmo MediaStream — apenas adicionar/remover tracks
+                const persistentStream = getOrCreateStream(id)
+
                 if (track.kind === 'video') {
-                    newStream.getVideoTracks().forEach(t => newStream.removeTrack(t))
+                    // Remove qualquer video track antiga antes de adicionar a nova
+                    persistentStream.getVideoTracks().forEach(t => persistentStream.removeTrack(t))
                     existing.cameraOn = true
                 } else {
-                    newStream.getAudioTracks().forEach(t => newStream.removeTrack(t))
+                    persistentStream.getAudioTracks().forEach(t => persistentStream.removeTrack(t))
                     existing.micOn = true
                 }
-                newStream.addTrack(track.mediaStreamTrack)
-                existing.stream = newStream
+                persistentStream.addTrack(track.mediaStreamTrack)
+                existing.stream = persistentStream  // sempre a mesma referência
             }
 
             peersRef.current.set(id, existing)
             syncToState()
         }
 
+        // FIX 4: handleTrackUnsubscribed remove track do stream persistente,
+        // sem criar um new MediaStream().
         const handleTrackUnsubscribed = (track: RemoteTrack, pub: RemoteTrackPublication, p: RemoteParticipant) => {
             const id = p.identity
             const existing = peersRef.current.get(id)
@@ -133,10 +162,10 @@ export function useWebRTC(
             if (pub.source === Track.Source.ScreenShare) {
                 existing.screenStream = null
             } else {
-                if (existing.stream) {
-                    const newStream = new MediaStream(existing.stream.getTracks())
-                    newStream.removeTrack(track.mediaStreamTrack)
-                    existing.stream = newStream
+                const persistentStream = peerStreamsRef.current.get(id)
+                if (persistentStream) {
+                    // Remove apenas a track específica — não recria o objeto
+                    persistentStream.removeTrack(track.mediaStreamTrack)
                     if (track.kind === 'video') existing.cameraOn = false
                     else existing.micOn = false
                 }
@@ -161,6 +190,8 @@ export function useWebRTC(
 
         const handleParticipantDisconnected = (p: RemoteParticipant) => {
             peersRef.current.delete(p.identity)
+            // Limpa o stream persistente do participante que saiu
+            peerStreamsRef.current.delete(p.identity)
             syncToState()
         }
 
@@ -217,18 +248,26 @@ export function useWebRTC(
                 setMediaStatus('connecting')
                 const rawUrl = liveKitUrl || process.env.NEXT_PUBLIC_LIVEKIT_URL!
                 const url = rawUrl.startsWith('http') ? rawUrl.replace('http', 'ws') : rawUrl
-                
+
                 await room.connect(url, liveKitToken)
                 setMediaStatus('connected')
                 if (userName) room.localParticipant.setName(userName)
 
-                // Populate existing participants
+                // Popula participantes existentes
                 room.remoteParticipants.forEach((p: RemoteParticipant) => {
                     handleParticipantConnected(p)
+                    // Subscribes em tracks já publicadas ao entrar na sala
+                    p.getTrackPublications().forEach(pub => {
+                        if (pub.track && pub.isSubscribed) {
+                            handleTrackSubscribed(pub.track as RemoteTrack, pub as RemoteTrackPublication, p)
+                        }
+                    })
                 })
 
-                await room.localParticipant.setMicrophoneEnabled(true)
-                await room.localParticipant.setCameraEnabled(true)
+                // FIX 5: LiveKit gerencia 100% do hardware após join.
+                // NÃO passamos stream do useMediaStream aqui — evita conflito de hardware.
+                await room.localParticipant.setMicrophoneEnabled(initialConfig.micOn !== false)
+                await room.localParticipant.setCameraEnabled(initialConfig.cameraOn !== false)
                 updateLocalStates()
             } catch (err) {
                 console.error('[LK] Connection error:', err)
@@ -240,10 +279,12 @@ export function useWebRTC(
         connect()
 
         return () => {
-            // Só desconecta se a sala ou o ID mudar REALMENTE
-            // A limpeza do React disparará se liveKitToken mudar, mas o early return no topo protege de criar novo
+            room.disconnect()
+            roomRef.current = null
+            peersRef.current.clear()
+            peerStreamsRef.current.clear()
         }
-    }, [isJoined, !!liveKitToken, roomId])
+    }, [isJoined, liveKitToken, roomId])
 
     useEffect(() => {
         if (roomRef.current?.state === ConnectionState.Connected && userName) {
@@ -256,7 +297,6 @@ export function useWebRTC(
         if (!roomRef.current) return
         try {
             await roomRef.current.localParticipant.setMicrophoneEnabled(enabled)
-            // Resume audio play if blocked
             await roomRef.current.startAudio()
             updateLocalStates()
         } catch (err) { console.error('[LK] Toggle Mic failed:', err) }
@@ -296,7 +336,7 @@ export function useWebRTC(
         localScreenStream: null,
         sharingUserId: null,
         reactions: [],
-        signalingStatus: 'joined', 
+        signalingStatus: 'joined',
         getDiagnostics: () => ({}),
         sendEmoji: () => {},
         shareScreen: () => {},

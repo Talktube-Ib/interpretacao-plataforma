@@ -34,6 +34,7 @@ export async function middleware(request: NextRequest) {
     const isProtectedRoute =
         pathname.startsWith('/dashboard') ||
         pathname.startsWith('/admin') ||
+        pathname.startsWith('/room') ||
         pathname.startsWith('/atualizar-senha')
 
     if (!isProtectedRoute) {
@@ -118,16 +119,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - api (API routes)
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * - public folder assets (logos, images, assets)
-         * - all files with common extensions
-         */
-        '/((?!api|_next/static|_next/image|favicon.ico|logos|images|assets|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
-    ],
+    matcher: ['/dashboard/:path*', '/admin/:path*', '/room/:path*', '/atualizar-senha/:path*'],
 }

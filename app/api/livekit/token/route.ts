@@ -11,7 +11,6 @@ type ParticipantRole = 'admin' | 'interpreter' | 'participant'
 const ROLE_CONFIGS: Record<ParticipantRole, any> = {
   admin: {
     roomJoin: true,
-    roomCreate: true,
     roomAdmin: true,
     canPublish: true,
     canSubscribe: true,
@@ -37,94 +36,100 @@ const ROLE_CONFIGS: Record<ParticipantRole, any> = {
   },
 }
 
+// FIX BUG 1: Resolução de Role via Banco de Dados (Segurança)
+async function resolveRole(
+  supabase: any,
+  userId: string,
+  roomId: string,
+): Promise<ParticipantRole> {
+  try {
+    // 1. Verifica se é Admin Global
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+
+    if (profile?.role === 'admin') return 'admin'
+
+    // 2. Verifica se é o Host da sala específica
+    const { data: meeting } = await supabase
+      .from('meetings')
+      .select('host_id')
+      .eq('id', roomId)
+      .single()
+
+    if (meeting?.host_id === userId) return 'admin'
+
+    // 3. Verifica se é Intérprete designado
+    const { data: assignment } = await supabase
+      .from('interpreter_assignments')
+      .select('id')
+      .eq('meeting_id', roomId)
+      .eq('user_id', userId)
+      .single()
+
+    if (assignment) return 'interpreter'
+
+    return 'participant'
+  } catch (e) {
+    console.error('[Token] Erro ao resolver role:', e)
+    return 'participant'
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const room     = searchParams.get('room')
   const username = searchParams.get('username')
   const name     = searchParams.get('name') || username
-  const role     = (searchParams.get('role') ?? 'participant') as ParticipantRole
 
-  // 1. Verificação de Segurança (Supabase Session)
+  if (!room || !username) {
+    return NextResponse.json({ error: 'Missing "room" or "username"' }, { status: 400 })
+  }
+
+  // Verificação de Segurança (Supabase Session)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const isGuest = username?.startsWith('guest-')
 
-  // Se não for um guest válido e não tiver sessão, bloqueia
-  // A lógica de guest foi removida, então esta verificação pode ser simplificada
-  if (!user && isGuest) { // Se for um guest (que não deveria mais existir) e não tiver user, bloqueia
-      console.warn('[Security] Unauthorized token request blocked: guest role is deprecated', { room, username, role })
+  if (!user && !isGuest) {
+      console.warn('[Security] Unauthorized token request blocked: no user session', { room, username })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  if (!user && !isGuest) { // Se não for guest e não tiver user, bloqueia
-      console.warn('[Security] Unauthorized token request blocked: no user session', { room, username, role })
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-
-  // Se for adm ou interpreter, OBRIGATÓRIO ter sessão válida no banco
-  if ((role === 'admin' || role === 'interpreter') && !user) {
-      console.warn('[Security] Privileged role requested without session:', { room, username, role })
-      return NextResponse.json({ error: 'Unauthorized: Session required for this role' }, { status: 401 })
-  }
-
-  // Validações de entrada
-  if (!room) {
-    return NextResponse.json({ error: 'Missing "room" query parameter' }, { status: 400 })
-  }
-  if (!username) {
-    return NextResponse.json({ error: 'Missing "username" query parameter' }, { status: 400 })
-  }
-  if (!Object.keys(ROLE_CONFIGS).includes(role)) {
-    return NextResponse.json({ error: `Invalid role. Valid roles: ${Object.keys(ROLE_CONFIGS).join(', ')}` }, { status: 400 })
   }
 
   const apiKey   = process.env.LIVEKIT_API_KEY
   const apiSecret = process.env.LIVEKIT_API_SECRET
   const wsUrl    = process.env.NEXT_PUBLIC_LIVEKIT_URL
 
-  // Log seguro (só para servidor, nunca exposto no response)
-  console.log('[LiveKit] Token request:', {
-    room,
-    username,
-    role,
-    hasApiKey: !!apiKey,
-    hasApiSecret: !!apiSecret,
-    hasWsUrl: !!wsUrl,
-  })
-
   if (!apiKey || !apiSecret || !wsUrl) {
-    // Log detalhado apenas no servidor
-    console.error('[LiveKit] ERRO: Variáveis de ambiente ausentes:', {
-      LIVEKIT_API_KEY: !!apiKey,
-      LIVEKIT_API_SECRET: !!apiSecret,
-      NEXT_PUBLIC_LIVEKIT_URL: !!wsUrl,
-    })
-    // Response limpo para o cliente, sem vazar detalhes
+    console.error('[LiveKit] ERRO: Variáveis de ambiente ausentes')
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
   }
 
   try {
+    // RESOLVE ROLE (FIX BUG 1)
+    const userId = user?.id || username
+    const role = await resolveRole(supabase, userId, room)
     const roleConfig = ROLE_CONFIGS[role]
 
     const at = new AccessToken(apiKey, apiSecret, {
       identity: username,
       name: name || undefined,
-      ttl: roleConfig.ttl,       // ← TTL explícito por cargo
-      // Metadata útil para o console do intérprete e health monitor
-      metadata: JSON.stringify({ role }),
+      ttl: roleConfig.ttl,
+      metadata: JSON.stringify({ role, userId }),
     })
 
-    // Extrai as permissões de grants, excluindo o ttl
     const { ttl, ...grants } = roleConfig
     at.addGrant({ ...grants, room })
 
     const token = await at.toJwt()
 
-    console.log('[LiveKit] Token gerado com sucesso:', { room, username, role, ttl })
+    console.log('[LiveKit] Token gerado com sucesso:', { room, username, role })
 
-    return NextResponse.json({ token, url: wsUrl })
-    //                                   ↑ url já embutido facilita o cliente
+    // Retorna o role resolvido para o frontend (FIX BUG 5)
+    return NextResponse.json({ token, url: wsUrl, role })
   } catch (error) {
     console.error('[LiveKit] Erro ao gerar token:', error)
     return NextResponse.json({ error: 'Failed to generate token' }, { status: 500 })

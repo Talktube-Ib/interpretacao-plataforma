@@ -1,76 +1,47 @@
-
 import { NextResponse } from 'next/server'
 
-export async function GET() {
-    // 1. Try to get TURN credentials from environment variables
-    const meteredApiKey = process.env.METERED_API_KEY
-    const turnUrl = process.env.TURN_URL || process.env.NEXT_PUBLIC_TURN_URL
-    const turnUsername = process.env.TURN_USERNAME || process.env.NEXT_PUBLIC_TURN_USERNAME
-    const turnCredential = process.env.TURN_CREDENTIAL || process.env.NEXT_PUBLIC_TURN_CREDENTIAL
+// FIX: Open Relay removido como fallback.
+// O Open Relay (openrelayproject) é gratuito, compartilhado e frequentemente sobrecarregado.
+// Em redes corporativas (firewalls), o vídeo era roteado por ele e travava por falta de banda.
+//
+// SOLUÇÃO RECOMENDADA (escolha uma):
+// 1. Livekit Cloud tem TURN integrado — se você usa LiveKit Cloud, não precisa de TURN separado.
+//    Basta não passar iceServers para o Room e o LiveKit resolve automaticamente.
+//
+// 2. Se precisar de TURN próprio, use a Metered (paga) com METERED_API_KEY configurado.
+//
+// 3. LiveKit self-hosted inclui TURN nativo (porta 443 UDP/TCP) — zero config adicional.
 
-    // Default to a robust list of public STUN servers and Open Relay (Community TURN)
-    const iceServers: RTCIceServer[] = [
+export async function GET() {
+    const meteredApiKey = process.env.METERED_API_KEY
+
+    // STUN público do Google — leve, sem banda, só para descoberta de IP
+    const stunServers: RTCIceServer[] = [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        // Open Relay Project (Free TURN) - Excellent for MVPs
-        {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        },
-        {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        },
-        {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        }
     ]
 
-    // A. Preferred: Automatic Fetch from Metered.ca
+    // Se tem Metered configurado, usa os servidores pagos (globais, low-latency)
     if (meteredApiKey) {
         try {
             const domain = process.env.METERED_DOMAIN || 'global.metered.live'
-            const url = `https://${domain}/api/v1/turn/credentials?apiKey=${meteredApiKey}`
-
-            console.log("[ICE] Buscando TURN via Metered:", domain)
-            const response = await fetch(url)
+            const response = await fetch(
+                `https://${domain}/api/v1/turn/credentials?apiKey=${meteredApiKey}`,
+                { next: { revalidate: 3600 } }  // cache por 1h — as credenciais duram horas
+            )
             if (response.ok) {
-                const iceServersFromMetered = await response.json()
-                if (Array.isArray(iceServersFromMetered)) {
-                    console.log("[ICE] Metered retornou", iceServersFromMetered.length, "servidores")
-                    return NextResponse.json({ iceServers: [...iceServersFromMetered, ...iceServers] })
-                }
-            } else {
-                const errText = await response.text()
-                console.error("[ICE] Erro na API Metered:", response.status, errText)
-                // Se o domínio customizado falhar, tenta o global como fallback
-                if (domain !== 'global.metered.live') {
-                    const fallbackUrl = `https://global.metered.live/api/v1/turn/credentials?apiKey=${meteredApiKey}`
-                    const fbRes = await fetch(fallbackUrl)
-                    if (fbRes.ok) {
-                        const fbServers = await fbRes.json()
-                        return NextResponse.json({ iceServers: [...fbServers, ...iceServers] })
-                    }
-                }
+                const meteredServers = await response.json()
+                // Metered primeiro (TURN pago), STUN Google como backup leve
+                return NextResponse.json({ iceServers: [...meteredServers, ...stunServers] })
             }
         } catch (e) {
-            console.error("Metered fetch failed", e)
+            console.error('[TURN] Metered fetch failed:', e)
         }
     }
 
-    // B. Manual Config (if TURN is configured manually)
-    if (turnUrl && turnUsername && turnCredential) {
-        iceServers.unshift({
-            urls: turnUrl,
-            username: turnUsername,
-            credential: turnCredential
-        })
-    }
-
-    // Force add defaults if nothing else worked
-    return NextResponse.json({ iceServers })
+    // Fallback: só STUN.
+    // Se o LiveKit Cloud está sendo usado, ele injeta TURN automaticamente via token.
+    // Se usuários em firewalls severos não conseguem conectar sem TURN, configure METERED_API_KEY.
+    console.warn('[TURN] Retornando apenas STUN — configure METERED_API_KEY para suporte a firewalls corporativos.')
+    return NextResponse.json({ iceServers: stunServers })
 }

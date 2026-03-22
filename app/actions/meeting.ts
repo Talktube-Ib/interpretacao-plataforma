@@ -108,6 +108,7 @@ export async function endMeeting(meetingId: string, force: boolean = false) {
                 end_time: new Date().toISOString()
             })
             .eq('id', meetingId)
+            .eq('host_id', user.id) // FIX BUG 8: só o host pode encerrar
 
         if (updateError) throw updateError
         return { success: true }

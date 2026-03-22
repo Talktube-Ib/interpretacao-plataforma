@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, ArrowRightLeft, Radio, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,11 +8,11 @@ import { cn } from '@/lib/utils'
 import { useVirtualBooth } from '@/hooks/useVirtualBooth'
 import {
     LiveKitRoom,
-    VideoConference,
     GridLayout,
     ParticipantTile,
     RoomAudioRenderer,
     useTracks,
+    useParticipants,
 } from '@livekit/components-react'
 import { Track } from 'livekit-client'
 import '@livekit/components-styles'
@@ -21,7 +21,6 @@ interface VirtualBoothProps {
     roomId: string
     userId: string
     userLanguage: string
-    localStream: MediaStream | null
     onHandoverComplete: () => void
     isActive: boolean
 }
@@ -30,7 +29,6 @@ export function VirtualBooth({
     roomId,
     userId,
     userLanguage,
-    localStream,
     onHandoverComplete,
     isActive
 }: VirtualBoothProps) {
@@ -39,7 +37,6 @@ export function VirtualBooth({
             roomId={roomId}
             userId={userId}
             userLanguage={userLanguage}
-            localStream={localStream}
             onHandoverComplete={onHandoverComplete}
             isActive={isActive}
         />
@@ -58,6 +55,20 @@ function LiveKitWrapper({ roomId, userId, userLanguage, onHandoverComplete, isAc
     } = useVirtualBooth(roomId, userId, userLanguage)
 
     const [isMuted, setIsMuted] = useState(false)
+
+    // FIX: Detectar parceiro de cabine para o Handover (Bug 3)
+    const participants = useParticipants()
+    const otherInterpreter = useMemo(() => {
+        return participants.find(p => {
+            try {
+                const meta = JSON.parse(p.metadata || '{}')
+                // Procura por outro intérprete que não seja o próprio usuário
+                return meta.role === 'interpreter' && p.identity !== userId
+            } catch {
+                return false
+            }
+        })
+    }, [participants, userId])
 
     if (!liveKitToken) return null
 
@@ -113,9 +124,20 @@ function LiveKitWrapper({ roomId, userId, userLanguage, onHandoverComplete, isAc
                     isPending={isHandoverPending}
                     deadline={handoverDeadline}
                     onAccept={acceptHandover}
-                    onCancel={cancelHandover}
-                    onRequest={requestHandover}
+                    onCancel={() => {
+                        if (otherInterpreter) cancelHandover(otherInterpreter.identity)
+                        else cancelHandover()
+                    }}
+                    onRequest={() => {
+                        if (otherInterpreter) {
+                            requestHandover(otherInterpreter.identity)
+                        } else {
+                            // Feedback caso não haja parceiro
+                            console.warn("Nenhum parceiro de cabine detectado para a troca.")
+                        }
+                    }}
                     onComplete={onHandoverComplete}
+                    canRequest={!!otherInterpreter}
                 />
             </div>
 
@@ -147,9 +169,10 @@ interface HandoverControlsProps {
     onCancel: () => void
     onRequest: () => void
     onComplete: () => void
+    canRequest: boolean
 }
 
-function HandoverControls({ isPending, deadline, onAccept, onCancel, onRequest, onComplete }: HandoverControlsProps) {
+function HandoverControls({ isPending, deadline, onAccept, onCancel, onRequest, onComplete, canRequest }: HandoverControlsProps) {
     const [timeLeft, setTimeLeft] = useState<number | null>(null)
 
     useEffect(() => {
@@ -191,11 +214,15 @@ function HandoverControls({ isPending, deadline, onAccept, onCancel, onRequest, 
             ) : (
                 <Button
                     variant="secondary"
-                    className="w-full h-9 text-xs flex items-center gap-2 bg-white/5 hover:bg-white/10 border-white/5"
+                    disabled={!canRequest}
+                    className={cn(
+                        "w-full h-9 text-xs flex items-center gap-2 bg-white/5 hover:bg-white/10 border-white/5",
+                        !canRequest && "opacity-50 cursor-not-allowed"
+                    )}
                     onClick={onRequest}
                 >
                     <ArrowRightLeft className="h-3.5 w-3.5" />
-                    Pedir Troca
+                    {canRequest ? "Pedir Troca" : "Aguardando Parceiro"}
                 </Button>
             )}
         </AnimatePresence>

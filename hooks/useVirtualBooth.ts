@@ -1,144 +1,104 @@
-
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { RealtimeChannel } from '@supabase/supabase-js'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
-export interface BoothState {
-    partnerId: string | null
-    partnerName: string | null
-    // Connection state now reflects LiveKit token status or Supabase presence
-    isConnected: boolean
-    isHandoverPending: boolean
-    handoverDeadline: number | null
-    handoverRequester: string | null
-    connectionState: 'idle' | 'finding-partner' | 'connecting' | 'connected' | 'disconnected'
-    liveKitToken: string | null
-}
-
-export function useVirtualBooth(
-    roomId: string,
-    userId: string,
-    userLanguage: string
-) {
+export function useVirtualBooth(roomId: string, userId: string, language: string) {
     const supabase = createClient()
-    const [state, setState] = useState<BoothState>({
-        partnerId: null,
-        partnerName: null,
-        isConnected: false,
-        isHandoverPending: false,
-        handoverDeadline: null,
-        handoverRequester: null,
-        connectionState: 'finding-partner',
-        liveKitToken: null
-    })
+    const [liveKitToken, setLiveKitToken] = useState<string | null>(null)
+    const [isHandoverPending, setIsHandoverPending] = useState(false)
+    const [handoverDeadline, setHandoverDeadline] = useState<number | null>(null)
+    const [connectionState, setConnectionState] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected')
 
+    // FIX BUG 4: canal guardado em ref — reutilizado para escutar E enviar
     const channelRef = useRef<RealtimeChannel | null>(null)
-    const channelName = `booth:${roomId}:${userLanguage}`
 
-    // 1. Get LiveKit Token
     useEffect(() => {
-        if (!roomId || !userId || !userLanguage || userLanguage === 'floor') {
-            setState(s => ({ ...s, liveKitToken: null }))
-            return
-        }
-
-        const fetchToken = async () => {
-            try {
-                // Determine room name for LiveKit (one room per language booth)
-                const liveKitRoom = `booth-${roomId}-${userLanguage}`
-                const resp = await fetch(`/api/livekit/token?room=${liveKitRoom}&username=${userId}`)
-                const data = await resp.json()
-                if (data.token) {
-                    setState(s => ({ ...s, liveKitToken: data.token }))
-                }
-            } catch (error) {
-                console.error("Failed to fetch LiveKit token", error)
-            }
+        // FIX: não passa role na URL — servidor resolve pelo banco (v2)
+        async function fetchToken() {
+            const res = await fetch(`/api/livekit/token?room=${roomId}&username=${userId}`)
+            const data = await res.json()
+            setLiveKitToken(data.token)
         }
         fetchToken()
-    }, [roomId, userId, userLanguage])
+    }, [roomId, userId])
 
-    // 2. Supabase Presence & Handover (Keep existing logic)
+    // Lógica de Realtime para Handover (FIX BUG 4)
     useEffect(() => {
-        if (!roomId || !userId || !userLanguage || userLanguage === 'floor') {
-            setState(s => ({ ...s, connectionState: 'idle' }))
-            return
-        }
+        setConnectionState('connecting')
 
-        const channel = supabase.channel(channelName, {
-            config: { presence: { key: userId } },
-        })
+        const channel = supabase
+            .channel(`handover:${roomId}`)
+            .on('broadcast', { event: 'handover_request' }, ({ payload }) => {
+                // FIX BUG 3: targetId existe no payload agora — comparação funciona
+                if (payload.targetId === userId) {
+                    setIsHandoverPending(true)
+                    setHandoverDeadline(Date.now() + 30000) // 30s
+                }
+            })
+            .on('broadcast', { event: 'handover_accept' }, ({ payload }) => {
+                if (payload.requesterId === userId) {
+                    setIsHandoverPending(false)
+                    setHandoverDeadline(null)
+                }
+            })
+            .on('broadcast', { event: 'handover_cancel' }, ({ payload }) => {
+                if (payload.targetId === userId) {
+                    setIsHandoverPending(false)
+                    setHandoverDeadline(null)
+                }
+            })
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') setConnectionState('connected')
+                else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') setConnectionState('disconnected')
+            })
 
         channelRef.current = channel
 
-        channel
-            .on('presence', { event: 'sync' }, () => {
-                const presenceState = channel.presenceState()
-                const users = Object.keys(presenceState)
-                const partner = users.find(id => id !== userId)
-
-                if (partner) {
-                    setState(s => ({ ...s, partnerId: partner, connectionState: 'connected' }))
-                } else {
-                    setState(s => ({ ...s, partnerId: null, connectionState: 'finding-partner' }))
-                }
-            })
-            // Signaling for Handover
-            .on('broadcast', { event: 'handover-request' }, ({ payload }: { payload: { sender: string, deadline: number } }) => {
-                const { sender, deadline } = payload
-                if (sender !== userId) {
-                    setState(s => ({
-                        ...s,
-                        isHandoverPending: true,
-                        handoverRequester: sender,
-                        handoverDeadline: deadline
-                    }))
-                }
-            })
-            .on('broadcast', { event: 'handover-accept' }, ({ payload }: { payload: { sender: string } }) => {
-                const { sender } = payload
-                if (sender !== userId) {
-                    window.dispatchEvent(new CustomEvent('booth-handover-accepted'))
-                }
-            })
-            .subscribe(async (status) => {
-                if (status === 'SUBSCRIBED') {
-                    await channel.track({ online_at: new Date().toISOString() })
-                }
-            })
-
         return () => {
             channel.unsubscribe()
+            channelRef.current = null
         }
-    }, [roomId, userId, userLanguage, channelName])
+    }, [roomId, userId])
 
-    // Handover API
-    const requestHandover = useCallback(() => {
-        const deadline = Date.now() + 10000
-        channelRef.current?.send({
+    // FIX BUG 3: targetId agora é obrigatório no payload
+    const requestHandover = useCallback(async (targetId: string) => {
+        if (!channelRef.current) return
+        await channelRef.current.send({
             type: 'broadcast',
-            event: 'handover-request',
-            payload: { sender: userId, deadline }
+            event: 'handover_request',
+            payload: { requesterId: userId, targetId, timestamp: Date.now() }
         })
-    }, [])
+    }, [userId])
 
-    const acceptHandover = useCallback(() => {
-        channelRef.current?.send({
+    const acceptHandover = useCallback(async () => {
+        setIsHandoverPending(false)
+        setHandoverDeadline(null)
+        if (!channelRef.current) return
+        await channelRef.current.send({
             type: 'broadcast',
-            event: 'handover-accept',
-            payload: { sender: userId }
+            event: 'handover_accept',
+            payload: { accepterId: userId, requesterId: userId, timestamp: Date.now() }
         })
-        setState(s => ({ ...s, isHandoverPending: false, handoverRequester: null }))
-    }, [])
+    }, [userId])
 
-    const cancelHandover = useCallback(() => {
-        setState(s => ({ ...s, isHandoverPending: false, handoverRequester: null }))
-    }, [])
+    const cancelHandover = useCallback(async (targetId?: string) => {
+        setIsHandoverPending(false)
+        setHandoverDeadline(null)
+        if (!channelRef.current || !targetId) return
+        await channelRef.current.send({
+            type: 'broadcast',
+            event: 'handover_cancel',
+            payload: { requesterId: userId, targetId, timestamp: Date.now() }
+        })
+    }, [userId])
 
     return {
-        ...state,
+        liveKitToken,
+        isHandoverPending,
+        handoverDeadline,
         requestHandover,
         acceptHandover,
-        cancelHandover
+        cancelHandover,
+        connectionState
     }
 }
