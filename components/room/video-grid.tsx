@@ -255,6 +255,12 @@ export function VideoGrid({
                                 volume={getPeerVolume(item)}
                                 connectionState={item.connectionState}
                                 connectionQuality={item.connectionQuality}
+                                onMutePeer={onMutePeer ? () => onMutePeer!(item.userId) : undefined}
+                                isLocalMuted={localMutedPeers.has(item.userId)}
+                                individualVolume={localPeerVolumes[item.userId] ?? 1}
+                                onIndividualVolumeChange={onLocalVolumeChange
+                                    ? v => onLocalVolumeChange!(item.userId, v)
+                                    : undefined}
                             />
                             <div className="absolute bottom-2 left-2 z-10 transition-opacity">
                                 <div className="bg-black/60 px-2 py-0.5 rounded text-[10px] text-white/90">
@@ -320,6 +326,12 @@ export function VideoGrid({
                                 volume={getPeerVolume(item)}
                                 connectionState={item.connectionState}
                                 connectionQuality={item.connectionQuality}
+                                onMutePeer={onMutePeer ? () => onMutePeer!(item.userId) : undefined}
+                                isLocalMuted={localMutedPeers.has(item.userId)}
+                                individualVolume={localPeerVolumes[item.userId] ?? 1}
+                                onIndividualVolumeChange={onLocalVolumeChange
+                                    ? v => onLocalVolumeChange!(item.userId, v)
+                                    : undefined}
                             />
                             <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2 pointer-events-none">
                                 <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-2 border border-white/5">

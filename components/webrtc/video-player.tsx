@@ -164,13 +164,43 @@ export const RemoteVideo = memo(function RemoteVideo({
     }, [stream, hasVideoTrack, cameraOff, name])
 
     return (
-        <div className={cn("relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden", isSpeaking && "ring-4 ring-[#06b6d4]")}>
+        <div className={cn("relative w-full h-full bg-zinc-900 rounded-[2.5rem] overflow-hidden group/video", isSpeaking && "ring-4 ring-[#06b6d4]")}>
             <audio ref={audioRef} autoPlay playsInline />
             {(!stream || !hasVideoTrack || cameraOff) ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-800"><User className="h-12 w-12 text-zinc-600" /></div>
             ) : (
                 <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover mirror" />
             )}
+            
+            {/* Controle de Volume Individual (Hover) */}
+            {!isPresentation && onIndividualVolumeChange && (
+                <div className="absolute top-4 right-4 z-50 opacity-0 group-hover/video:opacity-100 transition-opacity duration-300">
+                    <div className="bg-black/60 backdrop-blur-xl p-2 rounded-2xl flex items-center gap-3 border border-white/10 shadow-2xl">
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onIndividualVolumeChange(individualVolume === 0 ? 1 : 0);
+                            }}
+                            className="text-white hover:text-cyan-400 transition-colors"
+                        >
+                            {individualVolume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </button>
+                        <input 
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={individualVolume}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                onIndividualVolumeChange(parseFloat(e.target.value));
+                            }}
+                            className="w-20 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-cyan-400 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white shadow-sm"
+                        />
+                    </div>
+                </div>
+            )}
+
             <style jsx>{` .mirror { transform: scaleX(-1); } `}</style>
         </div>
     )
