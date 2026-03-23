@@ -9,6 +9,8 @@ import { Mic, MicOff, Video, VideoOff, Maximize2, Share2, Settings, Copy, Check,
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+import { createClient } from '@/lib/supabase/client'
+
 export default function RoomPage() {
     const params = useParams()
     const roomId = params.id as string
@@ -17,6 +19,20 @@ export default function RoomPage() {
     const [isJoined, setIsJoined] = useState(false)
     const [currentRole, setCurrentRole] = useState<string>('participant')
     const [stableUsername] = useState(() => `user_${Math.random().toString(36).substring(7)}`)
+    const [realUserName, setRealUserName] = useState<string>('Convidado')
+
+    const supabase = createClient()
+
+    useEffect(() => {
+        async function getUser() {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                const name = user.user_metadata?.full_name || user.email || 'Convidado'
+                setRealUserName(name)
+            }
+        }
+        getUser()
+    }, [])
 
     // Estados de UI e Layout
     const [viewMode, setViewMode] = useState<'gallery' | 'speaker'>('gallery')
@@ -48,7 +64,7 @@ export default function RoomPage() {
         currentRole,
         { micOn: true, cameraOn: true },
         isJoined,
-        'Convidado',
+        realUserName, 
         token || undefined,
         liveKitUrl || undefined
     )
@@ -123,7 +139,7 @@ export default function RoomPage() {
                     localStream={roomLocalStream}
                     micOn={isMicOn}
                     cameraOn={isCameraOn}
-                    localUserName="Você"
+                    localUserName={realUserName}
                     currentRole={currentRole}
                     mode={viewMode}
                     activeSpeakerId={activeSpeakerId}
