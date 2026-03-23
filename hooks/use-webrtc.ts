@@ -350,5 +350,6 @@ export function useWebRTC(
         blockUserAudio: () => {},
         unblockUserAudio: () => {},
         setLastError,
+        room,
     }
 }

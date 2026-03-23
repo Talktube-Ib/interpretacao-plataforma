@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useParams, useRouter } from 'next/navigation'
 import { useWebRTC } from '@/hooks/use-webrtc'
 import { VideoGrid } from '@/components/room/video-grid'
-import { Mic, MicOff, Video, VideoOff, Maximize2, Share2, Settings, Copy, Check, X, Volume2, Video as VideoIcon } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Maximize2, Share2, Settings, Copy, Check, X, Volume2, Video as VideoIcon, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client'
 
 export default function RoomPage() {
     const params = useParams()
+    const router = useRouter()
     const roomId = params.id as string
     const [token, setToken] = useState<string | null>(null)
     const [liveKitUrl, setLiveKitUrl] = useState<string | null>(null)
@@ -57,7 +58,8 @@ export default function RoomPage() {
         isCameraOn,
         toggleMic,
         toggleCamera,
-        switchDevice
+        switchDevice,
+        room
     } = useWebRTC(
         roomId,
         stableUsername, 
@@ -120,6 +122,18 @@ export default function RoomPage() {
             else next.add(peerId)
             return next
         })
+    }
+
+    const handleLeave = async () => {
+        try {
+            if (room) {
+                await room.disconnect()
+            }
+        } catch (err) {
+            console.error('Erro ao desconectar:', err)
+        } finally {
+            router.push('/dashboard')
+        }
     }
 
     if (!isJoined || !token) {
@@ -234,67 +248,81 @@ export default function RoomPage() {
             </AnimatePresence>
 
             {/* Footer */}
-            <footer className="h-24 bg-black/80 backdrop-blur-md border-t border-white/5 flex items-center justify-center gap-4 md:gap-8 z-50 px-4">
+            <footer className="h-24 bg-black/80 backdrop-blur-md border-t border-white/5 flex items-center justify-between z-50 px-6">
                 <div className="flex items-center gap-3">
                     <Button 
                         variant="ghost"
                         size="icon"
-                        onClick={() => toggleMic(!isMicOn)} 
-                        className={cn(
-                            "h-14 w-14 rounded-full transition-all duration-300",
-                            isMicOn ? "bg-white/5 border border-white/10 hover:bg-white/10" : "bg-red-500 text-white hover:bg-red-600"
-                        )}
+                        onClick={handleLeave}
+                        className="h-14 w-14 rounded-full bg-red-600 text-white hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
+                        title="Sair da Reunião"
                     >
-                        {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
-                    </Button>
-                    <Button 
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => toggleCamera(!isCameraOn)} 
-                        className={cn(
-                            "h-14 w-14 rounded-full transition-all duration-300",
-                            isCameraOn ? "bg-white/5 border border-white/10 hover:bg-white/10" : "bg-red-500 text-white hover:bg-red-600"
-                        )}
-                    >
-                        {isCameraOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+                        <LogOut className="h-6 w-6" />
                     </Button>
                 </div>
 
-                <div className="h-8 w-px bg-white/10" />
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleMic(!isMicOn)} 
+                            className={cn(
+                                "h-14 w-14 rounded-full transition-all duration-300",
+                                isMicOn ? "bg-white/5 border border-white/10 hover:bg-white/10" : "bg-red-500 text-white hover:bg-red-600"
+                            )}
+                        >
+                            {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                        </Button>
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleCamera(!isCameraOn)} 
+                            className={cn(
+                                "h-14 w-14 rounded-full transition-all duration-300",
+                                isCameraOn ? "bg-white/5 border border-white/10 hover:bg-white/10" : "bg-red-500 text-white hover:bg-red-600"
+                            )}
+                        >
+                            {isCameraOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+                        </Button>
+                    </div>
 
-                <div className="flex items-center gap-3">
-                    <Button 
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setViewMode(prev => prev === 'gallery' ? 'speaker' : 'gallery')}
-                        className="h-14 w-14 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-zinc-400 hover:text-white"
-                        title="Alternar Visualização"
-                    >
-                        <Maximize2 className="h-6 w-6" />
-                    </Button>
+                    <div className="h-8 w-px bg-white/10" />
 
-                    <Button 
-                        variant="ghost"
-                        size="icon"
-                        onClick={copyMeetingLink}
-                        className={cn(
-                            "h-14 w-14 rounded-full border transition-all duration-300",
-                            copySuccess ? "bg-green-500/20 border-green-500/50 text-green-400" : "bg-white/5 border-white/10 hover:bg-white/10 text-zinc-400 hover:text-white"
-                        )}
-                        title="Copiar Link da Reunião"
-                    >
-                        {copySuccess ? <Check className="h-6 w-6" /> : <Share2 className="h-6 w-6" />}
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setViewMode(prev => prev === 'gallery' ? 'speaker' : 'gallery')}
+                            className="h-14 w-14 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-zinc-400 hover:text-white"
+                            title="Alternar Visualização"
+                        >
+                            <Maximize2 className="h-6 w-6" />
+                        </Button>
 
-                    <Button 
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowSettings(true)}
-                        className="h-14 w-14 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-zinc-400 hover:text-white"
-                        title="Configurações de Dispositivos"
-                    >
-                        <Settings className="h-6 w-6" />
-                    </Button>
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            onClick={copyMeetingLink}
+                            className={cn(
+                                "h-14 w-14 rounded-full border transition-all duration-300",
+                                copySuccess ? "bg-green-500/20 border-green-500/50 text-green-400" : "bg-white/5 border-white/10 hover:bg-white/10 text-zinc-400 hover:text-white"
+                            )}
+                            title="Copiar Link da Reunião"
+                        >
+                            {copySuccess ? <Check className="h-6 w-6" /> : <Share2 className="h-6 w-6" />}
+                        </Button>
+
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowSettings(true)}
+                            className="h-14 w-14 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-zinc-400 hover:text-white"
+                            title="Configurações de Dispositivos"
+                        >
+                            <Settings className="h-6 w-6" />
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Toast flutuante de cópia */}
@@ -304,7 +332,7 @@ export default function RoomPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="absolute bottom-28 bg-green-500 text-black px-4 py-2 rounded-full font-bold shadow-xl flex items-center gap-2"
+                            className="absolute bottom-28 left-1/2 -translate-x-1/2 bg-green-500 text-black px-4 py-2 rounded-full font-bold shadow-xl flex items-center gap-2"
                         >
                             <Copy className="h-4 w-4" />
                             Link copiado!
