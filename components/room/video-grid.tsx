@@ -65,15 +65,17 @@ function calcGridCols(n: number): number {
 
 // Gera o estilo CSS Grid dinamicamente, sem classes Tailwind fixas
 // Os tiles NÃO usam aspect-ratio fixo — eles preenchem a célula disponível.
-function buildGridStyle(cols: number): CSSProperties {
+function buildGridStyle(cols: number, total: number): CSSProperties {
+    const rows = Math.ceil(total / cols)
     return {
         display: 'grid',
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
         gap: '12px',
         width: '100%',
         height: '100%',
-        alignContent: 'center',
-        justifyContent: 'center',
+        maxHeight: '100%',
+        padding: '8px',
     }
 }
 
@@ -161,9 +163,9 @@ export function VideoGrid({
     )
 
     // FIX: conta corretamente incluindo o tile local
-    const totalTiles = finalDisplayItems.length + (isGhost ? 0 : 1)
+    const totalTiles = (mode === 'speaker' ? stripItems.length + 1 : finalDisplayItems.length) + (isGhost ? 0 : 1)
     const cols = calcGridCols(totalTiles)
-    const gridStyle = buildGridStyle(cols)
+    const gridStyle = buildGridStyle(cols, totalTiles)
 
     const getPeerVolume = (peer: DisplayItem) => {
         if (localMutedPeers.has(peer.userId)) return 0
@@ -187,13 +189,11 @@ export function VideoGrid({
         return vol * masterVolume * (localPeerVolumes[peer.userId] ?? 1)
     }
 
-    // ─── SPEAKER VIEW ──────────────────────────────────────────────────────────
+    // ─── SPEAKER VIEW (Mantido, mas com melhoria de height se necessário) ──────
     if (mode === 'speaker' && featuredItem) {
         return (
-            <div className="w-full h-full flex flex-col md:flex-row gap-3 overflow-hidden">
-
-                {/* Tile principal — ocupa todo espaço disponível */}
-                <div className="flex-1 min-h-0 min-w-0 relative rounded-2xl overflow-hidden bg-black/40 border border-white/5">
+            <div className="w-full h-full flex flex-col md:flex-row gap-3 overflow-hidden p-2">
+                <div className="flex-1 min-h-0 min-w-0 relative rounded-2xl overflow-hidden bg-black/40 border border-white/5 shadow-2xl">
                     <RemoteVideo
                         stream={featuredItem.stream}
                         name={featuredItem.name}
@@ -214,74 +214,53 @@ export function VideoGrid({
                         connectionState={featuredItem.connectionState}
                         connectionQuality={featuredItem.connectionQuality}
                     />
-                    {pinnedSpeakerId === featuredItem.id && (
-                        <div className="absolute top-3 right-3 bg-[#06b6d4] p-1.5 rounded-full z-10">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                strokeLinejoin="round" className="text-white">
-                                <line x1="12" x2="12" y1="17" y2="22" />
-                                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-                            </svg>
+                    <div className="absolute bottom-4 left-4 z-20 pointer-events-none">
+                        <div className="bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center gap-2 border border-white/10">
+                            {featuredItem.micOn 
+                                ? <Mic className="h-3.5 w-3.5 text-cyan-400" /> 
+                                : <MicOff className="h-3.5 w-3.5 text-red-500" />}
+                            <span className="text-xs font-bold text-white tracking-tight">{featuredItem.name}</span>
                         </div>
-                    )}
+                    </div>
                 </div>
 
-                {/* Sidebar — horizontal no mobile, vertical no desktop */}
                 <div className={cn(
-                    // Mobile: faixa horizontal na base, altura fixa proporcional
-                    "flex flex-row gap-2 overflow-x-auto overflow-y-hidden",
-                    "h-[22vw] max-h-28 min-h-20",
-                    // Desktop: coluna lateral, largura fixa
-                    "md:flex-col md:overflow-y-auto md:overflow-x-hidden",
-                    "md:h-full md:max-h-full md:min-h-0",
-                    "md:w-52 md:shrink-0",
-                    "no-scrollbar pb-1 md:pb-0",
+                    "flex flex-row gap-2 overflow-x-auto overflow-y-hidden h-[22vw] max-h-28 min-h-20",
+                    "md:flex-col md:overflow-y-auto md:overflow-x-hidden md:h-full md:max-h-full md:min-h-0 md:w-52 md:shrink-0 no-scrollbar pb-1 md:pb-0"
                 )}>
-                    {/* Tile local na sidebar */}
                     {!isGhost && (
-                        <div className="shrink-0 aspect-video h-full md:h-auto md:w-full md:aspect-video rounded-xl overflow-hidden border border-white/10">
+                        <div className="shrink-0 aspect-video h-full md:h-auto md:w-full rounded-xl overflow-hidden border border-white/10 relative">
                             <LocalVideo
                                 stream={localStream}
                                 name={`${localUserName} (Você)`}
                                 role={currentRole}
                                 micOff={!micOn}
                                 cameraOff={!cameraOn}
-                                handRaised={handRaised}
-                                onPin={() => onSpeakerChange('local')}
-                                isPinned={pinnedSpeakerId === 'local'}
-                                showPinButton
                             />
+                             <div className="absolute bottom-2 left-2 z-10">
+                                <div className="bg-black/60 px-2 py-0.5 rounded text-[10px] text-white/90">Você</div>
+                            </div>
                         </div>
                     )}
-
                     {stripItems.map(item => (
-                        <div
-                            key={item.id}
-                            className="shrink-0 aspect-video h-full md:h-auto md:w-full md:aspect-video rounded-xl overflow-hidden border border-white/10"
-                        >
+                        <div key={item.id} className="relative shrink-0 aspect-video h-full md:h-auto md:w-full rounded-xl overflow-hidden border border-white/10 group">
                             <RemoteVideo
                                 stream={item.stream}
                                 name={item.name}
                                 role={item.role}
                                 micOff={!item.micOn}
                                 cameraOff={!item.cameraOn}
-                                handRaised={item.handRaised}
                                 isSpeaking={item.isSpeaking}
                                 onSpeakingChange={s => onPeerSpeaking(item.userId, s)}
                                 volume={getPeerVolume(item)}
-                                isPresentation={item.isScreen}
-                                onMutePeer={onMutePeer ? () => onMutePeer!(item.userId) : undefined}
-                                isLocalMuted={localMutedPeers.has(item.userId)}
-                                individualVolume={localPeerVolumes[item.userId] ?? 1}
-                                onIndividualVolumeChange={onLocalVolumeChange
-                                    ? v => onLocalVolumeChange!(item.userId, v)
-                                    : undefined}
                                 connectionState={item.connectionState}
                                 connectionQuality={item.connectionQuality}
-                                onPin={() => onSpeakerChange(item.id)}
-                                isPinned={pinnedSpeakerId === item.id}
-                                showPinButton
                             />
+                            <div className="absolute bottom-2 left-2 z-10 transition-opacity">
+                                <div className="bg-black/60 px-2 py-0.5 rounded text-[10px] text-white/90">
+                                    {item.name}
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -289,31 +268,16 @@ export function VideoGrid({
         )
     }
 
-    // ─── GALLERY VIEW ──────────────────────────────────────────────────────────
+    // ─── GALLERY VIEW (Foco Original do Pedido) ───────────────────────────────
     return (
-        <div className="w-full h-full overflow-hidden p-2">
-            {/*
-             * FIX: grid calculado dinamicamente por JS, não por classes Tailwind fixas.
-             * Sem aspect-ratio nos tiles — eles preenchem a célula disponível.
-             * Isso replica o comportamento do Google Meet onde os tiles se adaptam
-             * ao espaço real sem transbordar nem ficar minúsculos.
-             */}
+        <div className="w-full h-full overflow-hidden flex items-center justify-center p-2">
             <div style={gridStyle}>
                 <AnimatePresence mode="popLayout">
-
-                    {/* Tile local */}
                     {!isGhost && (
                         <motion.div
                             layout
                             key="local"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
-                            // FIX: sem aspect-video — tile preenche a célula do grid
-                            // min-h garante que nunca some em telas pequenas
-                            className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl min-h-[120px]"
-                            style={{ aspectRatio: totalTiles === 1 ? '16/9' : undefined }}
+                            className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 shadow-xl"
                         >
                             <LocalVideo
                                 stream={localStream}
@@ -321,47 +285,29 @@ export function VideoGrid({
                                 role={currentRole}
                                 micOff={!micOn}
                                 cameraOff={!cameraOn}
-                                handRaised={handRaised}
-                                onPin={() => onSpeakerChange('local')}
-                                isPinned={pinnedSpeakerId === 'local'}
-                                showPinButton
                             />
-                            {/* Label overlay */}
-                            <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2 pointer-events-none">
-                                <div className="bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10">
+                            <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2 pointer-events-none">
+                                <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-2 border border-white/5">
                                     {micOn
-                                        ? <Mic className="h-3 w-3 text-cyan-400" />
-                                        : <MicOff className="h-3 w-3 text-red-500" />}
-                                    <span className="text-[10px] font-bold text-white truncate max-w-[120px]">
+                                        ? <Mic className="h-3.5 w-3.5 text-cyan-400" />
+                                        : <MicOff className="h-3.5 w-3.5 text-red-500" />}
+                                    <span className="text-xs font-bold text-white">
                                         {localUserName} (Você)
                                     </span>
                                 </div>
-                                {handRaised && (
-                                    <div className="bg-yellow-500 text-black p-1 rounded-full animate-bounce">
-                                        <Hand className="h-3 w-3 fill-current" />
-                                    </div>
-                                )}
                             </div>
                         </motion.div>
                     )}
 
-                    {/* Tiles remotos */}
                     {finalDisplayItems.map(item => (
                         <motion.div
                             key={item.id}
                             layout
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.2 }}
                             className={cn(
-                                'relative rounded-2xl overflow-hidden min-h-[120px]',
+                                'relative rounded-2xl overflow-hidden',
                                 pinnedSpeakerId === item.id && 'ring-2 ring-[#06b6d4]',
-                                // FIX: speaker ativo tem borda sutil animada
-                                item.isSpeaking && pinnedSpeakerId !== item.id && 'ring-1 ring-green-400/60',
+                                item.isSpeaking && pinnedSpeakerId !== item.id && 'ring-2 ring-green-400/60',
                             )}
-                            // FIX: tile único ocupa 16:9 centralizado; múltiplos preenchem o grid
-                            style={{ aspectRatio: totalTiles === 1 ? '16/9' : undefined }}
                         >
                             <RemoteVideo
                                 stream={item.stream}
@@ -369,26 +315,29 @@ export function VideoGrid({
                                 role={item.role}
                                 micOff={!item.micOn}
                                 cameraOff={!item.cameraOn}
-                                handRaised={item.handRaised}
                                 isSpeaking={item.isSpeaking}
                                 onSpeakingChange={s => onPeerSpeaking(item.userId, s)}
                                 volume={getPeerVolume(item)}
-                                isPresentation={item.isScreen}
-                                onMutePeer={onMutePeer ? () => onMutePeer!(item.userId) : undefined}
-                                isLocalMuted={localMutedPeers.has(item.userId)}
-                                individualVolume={localPeerVolumes[item.userId] ?? 1}
-                                onIndividualVolumeChange={onLocalVolumeChange
-                                    ? v => onLocalVolumeChange!(item.userId, v)
-                                    : undefined}
                                 connectionState={item.connectionState}
                                 connectionQuality={item.connectionQuality}
-                                onPin={() => onSpeakerChange(item.id)}
-                                isPinned={pinnedSpeakerId === item.id}
-                                showPinButton
                             />
+                            <div className="absolute bottom-3 left-3 z-30 flex items-center gap-2 pointer-events-none">
+                                <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl flex items-center gap-2 border border-white/5">
+                                    {item.micOn
+                                        ? <Mic className="h-3.5 w-3.5 text-cyan-400" />
+                                        : <MicOff className="h-3.5 w-3.5 text-red-500" />}
+                                    <span className="text-xs font-bold text-white">
+                                        {item.name}
+                                    </span>
+                                </div>
+                                {item.handRaised && (
+                                    <div className="bg-yellow-500 text-black p-1.5 rounded-full shadow-lg">
+                                        <Hand className="h-3.5 w-3.5 fill-current" />
+                                    </div>
+                                )}
+                            </div>
                         </motion.div>
                     ))}
-
                 </AnimatePresence>
             </div>
         </div>
