@@ -16,6 +16,7 @@ import { Search } from 'lucide-react'
 import { CreateUserDialog } from './create-user-dialog'
 import { UserActionsClient } from './user-actions-client'
 import { DebugButton } from './debug-button'
+import { BackfillButton } from './backfill-button'
 
 export default async function AdminUsersPage({
     searchParams,
@@ -54,6 +55,7 @@ export default async function AdminUsersPage({
                         />
                     </form>
                     <CreateUserDialog />
+                    <BackfillButton />
                     <DebugButton />
                 </div>
             </div>
