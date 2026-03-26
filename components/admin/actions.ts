@@ -321,7 +321,7 @@ export async function createUser(formData: FormData) {
             console.error('Supabase createUser error:', error)
             // Provide a more helpful message if it looks like a database error
             const errorMessage = error.message.includes('Database error') 
-                ? `${error.message}. Verifique se as restrições de papéis (roles) no banco de dados foram atualizadas.`
+                ? `${error.message}. Verifique se as colunas (Ex: username) e restrições de papéis (roles) no banco de dados foram atualizadas usando o script fix_database_roles.sql.`
                 : error.message
             return { success: false, error: errorMessage }
         }
