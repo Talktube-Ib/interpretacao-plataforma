@@ -300,11 +300,10 @@ export async function createUser(formData: FormData) {
         // 3. Create user using Admin Client (Bypass email confirmation)
         const supabaseAdmin = await ensureAdminClient()
 
-        // We assume the DB constraint has been updated to allow 'interpreter'
-        // If not, this might fail or trigger needs update. 
-        // For safety/legacy compatibility, we keep 'user' in metadata if strict 'admin'/'user' check exists in triggers,
-        // but we'll try to pass the real role.
-        const metadataRole = role === 'admin' ? 'admin' : (role === 'interpreter' ? 'interpreter' : 'user')
+        // WORKAROUND: Map 'interpreter' or 'participant' to 'user' for Auth Metadata 
+        // to avoid trigger failure if the database constraint hasn't been updated yet.
+        // The trigger public.handle_new_user should eventually be updated.
+        const metadataRole = role === 'admin' ? 'admin' : 'user'
 
         const { data: newUser, error } = await supabaseAdmin.auth.admin.createUser({
             email,
@@ -312,18 +311,26 @@ export async function createUser(formData: FormData) {
             email_confirm: true,
             user_metadata: {
                 full_name: fullName,
-                role: metadataRole,
+                role: metadataRole, // Send 'user' or 'admin' to keep trigger happy
+                actual_role: role,  // Store the real intended role in metadata too
                 must_reset_password: true
             }
         })
 
         if (error) {
             console.error('Supabase createUser error:', error)
-            return { success: false, error: error.message }
+            // Provide a more helpful message if it looks like a database error
+            const errorMessage = error.message.includes('Database error') 
+                ? `${error.message}. Verifique se as restrições de papéis (roles) no banco de dados foram atualizadas.`
+                : error.message
+            return { success: false, error: errorMessage }
         }
 
         // 4. Update role and languages in profiles (Use UPSERT for robustness)
         if (newUser?.user) {
+            // We use the ACTUAL role here ('interpreter', 'user', 'admin')
+            // If the SQL fix wasn't applied, this might still fail for 'interpreter',
+            // but the Auth user will at least exist.
             const { error: profileError } = await supabaseAdmin
                 .from('profiles')
                 .upsert({
@@ -337,8 +344,14 @@ export async function createUser(formData: FormData) {
 
             if (profileError) {
                 console.error('Error upserting profile:', profileError)
-                // We don't return error here to avoid blocking creation if just profile update fails, 
-                // but ideally implementation should be transactional.
+                // If this fails, it's likely the constraint. We inform the user.
+                if (profileError.message.includes('profiles_role_check')) {
+                    return { 
+                        success: true, 
+                        warning: 'Usuário criado no Auth, mas falha ao atualizar perfil. Por favor, execute o script SQL de correção de papéis.',
+                        userId: newUser.user.id 
+                    }
+                }
             }
         }
 

@@ -86,19 +86,27 @@ export function CreateUserDialog() {
         }
 
         try {
-            const result = await createUser(formData)
+            const result = await createUser(formData) as { success: boolean, error?: string, warning?: string }
 
             if (result.success) {
                 setOpen(false)
                 setPassword('')
                 setSelectedLanguages([])
                 setSelectedRole('participant')
-                toast.success('Usuário criado com sucesso!', {
-                    description: 'As credenciais já podem ser enviadas ao usuário.',
-                    icon: <CheckCircle2 className="h-5 w-5 text-green-500" />
-                })
+                
+                if (result.warning) {
+                    toast.warning('Usuário criado com ressalvas', {
+                        description: result.warning,
+                        duration: 10000
+                    })
+                } else {
+                    toast.success('Usuário criado com sucesso!', {
+                        description: 'As credenciais já podem ser enviadas ao usuário.',
+                        icon: <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    })
+                }
             } else {
-                toast.error('Erro ao criar usuário: ' + (result as { error?: string }).error)
+                toast.error('Erro ao criar usuário: ' + result.error)
             }
         } catch (error) {
             console.error(error)
